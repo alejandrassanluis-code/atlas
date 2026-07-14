@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    app.js
-   Sprint 3.4 — Ajustes editables y snapshots
+   Sprint 4.0 — Inicio limpio y ajustes conectados
 ========================================================== */
 
 const AtlasApp = {
@@ -62,10 +62,6 @@ const AtlasApp = {
 
                     this.render();
 
-                    AtlasUI.toast(
-                        "Atlas ya está configurado."
-                    );
-
                 }
             );
 
@@ -111,7 +107,9 @@ const AtlasApp = {
             !year ||
             !month
         ) {
+
             return this.currentMonthKey();
+
         }
 
         const date =
@@ -494,15 +492,25 @@ const AtlasApp = {
     setTrendMetric(metric) {
 
         const allowedMetrics = [
+
             "savings",
+
             "income",
+
             "expenses",
+
             "invested",
+
             "cashOutflow",
+
             "liquidity",
+
             "investments",
+
             "debt",
+
             "netWorth"
+
         ];
 
         if (
@@ -540,12 +548,44 @@ const AtlasApp = {
 
     },
 
+    removeDashboardInsight() {
+
+        if (
+            this.route !==
+            "home"
+        ) {
+            return;
+        }
+
+        const insight =
+            document.querySelector(
+                "#app .insight"
+            );
+
+        if (!insight) {
+            return;
+        }
+
+        const panel =
+            insight.closest(
+                ".panel"
+            );
+
+        if (panel) {
+
+            panel.remove();
+
+        }
+
+    },
+
     render() {
 
         AtlasUI.render(
             this.route,
             this.data,
             {
+
                 analysisMonth:
                     this.analysisMonth,
 
@@ -569,8 +609,11 @@ const AtlasApp = {
 
                 isCurrentMovementsMonth:
                     this.isCurrentMovementsMonth()
+
             }
         );
+
+        this.removeDashboardInsight();
 
     },
 
@@ -598,7 +641,7 @@ const AtlasApp = {
         const confirmed =
             AtlasUI.confirm(
                 "Reiniciar Atlas",
-                "Se eliminarán las cuentas, saldos, movimientos y cierres mensuales guardados en este dispositivo."
+                "Se eliminarán las cuentas, saldos, movimientos, cierres y configuraciones guardadas en este dispositivo."
             );
 
         if (!confirmed) {
@@ -635,11 +678,10 @@ const AtlasApp = {
                 this.data =
                     updatedData;
 
-                this.render();
+                this.route =
+                    "home";
 
-                AtlasUI.toast(
-                    "Atlas se ha reiniciado."
-                );
+                this.render();
 
             }
         );
