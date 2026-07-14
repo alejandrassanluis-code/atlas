@@ -1,17 +1,14 @@
 /* ==========================================================
    ATLAS
    movements.js
-   Sprint 4.1 — Edición y pagos de deuda corregidos
+   Sprint 4.2 — Guardado explícito compatible con Safari
 ========================================================== */
 
 const AtlasMovements = {
 
     data: null,
-
     onComplete: null,
-
     editingId: null,
-
     saving: false,
 
     open(
@@ -20,17 +17,10 @@ const AtlasMovements = {
         movementId = null
     ) {
 
-        this.data =
-            data;
-
-        this.onComplete =
-            onComplete;
-
-        this.editingId =
-            movementId;
-
-        this.saving =
-            false;
+        this.data = data;
+        this.onComplete = onComplete;
+        this.editingId = movementId;
+        this.saving = false;
 
         if (movementId) {
 
@@ -96,8 +86,7 @@ const AtlasMovements = {
 
     today() {
 
-        const now =
-            new Date();
+        const now = new Date();
 
         const year =
             now.getFullYear();
@@ -147,7 +136,7 @@ const AtlasMovements = {
     findMovement(id) {
 
         return (
-            this.data.movements || []
+            this.data?.movements || []
         ).find(
             movement =>
                 movement.id === id
@@ -161,7 +150,7 @@ const AtlasMovements = {
     ) {
 
         return (
-            data.accounts || []
+            data?.accounts || []
         ).find(
             account =>
                 account.id === id
@@ -172,7 +161,7 @@ const AtlasMovements = {
     getMovementKind(movement) {
 
         if (
-            movement.kind ===
+            movement?.kind ===
             "debt_payment"
         ) {
 
@@ -180,7 +169,7 @@ const AtlasMovements = {
 
         }
 
-        return movement.type;
+        return movement?.type || "";
 
     },
 
@@ -265,12 +254,9 @@ const AtlasMovements = {
     ) {
 
         return (
-            this.data.accounts || []
+            this.data?.accounts || []
         )
-            .filter(
-                account =>
-                    filter(account)
-            )
+            .filter(filter)
             .filter(
                 account =>
                     account.active !== false &&
@@ -370,8 +356,7 @@ const AtlasMovements = {
                             account.id
                         )}"
                         ${
-                            account.id ===
-                            selectedId
+                            account.id === selectedId
                                 ? "selected"
                                 : ""
                         }
@@ -402,8 +387,7 @@ const AtlasMovements = {
                             category.id
                         )}"
                         ${
-                            category.id ===
-                            selectedId
+                            category.id === selectedId
                                 ? "selected"
                                 : ""
                         }
@@ -448,8 +432,7 @@ const AtlasMovements = {
         return category.subcategories
             .filter(
                 subcategory =>
-                    subcategory.active !==
-                    false
+                    subcategory.active !== false
             )
             .sort(
                 (a, b) =>
@@ -464,8 +447,7 @@ const AtlasMovements = {
                             subcategory.id
                         )}"
                         ${
-                            subcategory.id ===
-                            selectedId
+                            subcategory.id === selectedId
                                 ? "selected"
                                 : ""
                         }
@@ -504,123 +486,6 @@ const AtlasMovements = {
 
         }
 
-        const oldName =
-            String(
-                movement?.category ||
-                ""
-            )
-                .trim()
-                .toLowerCase();
-
-        const mappings = {
-
-            income: {
-
-                "nómina": [
-                    "work",
-                    "work_salary"
-                ],
-
-                "nomina": [
-                    "work",
-                    "work_salary"
-                ],
-
-                "reembolso": [
-                    "refunds",
-                    "refunds_other"
-                ],
-
-                "venta": [
-                    "extra_income",
-                    "extra_income_second_hand"
-                ],
-
-                "otros ingresos": [
-                    "other_income",
-                    "other_income_unclassified"
-                ]
-
-            },
-
-            expense: {
-
-                "vivienda": [
-                    "housing",
-                    "housing_rent"
-                ],
-
-                "alimentación": [
-                    "food",
-                    "food_supermarket"
-                ],
-
-                "alimentacion": [
-                    "food",
-                    "food_supermarket"
-                ],
-
-                "transporte": [
-                    "transport",
-                    "transport_other"
-                ],
-
-                "salud": [
-                    "health",
-                    "health_other"
-                ],
-
-                "ocio": [
-                    "leisure",
-                    "leisure_other"
-                ],
-
-                "compras": [
-                    "shopping",
-                    "shopping_other"
-                ],
-
-                "suscripciones": [
-                    "subscriptions",
-                    "subscriptions_other"
-                ],
-
-                "viajes": [
-                    "travel",
-                    "travel_other"
-                ],
-
-                "impuestos": [
-                    "taxes",
-                    "taxes_other"
-                ],
-
-                "otros gastos": [
-                    "other_expense",
-                    "other_expense_unclassified"
-                ]
-
-            }
-
-        };
-
-        const match =
-            mappings[type]?.[oldName];
-
-        if (match) {
-
-            return {
-
-                categoryId:
-                    match[0],
-
-                subcategoryId:
-                    match[1]
-
-            };
-
-        }
-
         const firstCategory =
             this.catalogCategories(
                 type
@@ -634,7 +499,10 @@ const AtlasMovements = {
 
             subcategoryId:
                 firstCategory
-                    ?.subcategories?.[0]
+                    ?.subcategories?.find(
+                        subcategory =>
+                            subcategory.active !== false
+                    )
                     ?.id ||
                 ""
 
@@ -723,6 +591,8 @@ const AtlasMovements = {
                     z-index: 3201;
                     max-height: 94vh;
                     overflow-y: auto;
+                    -webkit-overflow-scrolling:
+                        touch;
                     padding:
                         12px
                         22px
@@ -972,6 +842,7 @@ const AtlasMovements = {
                     border-radius: 17px;
                     font-size: 16px;
                     font-weight: 750;
+                    touch-action: manipulation;
                 }
 
                 .movement-primary {
@@ -1025,9 +896,7 @@ const AtlasMovements = {
             this.root();
 
         if (!root) {
-
             return;
-
         }
 
         document.body.classList.add(
@@ -1147,7 +1016,7 @@ const AtlasMovements = {
                     "investment",
                     "📈",
                     "Inversión",
-                    "Aportación a ETFs o Revolut Bot."
+                    "Aportación a una cuenta de inversión."
                 )}
 
                 ${this.typeButton(
@@ -1678,6 +1547,7 @@ const AtlasMovements = {
             <form
                 class="movement-form"
                 data-movement-form="${type}"
+                novalidate
             >
 
                 ${this.formFields(
@@ -1687,7 +1557,8 @@ const AtlasMovements = {
 
                 <button
                     class="movement-primary"
-                    type="submit"
+                    type="button"
+                    data-movement-action="save"
                     data-movement-save
                 >
                     ${
@@ -1737,9 +1608,7 @@ const AtlasMovements = {
             );
 
         if (!form) {
-
             return;
-
         }
 
         const subcategorySelect =
@@ -1748,9 +1617,7 @@ const AtlasMovements = {
             );
 
         if (!subcategorySelect) {
-
             return;
-
         }
 
         const type =
@@ -1908,11 +1775,8 @@ const AtlasMovements = {
                     "Aportación periódica"
                 );
 
-            movement.categoryId =
-                null;
-
-            movement.subcategoryId =
-                null;
+            movement.categoryId = null;
+            movement.subcategoryId = null;
 
         }
 
@@ -1921,11 +1785,8 @@ const AtlasMovements = {
             movement.category =
                 "Traspaso";
 
-            movement.categoryId =
-                null;
-
-            movement.subcategoryId =
-                null;
+            movement.categoryId = null;
+            movement.subcategoryId = null;
 
         }
 
@@ -1934,11 +1795,8 @@ const AtlasMovements = {
             movement.category =
                 "Pago de deuda";
 
-            movement.categoryId =
-                null;
-
-            movement.subcategoryId =
-                null;
+            movement.categoryId = null;
+            movement.subcategoryId = null;
 
         }
 
@@ -1994,16 +1852,6 @@ const AtlasMovements = {
 
         }
 
-        /*
-         * Solo los ingresos y los gastos
-         * normales necesitan categoría.
-         *
-         * Pago de deuda se guarda con
-         * type expense, pero su kind es
-         * debt_payment y no utiliza
-         * categorías.
-         */
-
         if (
             (
                 kind === "income" ||
@@ -2020,32 +1868,30 @@ const AtlasMovements = {
         }
 
         if (
-            kind === "income" ||
-            kind === "expense"
+            (
+                kind === "income" ||
+                kind === "expense"
+            ) &&
+            !movement.accountId
         ) {
 
-            if (!movement.accountId) {
-
-                return "Selecciona una cuenta.";
-
-            }
+            return "Selecciona una cuenta.";
 
         }
 
         if (
-            kind === "transfer" ||
-            kind === "investment" ||
-            kind === "debt_payment"
-        ) {
-
-            if (
+            (
+                kind === "transfer" ||
+                kind === "investment" ||
+                kind === "debt_payment"
+            ) &&
+            (
                 !movement.fromAccountId ||
                 !movement.toAccountId
-            ) {
+            )
+        ) {
 
-                return "Selecciona la cuenta de origen y destino.";
-
-            }
+            return "Selecciona la cuenta de origen y destino.";
 
         }
 
@@ -2063,9 +1909,7 @@ const AtlasMovements = {
         const accountIds = [
 
             movement.accountId,
-
             movement.fromAccountId,
-
             movement.toAccountId
 
         ].filter(Boolean);
@@ -2078,7 +1922,7 @@ const AtlasMovements = {
 
         if (missingAccount) {
 
-            return "Una de las cuentas no existe.";
+            return "Una de las cuentas seleccionadas no existe.";
 
         }
 
@@ -2101,7 +1945,7 @@ const AtlasMovements = {
                 "liquidity"
             ) {
 
-                return "El pago debe salir de una cuenta con liquidez.";
+                return "El pago debe salir de una cuenta de liquidez.";
 
             }
 
@@ -2126,18 +1970,14 @@ const AtlasMovements = {
     ) {
 
         if (!account) {
-
             return;
-
         }
 
         account.balance =
             this.number(
                 account.balance
             ) +
-            this.number(
-                amount
-            );
+            this.number(amount);
 
         account.updatedAt =
             new Date()
@@ -2151,18 +1991,14 @@ const AtlasMovements = {
     ) {
 
         if (!account) {
-
             return;
-
         }
 
         account.invested =
             this.number(
                 account.invested
             ) +
-            this.number(
-                amount
-            );
+            this.number(amount);
 
         account.updatedAt =
             new Date()
@@ -2189,14 +2025,11 @@ const AtlasMovements = {
 
         if (kind === "income") {
 
-            const account =
+            this.changeBalance(
                 this.findAccount(
                     movement.accountId,
                     data
-                );
-
-            this.changeBalance(
-                account,
+                ),
                 amount
             );
 
@@ -2213,9 +2046,7 @@ const AtlasMovements = {
                 );
 
             if (!account) {
-
                 return;
-
             }
 
             if (
@@ -2255,43 +2086,19 @@ const AtlasMovements = {
                     data
                 );
 
-            if (
-                fromAccount?.group ===
-                "debt"
-            ) {
+            this.changeBalance(
+                fromAccount,
+                fromAccount?.group === "debt"
+                    ? amount
+                    : -amount
+            );
 
-                this.changeBalance(
-                    fromAccount,
-                    amount
-                );
-
-            } else {
-
-                this.changeBalance(
-                    fromAccount,
-                    -amount
-                );
-
-            }
-
-            if (
-                toAccount?.group ===
-                "debt"
-            ) {
-
-                this.changeBalance(
-                    toAccount,
-                    -amount
-                );
-
-            } else {
-
-                this.changeBalance(
-                    toAccount,
-                    amount
-                );
-
-            }
+            this.changeBalance(
+                toAccount,
+                toAccount?.group === "debt"
+                    ? -amount
+                    : amount
+            );
 
             return;
 
@@ -2364,9 +2171,7 @@ const AtlasMovements = {
     ) {
 
         if (!saveButton) {
-
             return;
-
         }
 
         saveButton.disabled =
@@ -2384,7 +2189,10 @@ const AtlasMovements = {
         type
     ) {
 
-        if (this.saving) {
+        if (
+            !form ||
+            this.saving
+        ) {
 
             return;
 
@@ -2403,16 +2211,13 @@ const AtlasMovements = {
 
         if (error) {
 
-            AtlasUI.toast(
-                error
-            );
+            AtlasUI.toast(error);
 
             return;
 
         }
 
-        this.saving =
-            true;
+        this.saving = true;
 
         const saveButton =
             form.querySelector(
@@ -2421,8 +2226,7 @@ const AtlasMovements = {
 
         if (saveButton) {
 
-            saveButton.disabled =
-                true;
+            saveButton.disabled = true;
 
             saveButton.textContent =
                 "Guardando…";
@@ -2431,6 +2235,16 @@ const AtlasMovements = {
 
         const updatedData =
             this.cloneData();
+
+        if (
+            !Array.isArray(
+                updatedData.movements
+            )
+        ) {
+
+            updatedData.movements = [];
+
+        }
 
         if (this.editingId) {
 
@@ -2444,8 +2258,7 @@ const AtlasMovements = {
 
             if (oldIndex === -1) {
 
-                this.saving =
-                    false;
+                this.saving = false;
 
                 this.restoreSaveButton(
                     saveButton,
@@ -2502,8 +2315,7 @@ const AtlasMovements = {
 
         if (!saved) {
 
-            this.saving =
-                false;
+            this.saving = false;
 
             this.restoreSaveButton(
                 saveButton,
@@ -2520,8 +2332,7 @@ const AtlasMovements = {
 
         }
 
-        this.data =
-            updatedData;
+        this.data = updatedData;
 
         const callback =
             this.onComplete;
@@ -2553,34 +2364,16 @@ const AtlasMovements = {
 
         }
 
-        const movement =
-            this.findMovement(
-                this.editingId
-            );
-
-        if (!movement) {
-
-            AtlasUI.toast(
-                "No se encontró el movimiento."
-            );
-
-            return;
-
-        }
-
         const confirmed =
             window.confirm(
                 "¿Eliminar este movimiento?\n\nLos saldos se corregirán automáticamente."
             );
 
         if (!confirmed) {
-
             return;
-
         }
 
-        this.saving =
-            true;
+        this.saving = true;
 
         const updatedData =
             this.cloneData();
@@ -2595,8 +2388,7 @@ const AtlasMovements = {
 
         if (index === -1) {
 
-            this.saving =
-                false;
+            this.saving = false;
 
             AtlasUI.toast(
                 "No se pudo eliminar el movimiento."
@@ -2606,14 +2398,14 @@ const AtlasMovements = {
 
         }
 
-        const movementToDelete =
+        const movement =
             updatedData.movements[
                 index
             ];
 
         this.applyMovement(
             updatedData,
-            movementToDelete,
+            movement,
             -1
         );
 
@@ -2629,8 +2421,7 @@ const AtlasMovements = {
 
         if (!saved) {
 
-            this.saving =
-                false;
+            this.saving = false;
 
             AtlasUI.toast(
                 "No se pudo eliminar el movimiento."
@@ -2640,8 +2431,7 @@ const AtlasMovements = {
 
         }
 
-        this.data =
-            updatedData;
+        this.data = updatedData;
 
         const callback =
             this.onComplete;
@@ -2672,20 +2462,15 @@ const AtlasMovements = {
             this.root();
 
         if (root) {
-
             root.innerHTML = "";
-
         }
 
         document.body.classList.remove(
             "atlas-modal-open"
         );
 
-        this.editingId =
-            null;
-
-        this.saving =
-            false;
+        this.editingId = null;
+        this.saving = false;
 
     },
 
@@ -2702,6 +2487,8 @@ const AtlasMovements = {
 
                 if (typeButton) {
 
+                    event.preventDefault();
+
                     this.renderForm(
                         typeButton.dataset
                             .movementType
@@ -2717,6 +2504,8 @@ const AtlasMovements = {
                     );
 
                 if (movementRow) {
+
+                    event.preventDefault();
 
                     this.open(
                         AtlasApp.data,
@@ -2742,14 +2531,41 @@ const AtlasMovements = {
                     );
 
                 if (!actionButton) {
-
                     return;
-
                 }
+
+                event.preventDefault();
 
                 const action =
                     actionButton.dataset
                         .movementAction;
+
+                if (action === "save") {
+
+                    const form =
+                        actionButton.closest(
+                            "[data-movement-form]"
+                        );
+
+                    if (!form) {
+
+                        AtlasUI.toast(
+                            "No se encontró el formulario."
+                        );
+
+                        return;
+
+                    }
+
+                    this.saveMovement(
+                        form,
+                        form.dataset
+                            .movementForm
+                    );
+
+                    return;
+
+                }
 
                 if (action === "close") {
 
@@ -2794,9 +2610,7 @@ const AtlasMovements = {
                     );
 
                 if (!categorySelect) {
-
                     return;
-
                 }
 
                 this.updateSubcategorySelect(
@@ -2816,9 +2630,7 @@ const AtlasMovements = {
                     );
 
                 if (!form) {
-
                     return;
-
                 }
 
                 event.preventDefault();
