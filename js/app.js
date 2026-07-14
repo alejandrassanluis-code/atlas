@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    app.js
-   Sprint 3.3 — Mensual y Tendencias
+   Sprint 3.4 — Ajustes editables y snapshots
 ========================================================== */
 
 const AtlasApp = {
@@ -17,6 +17,8 @@ const AtlasApp = {
     analysisView: "monthly",
 
     trendsPeriod: 6,
+
+    trendMetric: "savings",
 
     init() {
 
@@ -34,6 +36,9 @@ const AtlasApp = {
 
         this.trendsPeriod =
             6;
+
+        this.trendMetric =
+            "savings";
 
         this.bindEvents();
 
@@ -79,7 +84,10 @@ const AtlasApp = {
         const month =
             String(
                 now.getMonth() + 1
-            ).padStart(2, "0");
+            ).padStart(
+                2,
+                "0"
+            );
 
         return `${year}-${month}`;
 
@@ -119,7 +127,10 @@ const AtlasApp = {
         const shiftedMonth =
             String(
                 date.getMonth() + 1
-            ).padStart(2, "0");
+            ).padStart(
+                2,
+                "0"
+            );
 
         return (
             `${shiftedYear}-${shiftedMonth}`
@@ -184,55 +195,15 @@ const AtlasApp = {
 
                     case "newMovement":
 
-                        AtlasMovements.open(
-                            this.data,
-                            (
-                                updatedData,
-                                movement
-                            ) => {
-
-                                this.data =
-                                    updatedData;
-
-                                if (
-                                    movement?.date
-                                ) {
-
-                                    this.movementsMonth =
-                                        String(
-                                            movement.date
-                                        ).slice(
-                                            0,
-                                            7
-                                        );
-
-                                    this.analysisMonth =
-                                        String(
-                                            movement.date
-                                        ).slice(
-                                            0,
-                                            7
-                                        );
-
-                                }
-
-                                this.route =
-                                    "movements";
-
-                                this.render();
-
-                                AtlasUI.toast(
-                                    "Movimiento guardado."
-                                );
-
-                            }
-                        );
+                        this.openNewMovement();
 
                         break;
 
+                    case "openSettings":
+
                     case "editAccounts":
 
-                        this.openAccountEditor();
+                        this.openSettings();
 
                         break;
 
@@ -268,6 +239,14 @@ const AtlasApp = {
 
                         break;
 
+                    case "setTrendMetric":
+
+                        this.setTrendMetric(
+                            actionButton.dataset.metric
+                        );
+
+                        break;
+
                     case "previousAnalysisMonth":
 
                         this.analysisMonth =
@@ -288,35 +267,7 @@ const AtlasApp = {
 
                     case "nextAnalysisMonth":
 
-                        if (
-                            this.isCurrentAnalysisMonth()
-                        ) {
-                            return;
-                        }
-
-                        this.analysisMonth =
-                            this.shiftMonth(
-                                this.analysisMonth,
-                                1
-                            );
-
-                        if (
-                            this.analysisMonth >
-                            this.currentMonthKey()
-                        ) {
-
-                            this.analysisMonth =
-                                this.currentMonthKey();
-
-                        }
-
-                        this.analysisView =
-                            "monthly";
-
-                        this.route =
-                            "analysis";
-
-                        this.render();
+                        this.nextAnalysisMonth();
 
                         break;
 
@@ -352,32 +303,7 @@ const AtlasApp = {
 
                     case "nextMovementsMonth":
 
-                        if (
-                            this.isCurrentMovementsMonth()
-                        ) {
-                            return;
-                        }
-
-                        this.movementsMonth =
-                            this.shiftMonth(
-                                this.movementsMonth,
-                                1
-                            );
-
-                        if (
-                            this.movementsMonth >
-                            this.currentMonthKey()
-                        ) {
-
-                            this.movementsMonth =
-                                this.currentMonthKey();
-
-                        }
-
-                        this.route =
-                            "movements";
-
-                        this.render();
+                        this.nextMovementsMonth();
 
                         break;
 
@@ -406,17 +332,143 @@ const AtlasApp = {
 
     },
 
+    openNewMovement() {
+
+        AtlasMovements.open(
+            this.data,
+            (
+                updatedData,
+                movement
+            ) => {
+
+                this.data =
+                    updatedData;
+
+                if (
+                    movement?.date
+                ) {
+
+                    const movementMonth =
+                        String(
+                            movement.date
+                        ).slice(
+                            0,
+                            7
+                        );
+
+                    this.movementsMonth =
+                        movementMonth;
+
+                    this.analysisMonth =
+                        movementMonth;
+
+                }
+
+                this.route =
+                    "movements";
+
+                this.render();
+
+                AtlasUI.toast(
+                    "Movimiento guardado."
+                );
+
+            }
+        );
+
+    },
+
+    openSettings() {
+
+        AtlasSettings.open(
+            this.data,
+            updatedData => {
+
+                this.data =
+                    updatedData;
+
+                this.render();
+
+            }
+        );
+
+    },
+
+    nextAnalysisMonth() {
+
+        if (
+            this.isCurrentAnalysisMonth()
+        ) {
+            return;
+        }
+
+        this.analysisMonth =
+            this.shiftMonth(
+                this.analysisMonth,
+                1
+            );
+
+        if (
+            this.analysisMonth >
+            this.currentMonthKey()
+        ) {
+
+            this.analysisMonth =
+                this.currentMonthKey();
+
+        }
+
+        this.analysisView =
+            "monthly";
+
+        this.route =
+            "analysis";
+
+        this.render();
+
+    },
+
+    nextMovementsMonth() {
+
+        if (
+            this.isCurrentMovementsMonth()
+        ) {
+            return;
+        }
+
+        this.movementsMonth =
+            this.shiftMonth(
+                this.movementsMonth,
+                1
+            );
+
+        if (
+            this.movementsMonth >
+            this.currentMonthKey()
+        ) {
+
+            this.movementsMonth =
+                this.currentMonthKey();
+
+        }
+
+        this.route =
+            "movements";
+
+        this.render();
+
+    },
+
     setTrendsPeriod(value) {
 
         const period =
             Number(value);
 
-        const allowedPeriods =
-            [
-                3,
-                6,
-                12
-            ];
+        const allowedPeriods = [
+            3,
+            6,
+            12
+        ];
 
         if (
             !allowedPeriods.includes(
@@ -428,6 +480,41 @@ const AtlasApp = {
 
         this.trendsPeriod =
             period;
+
+        this.analysisView =
+            "trends";
+
+        this.route =
+            "analysis";
+
+        this.render();
+
+    },
+
+    setTrendMetric(metric) {
+
+        const allowedMetrics = [
+            "savings",
+            "income",
+            "expenses",
+            "invested",
+            "cashOutflow",
+            "liquidity",
+            "investments",
+            "debt",
+            "netWorth"
+        ];
+
+        if (
+            !allowedMetrics.includes(
+                metric
+            )
+        ) {
+            return;
+        }
+
+        this.trendMetric =
+            metric;
 
         this.analysisView =
             "trends";
@@ -474,52 +561,14 @@ const AtlasApp = {
                 trendsPeriod:
                     this.trendsPeriod,
 
+                trendMetric:
+                    this.trendMetric,
+
                 isCurrentAnalysisMonth:
                     this.isCurrentAnalysisMonth(),
 
                 isCurrentMovementsMonth:
                     this.isCurrentMovementsMonth()
-            }
-        );
-
-    },
-
-    hasMovements() {
-
-        return (
-            Array.isArray(
-                this.data?.movements
-            ) &&
-            this.data.movements.length > 0
-        );
-
-    },
-
-    openAccountEditor() {
-
-        if (this.hasMovements()) {
-
-            AtlasUI.toast(
-                "Los saldos ya se calculan con tus movimientos."
-            );
-
-            return;
-
-        }
-
-        AtlasSetup.open(
-            this.data,
-            updatedData => {
-
-                this.data =
-                    updatedData;
-
-                this.render();
-
-                AtlasUI.toast(
-                    "Saldos iniciales actualizados."
-                );
-
             }
         );
 
@@ -544,100 +593,12 @@ const AtlasApp = {
 
     },
 
-    updateAccountBalance(
-        accountId,
-        value
-    ) {
-
-        if (this.hasMovements()) {
-
-            AtlasUI.toast(
-                "No se pueden modificar saldos iniciales después de registrar movimientos."
-            );
-
-            return false;
-
-        }
-
-        const account =
-            this.data.accounts.find(
-                item =>
-                    item.id === accountId
-            );
-
-        if (!account) {
-            return false;
-        }
-
-        account.balance =
-            Number(value) || 0;
-
-        this.save();
-
-        this.render();
-
-        return true;
-
-    },
-
-    updateInvestment(
-        accountId,
-        invested,
-        currentValue
-    ) {
-
-        if (this.hasMovements()) {
-
-            AtlasUI.toast(
-                "No se pueden modificar saldos iniciales después de registrar movimientos."
-            );
-
-            return false;
-
-        }
-
-        const account =
-            this.data.accounts.find(
-                item =>
-                    item.id === accountId
-            );
-
-        if (!account) {
-            return false;
-        }
-
-        account.invested =
-            Number(invested) || 0;
-
-        account.balance =
-            Number(currentValue) || 0;
-
-        this.save();
-
-        this.render();
-
-        return true;
-
-    },
-
-    updateSavingGoal(percent) {
-
-        this.data.settings
-            .monthlySavingGoal =
-            Number(percent) || 0;
-
-        this.save();
-
-        this.render();
-
-    },
-
     reset() {
 
         const confirmed =
             AtlasUI.confirm(
                 "Reiniciar Atlas",
-                "Se eliminarán las cuentas, saldos y movimientos guardados en este dispositivo."
+                "Se eliminarán las cuentas, saldos, movimientos y cierres mensuales guardados en este dispositivo."
             );
 
         if (!confirmed) {
@@ -661,6 +622,9 @@ const AtlasApp = {
 
         this.trendsPeriod =
             6;
+
+        this.trendMetric =
+            "savings";
 
         this.render();
 
