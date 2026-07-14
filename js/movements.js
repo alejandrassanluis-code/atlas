@@ -12,6 +12,7 @@ const AtlasMovements = {
     saving: false,
 
     categories: {
+
         income: [
             "Nómina",
             "Intereses",
@@ -19,6 +20,7 @@ const AtlasMovements = {
             "Venta",
             "Otros ingresos"
         ],
+
         expense: [
             "Vivienda",
             "Alimentación",
@@ -31,11 +33,13 @@ const AtlasMovements = {
             "Impuestos",
             "Otros gastos"
         ],
+
         investment: [
             "Aportación periódica",
             "Aportación extraordinaria",
             "Otros"
         ]
+
     },
 
     open(data, onComplete, movementId = null) {
@@ -51,10 +55,13 @@ const AtlasMovements = {
                 this.findMovement(movementId);
 
             if (!movement) {
+
                 AtlasUI.toast(
                     "No se encontró el movimiento."
                 );
+
                 return;
+
             }
 
             this.renderForm(
@@ -63,6 +70,7 @@ const AtlasMovements = {
             );
 
             return;
+
         }
 
         this.renderTypeSelector();
@@ -70,23 +78,29 @@ const AtlasMovements = {
     },
 
     root() {
+
         return document.getElementById(
             "modal-root"
         );
+
     },
 
     findMovement(id) {
+
         return this.data.movements.find(
             movement =>
                 movement.id === id
         );
+
     },
 
     findAccount(id, data = this.data) {
+
         return data.accounts.find(
             account =>
                 account.id === id
         );
+
     },
 
     getMovementKind(movement) {
@@ -103,25 +117,30 @@ const AtlasMovements = {
     },
 
     cloneData() {
+
         return JSON.parse(
             JSON.stringify(this.data)
         );
+
     },
 
     generateId() {
+
         return (
             "mov_" +
             Date.now() +
             "_" +
             Math.random()
                 .toString(36)
-                .slice(2, 8)
+                .slice(2, 9)
         );
+
     },
 
     today() {
 
-        const now = new Date();
+        const now =
+            new Date();
 
         const year =
             now.getFullYear();
@@ -143,36 +162,11 @@ const AtlasMovements = {
     escape(value) {
 
         return String(value ?? "")
-            .replaceAll("&", "&amp;")
-            .replaceAll("<", "&lt;")
-            .replaceAll(">", "&gt;")
-            .replaceAll('"', "&quot;")
-            .replaceAll("'", "&#039;");
-
-    },
-
-    formatAccountOptions(
-        accounts,
-        selectedId = ""
-    ) {
-
-        return accounts
-            .map(account => `
-
-                <option
-                    value="${account.id}"
-                    ${
-                        account.id ===
-                        selectedId
-                            ? "selected"
-                            : ""
-                    }
-                >
-                    ${this.escape(account.name)}
-                </option>
-
-            `)
-            .join("");
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
 
     },
 
@@ -211,9 +205,11 @@ const AtlasMovements = {
         return data.accounts.filter(
             account =>
                 account.group ===
-                "liquidity" ||
-                account.id === "amex" ||
-                account.id === "bbva_credit"
+                    "liquidity" ||
+                account.id ===
+                    "amex" ||
+                account.id ===
+                    "bbva_credit"
         );
 
     },
@@ -223,10 +219,375 @@ const AtlasMovements = {
         return data.accounts.filter(
             account =>
                 account.group ===
-                "liquidity" ||
+                    "liquidity" ||
                 account.group ===
-                "debt"
+                    "debt"
         );
+
+    },
+
+    formatAccountOptions(
+        accounts,
+        selectedId = ""
+    ) {
+
+        return accounts
+            .map(account => `
+
+                <option
+                    value="${this.escape(account.id)}"
+                    ${
+                        account.id === selectedId
+                            ? "selected"
+                            : ""
+                    }
+                >
+                    ${this.escape(account.name)}
+                </option>
+
+            `)
+            .join("");
+
+    },
+
+    categoryOptions(
+        type,
+        selectedCategory = ""
+    ) {
+
+        return this.categories[type]
+            .map(category => `
+
+                <option
+                    value="${this.escape(category)}"
+                    ${
+                        category === selectedCategory
+                            ? "selected"
+                            : ""
+                    }
+                >
+                    ${this.escape(category)}
+                </option>
+
+            `)
+            .join("");
+
+    },
+
+    styles() {
+
+        return `
+
+            <style>
+
+                body.atlas-modal-open {
+                    overflow: hidden;
+                }
+
+                .atlas-modal-backdrop {
+                    position: fixed;
+                    inset: 0;
+                    z-index: 3000;
+                    background: rgba(3, 7, 18, 0.76);
+                    backdrop-filter: blur(8px);
+                    -webkit-backdrop-filter: blur(8px);
+                }
+
+                .atlas-sheet {
+                    position: fixed;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    z-index: 3001;
+                    max-height: 92vh;
+                    overflow-y: auto;
+                    padding:
+                        12px
+                        22px
+                        calc(
+                            24px +
+                            env(safe-area-inset-bottom)
+                        );
+                    border-radius:
+                        30px
+                        30px
+                        0
+                        0;
+                    background: #11192e;
+                    border: 1px solid rgba(
+                        145,
+                        164,
+                        202,
+                        0.24
+                    );
+                    box-shadow:
+                        0 -20px 60px
+                        rgba(0, 0, 0, 0.45);
+                    animation:
+                        atlasSheetUp
+                        0.24s
+                        ease;
+                }
+
+                @keyframes atlasSheetUp {
+
+                    from {
+                        opacity: 0;
+                        transform:
+                            translateY(30px);
+                    }
+
+                    to {
+                        opacity: 1;
+                        transform:
+                            translateY(0);
+                    }
+
+                }
+
+                .atlas-sheet-handle {
+                    width: 46px;
+                    height: 5px;
+                    margin:
+                        0
+                        auto
+                        24px;
+                    border-radius: 99px;
+                    background:
+                        rgba(
+                            255,
+                            255,
+                            255,
+                            0.22
+                        );
+                }
+
+                .atlas-sheet-header {
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 12px;
+                    margin-bottom: 22px;
+                }
+
+                .atlas-sheet-header h2 {
+                    margin: 0;
+                    color: #f7f8fc;
+                    font-size: 28px;
+                    line-height: 1.15;
+                    letter-spacing: -0.6px;
+                }
+
+                .atlas-sheet-header p {
+                    margin:
+                        8px
+                        0
+                        0;
+                    color: #98a2bb;
+                    line-height: 1.45;
+                }
+
+                .atlas-sheet-back {
+                    width: 40px;
+                    height: 40px;
+                    flex: 0 0 40px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin-top: -5px;
+                    border-radius: 14px;
+                    color: #f7f8fc;
+                    background:
+                        rgba(
+                            255,
+                            255,
+                            255,
+                            0.06
+                        );
+                    font-size: 34px;
+                    line-height: 1;
+                }
+
+                .atlas-movement-types {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                }
+
+                .atlas-movement-type {
+                    width: 100%;
+                    display: flex;
+                    align-items: center;
+                    gap: 16px;
+                    padding: 16px;
+                    border: 1px solid
+                        rgba(
+                            145,
+                            164,
+                            202,
+                            0.2
+                        );
+                    border-radius: 20px;
+                    background: #19243a;
+                    color: #f7f8fc;
+                    text-align: left;
+                }
+
+                .atlas-movement-type:active {
+                    transform: scale(0.985);
+                }
+
+                .atlas-movement-icon {
+                    width: 48px;
+                    height: 48px;
+                    flex: 0 0 48px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 16px;
+                    background:
+                        rgba(
+                            77,
+                            163,
+                            255,
+                            0.11
+                        );
+                    font-size: 23px;
+                }
+
+                .atlas-movement-type strong {
+                    display: block;
+                    margin-bottom: 4px;
+                    font-size: 17px;
+                }
+
+                .atlas-movement-type small {
+                    display: block;
+                    color: #98a2bb;
+                    font-size: 14px;
+                    line-height: 1.35;
+                }
+
+                .atlas-movement-form {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 16px;
+                }
+
+                .atlas-field {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                }
+
+                .atlas-field > span {
+                    color: #c8d0e3;
+                    font-size: 13px;
+                    font-weight: 700;
+                }
+
+                .atlas-field input,
+                .atlas-field select {
+                    width: 100%;
+                    min-height: 54px;
+                    padding: 0 15px;
+                    border: 1px solid
+                        rgba(
+                            145,
+                            164,
+                            202,
+                            0.22
+                        );
+                    border-radius: 16px;
+                    outline: none;
+                    background: #19243a;
+                    color: #f7f8fc;
+                    font-size: 16px;
+                }
+
+                .atlas-field input:focus,
+                .atlas-field select:focus {
+                    border-color: #4da3ff;
+                    box-shadow:
+                        0 0 0 3px
+                        rgba(
+                            77,
+                            163,
+                            255,
+                            0.13
+                        );
+                }
+
+                .atlas-money-input {
+                    position: relative;
+                }
+
+                .atlas-money-input input {
+                    padding-right: 48px;
+                }
+
+                .atlas-money-input b {
+                    position: absolute;
+                    right: 17px;
+                    top: 50%;
+                    transform:
+                        translateY(-50%);
+                    color: #98a2bb;
+                    pointer-events: none;
+                }
+
+                .atlas-sheet-primary,
+                .atlas-sheet-secondary,
+                .atlas-sheet-danger {
+                    width: 100%;
+                    min-height: 56px;
+                    border-radius: 17px;
+                    font-weight: 750;
+                    font-size: 16px;
+                }
+
+                .atlas-sheet-primary {
+                    margin-top: 6px;
+                    background:
+                        linear-gradient(
+                            135deg,
+                            #4da3ff,
+                            #2879ed
+                        );
+                    color: white;
+                }
+
+                .atlas-sheet-primary:disabled {
+                    opacity: 0.55;
+                }
+
+                .atlas-sheet-secondary {
+                    margin-top: 12px;
+                    color: #98a2bb;
+                    background: transparent;
+                }
+
+                .atlas-sheet-danger {
+                    margin-top: 12px;
+                    color: #ff6878;
+                    background:
+                        rgba(
+                            255,
+                            104,
+                            120,
+                            0.08
+                        );
+                    border: 1px solid
+                        rgba(
+                            255,
+                            104,
+                            120,
+                            0.18
+                        );
+                }
+
+            </style>
+
+        `;
 
     },
 
@@ -239,20 +600,28 @@ const AtlasMovements = {
             return;
         }
 
+        document.body.classList.add(
+            "atlas-modal-open"
+        );
+
         root.innerHTML = `
 
+            ${this.styles()}
+
             <div
-                class="modal-backdrop"
+                class="atlas-modal-backdrop"
                 data-movement-action="close"
             ></div>
 
             <section
-                class="sheet"
+                class="atlas-sheet"
                 role="dialog"
                 aria-modal="true"
             >
 
-                <div class="sheet-handle"></div>
+                <div
+                    class="atlas-sheet-handle"
+                ></div>
 
                 ${content}
 
@@ -262,23 +631,70 @@ const AtlasMovements = {
 
     },
 
+    typeButton(
+        type,
+        icon,
+        title,
+        description
+    ) {
+
+        return `
+
+            <button
+                class="atlas-movement-type"
+                type="button"
+                data-movement-type="${type}"
+            >
+
+                <span
+                    class="atlas-movement-icon"
+                >
+                    ${icon}
+                </span>
+
+                <span>
+
+                    <strong>
+                        ${title}
+                    </strong>
+
+                    <small>
+                        ${description}
+                    </small>
+
+                </span>
+
+            </button>
+
+        `;
+
+    },
+
     renderTypeSelector() {
 
         this.renderSheet(`
 
-            <div class="sheet-header">
+            <div
+                class="atlas-sheet-header"
+            >
 
-                <h2>
-                    Registrar movimiento
-                </h2>
+                <div>
 
-                <p class="subtitle">
-                    ¿Qué quieres registrar?
-                </p>
+                    <h2>
+                        Registrar movimiento
+                    </h2>
+
+                    <p>
+                        ¿Qué quieres registrar?
+                    </p>
+
+                </div>
 
             </div>
 
-            <div class="movement-types">
+            <div
+                class="atlas-movement-types"
+            >
 
                 ${this.typeButton(
                     "income",
@@ -312,13 +728,13 @@ const AtlasMovements = {
                     "debt_payment",
                     "💳",
                     "Pago de deuda",
-                    "Pagar el préstamo o reducir deuda"
+                    "Pagar el préstamo y reducir deuda"
                 )}
 
             </div>
 
             <button
-                class="secondary"
+                class="atlas-sheet-secondary"
                 type="button"
                 data-movement-action="close"
             >
@@ -329,172 +745,74 @@ const AtlasMovements = {
 
     },
 
-    typeButton(
-        type,
-        icon,
-        title,
-        description
-    ) {
+    formTitle(type) {
+
+        const titles = {
+
+            income:
+                "Registrar ingreso",
+
+            expense:
+                "Registrar gasto",
+
+            transfer:
+                "Registrar traspaso",
+
+            investment:
+                "Registrar inversión",
+
+            debt_payment:
+                "Registrar pago de deuda"
+
+        };
+
+        return (
+            titles[type] ||
+            "Registrar movimiento"
+        );
+
+    },
+
+    amountField(amount) {
 
         return `
 
-            <button
-                class="movement-type"
-                type="button"
-                data-movement-type="${type}"
-            >
-
-                <span class="movement-type-icon">
-                    ${icon}
-                </span>
+            <label class="atlas-field">
 
                 <span>
-
-                    <strong>
-                        ${title}
-                    </strong>
-
-                    <small>
-                        ${description}
-                    </small>
-
+                    Importe
                 </span>
 
-            </button>
+                <div
+                    class="atlas-money-input"
+                >
+
+                    <input
+                        name="amount"
+                        type="number"
+                        inputmode="decimal"
+                        min="0.01"
+                        step="0.01"
+                        value="${this.escape(amount)}"
+                        placeholder="0,00"
+                        required
+                    >
+
+                    <b>€</b>
+
+                </div>
+
+            </label>
 
         `;
 
     },
 
-    renderForm(type, movement = null) {
+    commonFields(movement) {
 
-        const isEditing =
-            Boolean(movement);
+        return `
 
-        const title =
-            isEditing
-                ? "Editar movimiento"
-                : this.formTitle(type);
-
-        this.renderSheet(`
-
-            <div class="sheet-header">
-
-                <button
-                    class="sheet-back"
-                    type="button"
-                    data-movement-action="${
-                        isEditing
-                            ? "close"
-                            : "types"
-                    }"
-                    aria-label="Volver"
-                >
-                    ‹
-                </button>
-
-                <div>
-
-                    <h2>
-                        ${title}
-                    </h2>
-
-                    <p class="subtitle">
-                        ${
-                            isEditing
-                                ? "Modifica los datos o elimina el movimiento."
-                                : "Introduce los datos del movimiento."
-                        }
-                    </p>
-
-                </div>
-
-            </div>
-
-            <form
-                id="movement-form"
-                data-movement-form="${type}"
-            >
-
-                ${this.formFields(
-                    type,
-                    movement
-                )}
-
-                <button
-                    class="primary"
-                    type="submit"
-                    data-movement-save
-                >
-                    ${
-                        isEditing
-                            ? "Guardar cambios"
-                            : "Guardar movimiento"
-                    }
-                </button>
-
-                ${
-                    isEditing
-                        ? `
-                            <button
-                                class="secondary"
-                                type="button"
-                                data-movement-action="delete"
-                                style="
-                                    margin-top:12px;
-                                    color:var(--color-danger);
-                                "
-                            >
-                                Eliminar movimiento
-                            </button>
-                        `
-                        : ""
-                }
-
-                <button
-                    class="secondary"
-                    type="button"
-                    data-movement-action="close"
-                >
-                    Cancelar
-                </button>
-
-            </form>
-
-        `);
-
-    },
-
-    formTitle(type) {
-
-        const titles = {
-            income: "Registrar ingreso",
-            expense: "Registrar gasto",
-            transfer: "Registrar traspaso",
-            investment: "Registrar inversión",
-            debt_payment: "Registrar pago de deuda"
-        };
-
-        return titles[type] ||
-            "Registrar movimiento";
-
-    },
-
-    formFields(type, movement = null) {
-
-        const date =
-            movement?.date ||
-            this.today();
-
-        const amount =
-            movement?.amount || "";
-
-        const note =
-            movement?.note || "";
-
-        const commonEnd = `
-
-            <label class="field">
+            <label class="atlas-field">
 
                 <span>
                     Fecha del movimiento
@@ -503,13 +821,16 @@ const AtlasMovements = {
                 <input
                     name="date"
                     type="date"
-                    value="${this.escape(date)}"
+                    value="${this.escape(
+                        movement?.date ||
+                        this.today()
+                    )}"
                     required
                 >
 
             </label>
 
-            <label class="field">
+            <label class="atlas-field">
 
                 <span>
                     Nota opcional
@@ -518,7 +839,10 @@ const AtlasMovements = {
                 <input
                     name="note"
                     type="text"
-                    value="${this.escape(note)}"
+                    value="${this.escape(
+                        movement?.note ||
+                        ""
+                    )}"
                     placeholder="Añadir una nota"
                     maxlength="120"
                 >
@@ -527,13 +851,23 @@ const AtlasMovements = {
 
         `;
 
+    },
+
+    formFields(type, movement = null) {
+
+        const amount =
+            movement?.amount || "";
+
+        const common =
+            this.commonFields(movement);
+
         if (type === "income") {
 
             return `
 
                 ${this.amountField(amount)}
 
-                <label class="field">
+                <label class="atlas-field">
 
                     <span>
                         Categoría
@@ -551,7 +885,7 @@ const AtlasMovements = {
 
                 </label>
 
-                <label class="field">
+                <label class="atlas-field">
 
                     <span>
                         Cuenta de destino
@@ -569,7 +903,7 @@ const AtlasMovements = {
 
                 </label>
 
-                ${commonEnd}
+                ${common}
 
             `;
 
@@ -581,7 +915,7 @@ const AtlasMovements = {
 
                 ${this.amountField(amount)}
 
-                <label class="field">
+                <label class="atlas-field">
 
                     <span>
                         Categoría
@@ -599,7 +933,7 @@ const AtlasMovements = {
 
                 </label>
 
-                <label class="field">
+                <label class="atlas-field">
 
                     <span>
                         Cuenta o tarjeta
@@ -617,7 +951,7 @@ const AtlasMovements = {
 
                 </label>
 
-                ${commonEnd}
+                ${common}
 
             `;
 
@@ -629,7 +963,7 @@ const AtlasMovements = {
 
                 ${this.amountField(amount)}
 
-                <label class="field">
+                <label class="atlas-field">
 
                     <span>
                         Cuenta de origen
@@ -647,7 +981,7 @@ const AtlasMovements = {
 
                 </label>
 
-                <label class="field">
+                <label class="atlas-field">
 
                     <span>
                         Cuenta de destino
@@ -665,7 +999,7 @@ const AtlasMovements = {
 
                 </label>
 
-                ${commonEnd}
+                ${common}
 
             `;
 
@@ -677,7 +1011,7 @@ const AtlasMovements = {
 
                 ${this.amountField(amount)}
 
-                <label class="field">
+                <label class="atlas-field">
 
                     <span>
                         Categoría
@@ -695,7 +1029,7 @@ const AtlasMovements = {
 
                 </label>
 
-                <label class="field">
+                <label class="atlas-field">
 
                     <span>
                         Cuenta de origen
@@ -713,7 +1047,7 @@ const AtlasMovements = {
 
                 </label>
 
-                <label class="field">
+                <label class="atlas-field">
 
                     <span>
                         Inversión de destino
@@ -731,7 +1065,7 @@ const AtlasMovements = {
 
                 </label>
 
-                ${commonEnd}
+                ${common}
 
             `;
 
@@ -741,7 +1075,7 @@ const AtlasMovements = {
 
             ${this.amountField(amount)}
 
-            <label class="field">
+            <label class="atlas-field">
 
                 <span>
                     Cuenta de origen
@@ -759,7 +1093,7 @@ const AtlasMovements = {
 
             </label>
 
-            <label class="field">
+            <label class="atlas-field">
 
                 <span>
                     Deuda que reduces
@@ -777,69 +1111,107 @@ const AtlasMovements = {
 
             </label>
 
-            ${commonEnd}
+            ${common}
 
         `;
 
     },
 
-    amountField(amount) {
+    renderForm(type, movement = null) {
 
-        return `
+        const isEditing =
+            Boolean(movement);
 
-            <label class="field">
+        this.renderSheet(`
 
-                <span>
-                    Importe
-                </span>
+            <div
+                class="atlas-sheet-header"
+            >
 
-                <div class="money-input">
+                <button
+                    class="atlas-sheet-back"
+                    type="button"
+                    data-movement-action="${
+                        isEditing
+                            ? "close"
+                            : "types"
+                    }"
+                    aria-label="Volver"
+                >
+                    ‹
+                </button>
 
-                    <input
-                        name="amount"
-                        type="number"
-                        inputmode="decimal"
-                        min="0.01"
-                        step="0.01"
-                        value="${this.escape(amount)}"
-                        placeholder="0,00"
-                        required
-                    >
+                <div>
 
-                    <span>
-                        €
-                    </span>
+                    <h2>
+                        ${
+                            isEditing
+                                ? "Editar movimiento"
+                                : this.formTitle(type)
+                        }
+                    </h2>
+
+                    <p>
+                        ${
+                            isEditing
+                                ? "Modifica los datos o elimina el movimiento."
+                                : "Introduce los datos del movimiento."
+                        }
+                    </p>
 
                 </div>
 
-            </label>
+            </div>
 
-        `;
+            <form
+                class="atlas-movement-form"
+                data-movement-form="${type}"
+            >
 
-    },
+                ${this.formFields(
+                    type,
+                    movement
+                )}
 
-    categoryOptions(
-        type,
-        selectedCategory = ""
-    ) {
-
-        return this.categories[type]
-            .map(category => `
-
-                <option
-                    value="${this.escape(category)}"
-                    ${
-                        category ===
-                        selectedCategory
-                            ? "selected"
-                            : ""
-                    }
+                <button
+                    class="atlas-sheet-primary"
+                    type="submit"
+                    data-movement-save
                 >
-                    ${this.escape(category)}
-                </option>
+                    ${
+                        isEditing
+                            ? "Guardar cambios"
+                            : "Guardar movimiento"
+                    }
+                </button>
 
-            `)
-            .join("");
+                ${
+                    isEditing
+                        ? `
+
+                            <button
+                                class="atlas-sheet-danger"
+                                type="button"
+                                data-movement-action="delete"
+                            >
+                                Eliminar movimiento
+                            </button>
+
+                        `
+                        : ""
+                }
+
+                <button
+                    class="atlas-sheet-secondary"
+                    type="button"
+                    data-movement-action="close"
+                >
+                    Cancelar
+                </button>
+
+            </form>
+
+        `);
 
     },
 
@@ -848,7 +1220,15 @@ const AtlasMovements = {
         const values =
             new FormData(form);
 
+        const oldMovement =
+            this.editingId
+                ? this.findMovement(
+                    this.editingId
+                )
+                : null;
+
         const movement = {
+
             id:
                 this.editingId ||
                 this.generateId(),
@@ -870,26 +1250,23 @@ const AtlasMovements = {
 
             date:
                 String(
-                    values.get("date") || ""
+                    values.get("date") ||
+                    ""
                 ),
 
             note:
                 String(
-                    values.get("note") || ""
+                    values.get("note") ||
+                    ""
                 ).trim(),
 
             createdAt:
-                this.editingId
-                    ? (
-                        this.findMovement(
-                            this.editingId
-                        )?.createdAt ||
-                        new Date().toISOString()
-                    )
-                    : new Date().toISOString(),
+                oldMovement?.createdAt ||
+                new Date().toISOString(),
 
             updatedAt:
                 new Date().toISOString()
+
         };
 
         if (
@@ -919,14 +1296,16 @@ const AtlasMovements = {
 
             movement.fromAccountId =
                 String(
-                    values.get("fromAccountId") ||
-                    ""
+                    values.get(
+                        "fromAccountId"
+                    ) || ""
                 );
 
             movement.toAccountId =
                 String(
-                    values.get("toAccountId") ||
-                    ""
+                    values.get(
+                        "toAccountId"
+                    ) || ""
                 );
 
         }
@@ -942,13 +1321,17 @@ const AtlasMovements = {
         }
 
         if (type === "transfer") {
+
             movement.category =
                 "Traspaso";
+
         }
 
         if (type === "debt_payment") {
+
             movement.category =
                 "Pago de deuda";
+
         }
 
         return movement;
@@ -963,11 +1346,15 @@ const AtlasMovements = {
             ) ||
             movement.amount <= 0
         ) {
+
             return "Introduce un importe válido.";
+
         }
 
         if (!movement.date) {
+
             return "Selecciona la fecha.";
+
         }
 
         if (
@@ -976,47 +1363,59 @@ const AtlasMovements = {
             movement.fromAccountId ===
                 movement.toAccountId
         ) {
+
             return "La cuenta de origen y destino deben ser diferentes.";
+
         }
 
-        const ids = [
+        const accountIds = [
+
             movement.accountId,
             movement.fromAccountId,
             movement.toAccountId
+
         ].filter(Boolean);
 
         const missingAccount =
-            ids.some(
+            accountIds.some(
                 id =>
                     !this.findAccount(id)
             );
 
         if (missingAccount) {
+
             return "Una de las cuentas no existe.";
+
         }
 
         return null;
 
     },
 
-    changeBalance(
-        account,
-        amount
-    ) {
+    changeBalance(account, amount) {
+
+        if (!account) {
+            return;
+        }
 
         account.balance =
-            Number(account.balance || 0) +
+            Number(
+                account.balance || 0
+            ) +
             Number(amount || 0);
 
     },
 
-    changeInvested(
-        account,
-        amount
-    ) {
+    changeInvested(account, amount) {
+
+        if (!account) {
+            return;
+        }
 
         account.invested =
-            Number(account.invested || 0) +
+            Number(
+                account.invested || 0
+            ) +
             Number(amount || 0);
 
     },
@@ -1061,10 +1460,7 @@ const AtlasMovements = {
                     data
                 );
 
-            if (
-                account.group ===
-                "debt"
-            ) {
+            if (account.group === "debt") {
 
                 this.changeBalance(
                     account,
@@ -1219,8 +1615,11 @@ const AtlasMovements = {
             );
 
         if (error) {
+
             AtlasUI.toast(error);
+
             return;
+
         }
 
         this.saving = true;
@@ -1231,9 +1630,13 @@ const AtlasMovements = {
             );
 
         if (saveButton) {
-            saveButton.disabled = true;
+
+            saveButton.disabled =
+                true;
+
             saveButton.textContent =
                 "Guardando…";
+
         }
 
         const updatedData =
@@ -1250,11 +1653,15 @@ const AtlasMovements = {
                     );
 
             if (oldIndex === -1) {
+
                 this.saving = false;
+
                 AtlasUI.toast(
                     "No se pudo editar el movimiento."
                 );
+
                 return;
+
             }
 
             const oldMovement =
@@ -1302,11 +1709,15 @@ const AtlasMovements = {
             this.saving = false;
 
             if (saveButton) {
-                saveButton.disabled = false;
+
+                saveButton.disabled =
+                    false;
+
                 saveButton.textContent =
                     this.editingId
                         ? "Guardar cambios"
                         : "Guardar movimiento";
+
             }
 
             AtlasUI.toast(
@@ -1320,16 +1731,21 @@ const AtlasMovements = {
         this.data =
             updatedData;
 
+        const callback =
+            this.onComplete;
+
         this.close();
 
         if (
-            typeof this.onComplete ===
+            typeof callback ===
             "function"
         ) {
-            this.onComplete(
+
+            callback(
                 updatedData,
                 movement
             );
+
         }
 
     },
@@ -1349,15 +1765,18 @@ const AtlasMovements = {
             );
 
         if (!movement) {
+
             AtlasUI.toast(
                 "No se encontró el movimiento."
             );
+
             return;
+
         }
 
         const confirmed =
             window.confirm(
-                "¿Eliminar este movimiento?\n\nLos saldos de las cuentas se corregirán automáticamente."
+                "¿Eliminar este movimiento?\n\nLos saldos se corregirán automáticamente."
             );
 
         if (!confirmed) {
@@ -1369,7 +1788,7 @@ const AtlasMovements = {
         const updatedData =
             this.cloneData();
 
-        const movementIndex =
+        const index =
             updatedData.movements
                 .findIndex(
                     item =>
@@ -1377,10 +1796,20 @@ const AtlasMovements = {
                         this.editingId
                 );
 
+        if (index === -1) {
+
+            this.saving = false;
+
+            AtlasUI.toast(
+                "No se pudo eliminar el movimiento."
+            );
+
+            return;
+
+        }
+
         const movementToDelete =
-            updatedData.movements[
-                movementIndex
-            ];
+            updatedData.movements[index];
 
         this.applyMovement(
             updatedData,
@@ -1389,7 +1818,7 @@ const AtlasMovements = {
         );
 
         updatedData.movements.splice(
-            movementIndex,
+            index,
             1
         );
 
@@ -1413,16 +1842,21 @@ const AtlasMovements = {
         this.data =
             updatedData;
 
+        const callback =
+            this.onComplete;
+
         this.close();
 
         if (
-            typeof this.onComplete ===
+            typeof callback ===
             "function"
         ) {
-            this.onComplete(
+
+            callback(
                 updatedData,
                 null
             );
+
         }
 
         AtlasUI.toast(
@@ -1437,8 +1871,14 @@ const AtlasMovements = {
             this.root();
 
         if (root) {
+
             root.innerHTML = "";
+
         }
+
+        document.body.classList.remove(
+            "atlas-modal-open"
+        );
 
         this.editingId = null;
         this.saving = false;
@@ -1506,15 +1946,25 @@ const AtlasMovements = {
                         .movementAction;
 
                 if (action === "close") {
+
                     this.close();
+
+                    return;
+
                 }
 
                 if (action === "types") {
+
                     this.renderTypeSelector();
+
+                    return;
+
                 }
 
                 if (action === "delete") {
+
                     this.deleteMovement();
+
                 }
 
             }
