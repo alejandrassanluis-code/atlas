@@ -1,81 +1,112 @@
-const app = document.getElementById("app");
+/* ==========================================================
+   ATLAS
+   app.js
+   Arranque y navegación principal
+========================================================== */
 
-function renderHome() {
+const AtlasApp = {
 
-    app.innerHTML = `
+    data: null,
 
-    <header class="hero">
+    route: "home",
 
-        <div class="hero-top">
+    init() {
 
-            <span class="logo">ATLAS</span>
+        this.data = AtlasStorage.load();
 
-            <span class="date">${new Date().toLocaleDateString("es-ES",{
-                day:"numeric",
-                month:"long"
-            })}</span>
+        this.bindEvents();
 
-        </div>
+        this.render();
 
-        <h1>Tu patrimonio</h1>
+    },
 
-        <div class="hero-value">0 €</div>
+    bindEvents() {
 
-        <p class="hero-subtitle">
-            Empieza configurando tus cuentas para conocer tu situación financiera.
-        </p>
+        document.addEventListener(
+            "click",
+            event => {
 
-    </header>
+                const routeButton =
+                    event.target.closest(
+                        "[data-route]"
+                    );
 
-    <section class="summary">
+                if (routeButton) {
 
-        <div class="summary-card">
+                    this.navigate(
+                        routeButton.dataset.route
+                    );
 
-            <span>Liquidez</span>
+                    return;
 
-            <strong>0 €</strong>
+                }
 
-        </div>
+                const addMovementButton =
+                    event.target.closest(
+                        "[data-action='add-movement']"
+                    );
 
-        <div class="summary-card">
+                if (addMovementButton) {
 
-            <span>Inversiones</span>
+                    this.navigate("movements");
 
-            <strong>0 €</strong>
+                }
 
-        </div>
+            }
+        );
 
-        <div class="summary-card">
+    },
 
-            <span>Deudas</span>
+    navigate(route) {
 
-            <strong>0 €</strong>
+        this.route = route;
 
-        </div>
+        this.render();
 
-        <div class="summary-card">
+        window.scrollTo({
+            top: 0,
+            behavior: "smooth"
+        });
 
-            <span>Ahorro mensual</span>
+    },
 
-            <strong>0 €</strong>
+    render() {
 
-        </div>
+        AtlasUI.render(
+            this.route,
+            this.data
+        );
 
-    </section>
+    },
 
-    <section class="welcome">
+    save() {
 
-        <h2>Bienvenido a Atlas</h2>
+        AtlasStorage.save(
+            this.data
+        );
 
-        <p>
-            En los siguientes pasos configuraremos tus cuentas, inversiones,
-            préstamos y tarjetas para crear una fotografía completa de tu patrimonio.
-        </p>
+        this.render();
 
-    </section>
+    },
 
-    `;
+    reset() {
 
-}
+        this.data =
+            AtlasStorage.reset();
 
-renderHome();
+        this.route = "home";
+
+        this.render();
+
+    }
+
+};
+
+document.addEventListener(
+    "DOMContentLoaded",
+    () => {
+
+        AtlasApp.init();
+
+    }
+);
