@@ -6,80 +6,68 @@
 
 const AtlasCalculations = {
 
-    accountBalance(account) {
-
-        return Number(account.balance) || 0;
-
+    number(value) {
+        return Number(value) || 0;
     },
 
-    accountsByType(data, types) {
-
-        return data.accounts.filter(account =>
-            types.includes(account.type)
+    accountsByGroup(data, group) {
+        return data.accounts.filter(
+            account => account.group === group
         );
-
     },
 
     totalLiquidity(data) {
-
-        return this.accountsByType(data, ["liquidity"])
+        return this.accountsByGroup(data, "liquidity")
             .reduce(
                 (total, account) =>
-                    total + this.accountBalance(account),
+                    total + this.number(account.balance),
                 0
             );
-
     },
 
     totalInvestments(data) {
-
-        return this.accountsByType(data, ["investment"])
+        return this.accountsByGroup(data, "investment")
             .reduce(
                 (total, account) =>
-                    total + this.accountBalance(account),
+                    total + this.number(account.balance),
                 0
             );
-
     },
 
     totalDebt(data) {
-
-        return this.accountsByType(
-            data,
-            ["creditcard", "loan"]
-        ).reduce(
-            (total, account) =>
-                total + Math.abs(
-                    this.accountBalance(account)
-                ),
-            0
-        );
-
+        return this.accountsByGroup(data, "debt")
+            .reduce(
+                (total, account) =>
+                    total + Math.abs(
+                        this.number(account.balance)
+                    ),
+                0
+            );
     },
 
     netWorth(data) {
-
         return (
             this.totalLiquidity(data) +
             this.totalInvestments(data) -
             this.totalDebt(data)
         );
-
     },
 
     movementDate(movement) {
-
         return new Date(
-            movement.date + "T12:00:00"
+            `${movement.date}T12:00:00`
         );
-
     },
 
     movementsForMonth(data, year, month) {
-
         return data.movements.filter(movement => {
 
-            const date = this.movementDate(movement);
+            if (!movement.date) {
+                return false;
+            }
+
+            const date =
+                this.movementDate(movement);
 
             return (
                 date.getFullYear() === year &&
@@ -87,11 +75,9 @@ const AtlasCalculations = {
             );
 
         });
-
     },
 
     currentMonthMovements(data) {
-
         const now = new Date();
 
         return this.movementsForMonth(
@@ -99,146 +85,115 @@ const AtlasCalculations = {
             now.getFullYear(),
             now.getMonth()
         );
-
     },
 
     totalByMovementType(movements, type) {
-
         return movements
-            .filter(movement => movement.type === type)
+            .filter(
+                movement =>
+                    movement.type === type
+            )
             .reduce(
                 (total, movement) =>
-                    total + (Number(movement.amount) || 0),
+                    total +
+                    this.number(movement.amount),
                 0
             );
-
     },
 
     monthlyIncome(data) {
-
         return this.totalByMovementType(
             this.currentMonthMovements(data),
             "income"
         );
-
     },
 
     monthlyExpenses(data) {
-
         return this.totalByMovementType(
             this.currentMonthMovements(data),
             "expense"
         );
-
     },
 
     monthlyInvested(data) {
-
         return this.totalByMovementType(
             this.currentMonthMovements(data),
             "investment"
         );
-
     },
 
     monthlySavings(data) {
-
         return (
             this.monthlyIncome(data) -
             this.monthlyExpenses(data) -
             this.monthlyInvested(data)
         );
-
     },
 
     monthlySavingsRate(data) {
-
-        const income = this.monthlyIncome(data);
+        const income =
+            this.monthlyIncome(data);
 
         if (income <= 0) {
-
             return 0;
-
         }
 
         return (
             this.monthlySavings(data) /
             income
         ) * 100;
-
     },
 
-    investmentContributions(data, accountId) {
-
-        return data.movements
-            .filter(movement =>
-                movement.type === "investment" &&
-                movement.toAccountId === accountId
-            )
-            .reduce(
-                (total, movement) =>
-                    total + (Number(movement.amount) || 0),
-                0
-            );
-
-    },
-
-    investmentReturn(data, accountId) {
-
-        const account = data.accounts.find(
-            item => item.id === accountId
-        );
-
-        if (!account) {
-
-            return {
-                contributed: 0,
-                currentValue: 0,
-                gain: 0,
-                percentage: 0
-            };
-
-        }
-
-        const contributed =
-            Number(account.initialContribution) ||
-            this.investmentContributions(
-                data,
-                accountId
-            );
+    investmentDetails(account) {
+        const invested =
+            this.number(account.invested);
 
         const currentValue =
-            Number(account.balance) || 0;
+            this.number(account.balance);
 
         const gain =
-            currentValue - contributed;
+            currentValue - invested;
 
-        const percentage =
-            contributed > 0
-                ? (gain / contributed) * 100
+        const profitability =
+            invested > 0
+                ? (gain / invested) * 100
                 : 0;
 
         return {
-            contributed,
+            invested,
             currentValue,
             gain,
-            percentage
+            profitability
         };
+    },
 
+    totalInvestedCapital(data) {
+        return this.accountsByGroup(
+            data,
+            "investment"
+        ).reduce(
+            (total, account) =>
+                total +
+                this.number(account.invested),
+            0
+        );
+    },
+
+    totalInvestmentGain(data) {
+        return (
+            this.totalInvestments(data) -
+            this.totalInvestedCapital(data)
+        );
     },
 
     expensesByCategory(data, year, month) {
-
-        const movements =
-            this.movementsForMonth(
-                data,
-                year,
-                month
-            );
-
         const result = {};
 
-        movements
+        this.movementsForMonth(
+            data,
+            year,
+            month
+        )
             .filter(
                 movement =>
                     movement.type === "expense"
@@ -250,7 +205,7 @@ const AtlasCalculations = {
 
                 result[category] =
                     (result[category] || 0) +
-                    (Number(movement.amount) || 0);
+                    this.number(movement.amount);
 
             });
 
@@ -263,52 +218,21 @@ const AtlasCalculations = {
                 (a, b) =>
                     b.amount - a.amount
             );
-
-    },
-
-    budgetStatus(data, category, limit) {
-
-        const now = new Date();
-
-        const spent =
-            this.expensesByCategory(
-                data,
-                now.getFullYear(),
-                now.getMonth()
-            ).find(
-                item =>
-                    item.category === category
-            )?.amount || 0;
-
-        const budget =
-            Number(limit) || 0;
-
-        const remaining =
-            budget - spent;
-
-        const percentage =
-            budget > 0
-                ? (spent / budget) * 100
-                : 0;
-
-        return {
-            spent,
-            budget,
-            remaining,
-            percentage
-        };
-
     },
 
     financialSummary(data) {
-
         return {
-
             liquidity:
                 this.totalLiquidity(data),
 
             investments:
                 this.totalInvestments(data),
+
+            investedCapital:
+                this.totalInvestedCapital(data),
+
+            investmentGain:
+                this.totalInvestmentGain(data),
 
             debt:
                 this.totalDebt(data),
@@ -330,9 +254,7 @@ const AtlasCalculations = {
 
             monthlySavingsRate:
                 this.monthlySavingsRate(data)
-
         };
-
     }
 
 };
