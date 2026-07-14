@@ -1,0 +1,48 @@
+:root {
+  --bg: #0b1020;
+  --bg-soft: #11182b;
+  --surface: #161f33;
+  --surface-2: #1b2740;
+  --surface-3: #22304d;
+
+  --text: #f5f7fb;
+  --text-soft: #c8d0df;
+  --text-muted: #8f9bb0;
+
+  --primary: #4da3ff;
+  --primary-strong: #2d7eea;
+  --accent: #d6b35f;
+
+  --success: #46c78b;
+  --warning: #f4b95f;
+  --danger: #f07178;
+
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.14);
+
+  --shadow-sm: 0 8px 24px rgba(0, 0, 0, 0.18);
+  --shadow-md: 0 16px 42px rgba(0, 0, 0, 0.28);
+
+  --radius-sm: 12px;
+  --radius-md: 18px;
+  --radius-lg: 24px;
+  --radius-xl: 30px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display",
+    "SF Pro Text", "Segoe UI", sans-serif;
+
+  --font-mono: "SFMono-Regular", "SF Mono", Menlo, Monaco, Consolas,
+    monospace;
+
+  --page-max-width: 640px;
+  --tabbar-height: 82px;
+}
