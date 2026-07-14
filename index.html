@@ -72,6 +72,74 @@
         href="css/pages.css"
     >
 
+    <style>
+
+        .tabbar {
+            min-height: 68px !important;
+            height:
+                calc(
+                    68px +
+                    env(
+                        safe-area-inset-bottom
+                    )
+                ) !important;
+            padding:
+                5px
+                12px
+                env(
+                    safe-area-inset-bottom
+                ) !important;
+            align-items: center !important;
+        }
+
+        .tabbar button:not(.fab) {
+            min-height: 54px !important;
+            padding:
+                5px
+                2px !important;
+            gap: 2px !important;
+        }
+
+        .tabbar button:not(.fab) span {
+            display: block;
+            font-size: 25px;
+            line-height: 1;
+            margin: 0 0 3px;
+            font-family:
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                sans-serif;
+        }
+
+        .tabbar button:not(.fab) small {
+            display: block;
+            font-size: 10px !important;
+            line-height: 1.1;
+        }
+
+        .tabbar .fab {
+            width: 56px !important;
+            height: 56px !important;
+            min-width: 56px !important;
+            min-height: 56px !important;
+            padding:
+                0
+                0
+                5px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            border-radius: 19px !important;
+            font-size: 36px !important;
+            font-weight: 300 !important;
+            line-height: 1 !important;
+            transform:
+                translateY(-8px);
+        }
+
+    </style>
+
 </head>
 
 <body>
@@ -90,15 +158,7 @@
             aria-label="Inicio"
         >
 
-            <span
-                aria-hidden="true"
-                style="
-                    display:block;
-                    font-size:25px;
-                    line-height:1;
-                    margin-bottom:5px;
-                "
-            >
+            <span aria-hidden="true">
                 ⌂
             </span>
 
@@ -114,16 +174,8 @@
             aria-label="Movimientos"
         >
 
-            <span
-                aria-hidden="true"
-                style="
-                    display:block;
-                    font-size:24px;
-                    line-height:1;
-                    margin-bottom:5px;
-                "
-            >
-                ⇄
+            <span aria-hidden="true">
+                ☷
             </span>
 
             <small>
@@ -147,15 +199,7 @@
             aria-label="Análisis"
         >
 
-            <span
-                aria-hidden="true"
-                style="
-                    display:block;
-                    font-size:24px;
-                    line-height:1;
-                    margin-bottom:5px;
-                "
-            >
+            <span aria-hidden="true">
                 ◫
             </span>
 
@@ -171,15 +215,7 @@
             aria-label="Atlas IA"
         >
 
-            <span
-                aria-hidden="true"
-                style="
-                    display:block;
-                    font-size:24px;
-                    line-height:1;
-                    margin-bottom:5px;
-                "
-            >
+            <span aria-hidden="true">
                 ✦
             </span>
 
