@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    settings.js
-   Sprint 3.4 — Ajustes editables y snapshots mensuales
+   Sprint 4.0 — Ajustes funcionales y saldos iniciales
 ========================================================== */
 
 const AtlasSettings = {
@@ -18,29 +18,49 @@ const AtlasSettings = {
         section = "menu"
     ) {
 
-        this.data = data;
-        this.onComplete = onComplete;
-        this.saving = false;
+        this.data =
+            data;
+
+        this.onComplete =
+            onComplete;
+
+        this.saving =
+            false;
 
         switch (section) {
 
+            case "initial_balances":
+
+                this.openInitialBalances();
+
+                break;
+
             case "goal":
+
                 this.renderSavingGoal();
+
                 break;
 
             case "accounts":
+
                 this.renderAccountNames();
+
                 break;
 
             case "investments":
+
                 this.renderInvestmentValues();
+
                 break;
 
             case "snapshot":
+
                 this.renderSnapshot();
+
                 break;
 
             default:
+
                 this.renderMenu();
 
         }
@@ -58,7 +78,9 @@ const AtlasSettings = {
     cloneData() {
 
         return JSON.parse(
-            JSON.stringify(this.data)
+            JSON.stringify(
+                this.data
+            )
         );
 
     },
@@ -85,6 +107,17 @@ const AtlasSettings = {
 
     },
 
+    hasMovements() {
+
+        return (
+            Array.isArray(
+                this.data?.movements
+            ) &&
+            this.data.movements.length > 0
+        );
+
+    },
+
     currentMonthKey() {
 
         const now =
@@ -96,7 +129,10 @@ const AtlasSettings = {
         const month =
             String(
                 now.getMonth() + 1
-            ).padStart(2, "0");
+            ).padStart(
+                2,
+                "0"
+            );
 
         return `${year}-${month}`;
 
@@ -107,11 +143,16 @@ const AtlasSettings = {
         const [
             year,
             month
-        ] = String(monthKey || "")
+        ] = String(
+            monthKey || ""
+        )
             .split("-")
             .map(Number);
 
-        if (!year || !month) {
+        if (
+            !year ||
+            !month
+        ) {
             return "";
         }
 
@@ -119,8 +160,11 @@ const AtlasSettings = {
             new Intl.DateTimeFormat(
                 "es-ES",
                 {
-                    month: "long",
-                    year: "numeric"
+                    month:
+                        "long",
+
+                    year:
+                        "numeric"
                 }
             ).format(
                 new Date(
@@ -131,7 +175,8 @@ const AtlasSettings = {
             );
 
         return (
-            label.charAt(0).toUpperCase() +
+            label.charAt(0)
+                .toUpperCase() +
             label.slice(1)
         );
 
@@ -142,10 +187,17 @@ const AtlasSettings = {
         return new Intl.NumberFormat(
             "es-ES",
             {
-                style: "currency",
-                currency: "EUR",
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 2
+                style:
+                    "currency",
+
+                currency:
+                    "EUR",
+
+                minimumFractionDigits:
+                    0,
+
+                maximumFractionDigits:
+                    2
             }
         ).format(
             this.number(value)
@@ -153,14 +205,36 @@ const AtlasSettings = {
 
     },
 
+    accountsByGroup(
+        group,
+        data = this.data
+    ) {
+
+        return data.accounts
+            .filter(
+                account =>
+                    account.group ===
+                    group
+            )
+            .sort(
+                (a, b) =>
+                    this.number(
+                        a.order
+                    ) -
+                    this.number(
+                        b.order
+                    )
+            );
+
+    },
+
     liquidityAccounts(
         data = this.data
     ) {
 
-        return data.accounts.filter(
-            account =>
-                account.group ===
-                "liquidity"
+        return this.accountsByGroup(
+            "liquidity",
+            data
         );
 
     },
@@ -169,10 +243,9 @@ const AtlasSettings = {
         data = this.data
     ) {
 
-        return data.accounts.filter(
-            account =>
-                account.group ===
-                "investment"
+        return this.accountsByGroup(
+            "investment",
+            data
         );
 
     },
@@ -181,10 +254,9 @@ const AtlasSettings = {
         data = this.data
     ) {
 
-        return data.accounts.filter(
-            account =>
-                account.group ===
-                "debt"
+        return this.accountsByGroup(
+            "debt",
+            data
         );
 
     },
@@ -210,8 +282,10 @@ const AtlasSettings = {
                             18,
                             0.78
                         );
-                    backdrop-filter: blur(8px);
-                    -webkit-backdrop-filter: blur(8px);
+                    backdrop-filter:
+                        blur(8px);
+                    -webkit-backdrop-filter:
+                        blur(8px);
                 }
 
                 .atlas-settings-sheet {
@@ -244,7 +318,8 @@ const AtlasSettings = {
                             202,
                             0.24
                         );
-                    background: #11192e;
+                    background:
+                        #11192e;
                     box-shadow:
                         0 -20px 60px
                         rgba(
@@ -304,7 +379,6 @@ const AtlasSettings = {
                     color: #f7f8fc;
                     font-size: 27px;
                     line-height: 1.15;
-                    letter-spacing: -0.5px;
                 }
 
                 .atlas-settings-header p {
@@ -334,7 +408,6 @@ const AtlasSettings = {
                             0.06
                         );
                     font-size: 34px;
-                    line-height: 1;
                 }
 
                 .atlas-settings-menu {
@@ -364,7 +437,8 @@ const AtlasSettings = {
                 }
 
                 .atlas-settings-option:active {
-                    transform: scale(0.985);
+                    transform:
+                        scale(0.985);
                 }
 
                 .atlas-settings-icon {
@@ -416,11 +490,12 @@ const AtlasSettings = {
                     font-weight: 700;
                 }
 
-                .atlas-settings-field input,
-                .atlas-settings-field select {
+                .atlas-settings-field input {
                     width: 100%;
                     min-height: 54px;
-                    padding: 0 15px;
+                    padding:
+                        0
+                        15px;
                     border:
                         1px solid
                         rgba(
@@ -436,8 +511,7 @@ const AtlasSettings = {
                     font-size: 16px;
                 }
 
-                .atlas-settings-field input:focus,
-                .atlas-settings-field select:focus {
+                .atlas-settings-field input:focus {
                     border-color: #4da3ff;
                     box-shadow:
                         0 0 0 3px
@@ -471,14 +545,11 @@ const AtlasSettings = {
 
                 .atlas-settings-account-head {
                     display: flex;
-                    justify-content: space-between;
+                    justify-content:
+                        space-between;
                     align-items: center;
                     gap: 14px;
                     margin-bottom: 12px;
-                }
-
-                .atlas-settings-account-head strong {
-                    min-width: 0;
                 }
 
                 .atlas-settings-account-head small {
@@ -511,7 +582,8 @@ const AtlasSettings = {
 
                 .atlas-settings-summary-row {
                     display: flex;
-                    justify-content: space-between;
+                    justify-content:
+                        space-between;
                     align-items: center;
                     gap: 14px;
                     padding: 14px;
@@ -550,6 +622,30 @@ const AtlasSettings = {
                     margin-top: 10px;
                     color: #98a2bb;
                     background: transparent;
+                }
+
+                .atlas-settings-warning {
+                    margin: 0;
+                    padding: 13px 14px;
+                    border-radius: 16px;
+                    color: #f4b95e;
+                    background:
+                        rgba(
+                            244,
+                            185,
+                            94,
+                            0.08
+                        );
+                    border:
+                        1px solid
+                        rgba(
+                            244,
+                            185,
+                            94,
+                            0.17
+                        );
+                    font-size: 13px;
+                    line-height: 1.5;
                 }
 
             </style>
@@ -639,6 +735,9 @@ const AtlasSettings = {
 
     renderMenu() {
 
+        const canEditInitialBalances =
+            !this.hasMovements();
+
         this.renderSheet(`
 
             <div class="atlas-settings-header">
@@ -650,7 +749,7 @@ const AtlasSettings = {
                     </h2>
 
                     <p>
-                        Modifica la configuración sin alterar los movimientos registrados.
+                        Modifica tus datos y preferencias financieras.
                     </p>
 
                 </div>
@@ -658,6 +757,17 @@ const AtlasSettings = {
             </div>
 
             <div class="atlas-settings-menu">
+
+                ${
+                    canEditInitialBalances
+                        ? this.optionButton(
+                            "initial_balances",
+                            "💶",
+                            "Saldos iniciales",
+                            "Introduce o corrige liquidez, inversiones y deudas antes de registrar movimientos."
+                        )
+                        : ""
+                }
 
                 ${this.optionButton(
                     "goal",
@@ -677,7 +787,7 @@ const AtlasSettings = {
                     "investments",
                     "📈",
                     "Valor de inversiones",
-                    "Actualiza cuánto valen hoy tus ETFs y Revolut Bot."
+                    "Actualiza cuánto valen actualmente tus inversiones."
                 )}
 
                 ${this.optionButton(
@@ -688,6 +798,25 @@ const AtlasSettings = {
                 )}
 
             </div>
+
+            ${
+                !canEditInitialBalances
+                    ? `
+
+                        <p
+                            class="atlas-settings-warning"
+                            style="
+                                margin-top:14px;
+                            "
+                        >
+                            Los saldos iniciales ya no se pueden editar
+                            porque existen movimientos. Los saldos actuales
+                            se calculan automáticamente.
+                        </p>
+
+                    `
+                    : ""
+            }
 
             <button
                 class="atlas-settings-secondary"
@@ -737,6 +866,51 @@ const AtlasSettings = {
 
     },
 
+    openInitialBalances() {
+
+        if (this.hasMovements()) {
+
+            AtlasUI.toast(
+                "Los saldos iniciales ya están bloqueados."
+            );
+
+            this.renderMenu();
+
+            return;
+
+        }
+
+        const callback =
+            this.onComplete;
+
+        const currentData =
+            this.data;
+
+        this.close();
+
+        AtlasSetup.openInitialBalances(
+            currentData,
+            updatedData => {
+
+                this.data =
+                    updatedData;
+
+                if (
+                    typeof callback ===
+                    "function"
+                ) {
+
+                    callback(
+                        updatedData
+                    );
+
+                }
+
+            }
+        );
+
+    },
+
     renderSavingGoal() {
 
         const goal =
@@ -749,7 +923,7 @@ const AtlasSettings = {
 
             ${this.headerBlock(
                 "Objetivo de ahorro",
-                "Puedes cambiar este objetivo aunque ya existan movimientos."
+                "Puedes modificar este objetivo en cualquier momento."
             )}
 
             <form
@@ -770,7 +944,9 @@ const AtlasSettings = {
                         min="0"
                         max="100"
                         step="0.5"
-                        value="${this.escape(goal)}"
+                        value="${this.escape(
+                            goal
+                        )}"
                         required
                     >
 
@@ -801,21 +977,31 @@ const AtlasSettings = {
     renderAccountNames() {
 
         const groups = [
+
             {
-                title: "Liquidez",
+                title:
+                    "Liquidez",
+
                 accounts:
                     this.liquidityAccounts()
             },
+
             {
-                title: "Inversiones",
+                title:
+                    "Inversiones",
+
                 accounts:
                     this.investmentAccounts()
             },
+
             {
-                title: "Deudas",
+                title:
+                    "Deudas",
+
                 accounts:
                     this.debtAccounts()
             }
+
         ];
 
         this.renderSheet(`
@@ -830,58 +1016,68 @@ const AtlasSettings = {
                 data-settings-form="accounts"
             >
 
-                ${groups.map(group => `
+                ${groups
+                    .map(
+                        group => `
 
-                    <div>
+                            <div>
 
-                        <strong
-                            style="
-                                display:block;
-                                margin-bottom:10px;
-                            "
-                        >
-                            ${group.title}
-                        </strong>
+                                <strong
+                                    style="
+                                        display:block;
+                                        margin-bottom:10px;
+                                    "
+                                >
+                                    ${group.title}
+                                </strong>
 
-                        <div
-                            style="
-                                display:flex;
-                                flex-direction:column;
-                                gap:10px;
-                            "
-                        >
+                                <div
+                                    style="
+                                        display:flex;
+                                        flex-direction:column;
+                                        gap:10px;
+                                    "
+                                >
 
-                            ${group.accounts.map(account => `
+                                    ${group.accounts
+                                        .map(
+                                            account => `
 
-                                <label class="atlas-settings-field">
+                                                <label
+                                                    class="atlas-settings-field"
+                                                >
 
-                                    <span>
-                                        ${this.escape(
-                                            account.name
-                                        )}
-                                    </span>
+                                                    <span>
+                                                        ${this.escape(
+                                                            account.name
+                                                        )}
+                                                    </span>
 
-                                    <input
-                                        name="account_${this.escape(
-                                            account.id
-                                        )}"
-                                        type="text"
-                                        value="${this.escape(
-                                            account.name
-                                        )}"
-                                        maxlength="50"
-                                        required
-                                    >
+                                                    <input
+                                                        name="account_${this.escape(
+                                                            account.id
+                                                        )}"
+                                                        type="text"
+                                                        value="${this.escape(
+                                                            account.name
+                                                        )}"
+                                                        maxlength="50"
+                                                        required
+                                                    >
 
-                                </label>
+                                                </label>
 
-                            `).join("")}
+                                            `
+                                        )
+                                        .join("")}
 
-                        </div>
+                                </div>
 
-                    </div>
+                            </div>
 
-                `).join("")}
+                        `
+                    )
+                    .join("")}
 
                 <button
                     class="atlas-settings-primary"
@@ -914,7 +1110,7 @@ const AtlasSettings = {
 
             ${this.headerBlock(
                 "Valor de inversiones",
-                "Actualiza el valor actual. No se registra como ingreso ni como aportación."
+                "Actualiza el valor actual sin registrar un ingreso."
             )}
 
             <form
@@ -922,100 +1118,108 @@ const AtlasSettings = {
                 data-settings-form="investments"
             >
 
-                ${accounts.map(account => {
+                ${accounts
+                    .map(
+                        account => {
 
-                    const invested =
-                        this.number(
-                            account.invested
-                        );
+                            const invested =
+                                this.number(
+                                    account.invested
+                                );
 
-                    const value =
-                        this.number(
-                            account.balance
-                        );
+                            const value =
+                                this.number(
+                                    account.balance
+                                );
 
-                    const gain =
-                        value -
-                        invested;
+                            const gain =
+                                value -
+                                invested;
 
-                    return `
-
-                        <div class="atlas-settings-account">
-
-                            <div
-                                class="atlas-settings-account-head"
-                            >
-
-                                <strong>
-                                    ${this.escape(
-                                        account.name
-                                    )}
-                                </strong>
-
-                                <small>
-                                    ${
-                                        gain >= 0
-                                            ? "+"
-                                            : ""
-                                    }${this.formatCurrency(
-                                        gain
-                                    )}
-                                </small>
-
-                            </div>
-
-                            <div
-                                class="atlas-settings-summary"
-                                style="
-                                    margin-bottom:12px;
-                                "
-                            >
+                            return `
 
                                 <div
-                                    class="atlas-settings-summary-row"
+                                    class="atlas-settings-account"
                                 >
 
-                                    <span>
-                                        Aportado
-                                    </span>
+                                    <div
+                                        class="atlas-settings-account-head"
+                                    >
 
-                                    <strong>
-                                        ${this.formatCurrency(
-                                            invested
-                                        )}
-                                    </strong>
+                                        <strong>
+                                            ${this.escape(
+                                                account.name
+                                            )}
+                                        </strong>
+
+                                        <small>
+                                            ${
+                                                gain >= 0
+                                                    ? "+"
+                                                    : ""
+                                            }${this.formatCurrency(
+                                                gain
+                                            )}
+                                        </small>
+
+                                    </div>
+
+                                    <div
+                                        class="atlas-settings-summary"
+                                        style="
+                                            margin-bottom:12px;
+                                        "
+                                    >
+
+                                        <div
+                                            class="atlas-settings-summary-row"
+                                        >
+
+                                            <span>
+                                                Capital aportado
+                                            </span>
+
+                                            <strong>
+                                                ${this.formatCurrency(
+                                                    invested
+                                                )}
+                                            </strong>
+
+                                        </div>
+
+                                    </div>
+
+                                    <label
+                                        class="atlas-settings-field"
+                                    >
+
+                                        <span>
+                                            Valor actual
+                                        </span>
+
+                                        <input
+                                            name="investment_${this.escape(
+                                                account.id
+                                            )}"
+                                            type="number"
+                                            inputmode="decimal"
+                                            min="0"
+                                            step="0.01"
+                                            value="${this.escape(
+                                                value
+                                            )}"
+                                            required
+                                        >
+
+                                    </label>
 
                                 </div>
 
-                            </div>
+                            `;
 
-                            <label class="atlas-settings-field">
-
-                                <span>
-                                    Valor actual
-                                </span>
-
-                                <input
-                                    name="investment_${this.escape(
-                                        account.id
-                                    )}"
-                                    type="number"
-                                    inputmode="decimal"
-                                    min="0"
-                                    step="0.01"
-                                    value="${this.escape(
-                                        value
-                                    )}"
-                                    required
-                                >
-
-                            </label>
-
-                        </div>
-
-                    `;
-
-                }).join("")}
+                        }
+                    )
+                    .join("")}
 
                 <button
                     class="atlas-settings-primary"
@@ -1091,17 +1295,24 @@ const AtlasSettings = {
                 );
 
         return {
+
             liquidity,
+
             investments,
+
             investedCapital,
+
             investmentGain:
                 investments -
                 investedCapital,
+
             debt,
+
             netWorth:
                 liquidity +
                 investments -
                 debt
+
         };
 
     },
@@ -1129,7 +1340,7 @@ const AtlasSettings = {
 
             ${this.headerBlock(
                 "Cierre mensual",
-                "Guarda una fotografía de tus saldos para construir la evolución histórica."
+                "Guarda una fotografía de tus saldos para las tendencias."
             )}
 
             <form
@@ -1245,14 +1456,7 @@ const AtlasSettings = {
                     existing
                         ? `
 
-                            <p
-                                style="
-                                    margin:0;
-                                    color:#f4b95e;
-                                    font-size:13px;
-                                    line-height:1.5;
-                                "
-                            >
+                            <p class="atlas-settings-warning">
                                 Ya existe un cierre para
                                 ${this.formatMonthKey(
                                     monthKey
@@ -1301,7 +1505,9 @@ const AtlasSettings = {
             return;
         }
 
-        button.disabled = true;
+        button.disabled =
+            true;
+
         button.dataset.previousText =
             button.textContent;
 
@@ -1321,7 +1527,8 @@ const AtlasSettings = {
             return;
         }
 
-        button.disabled = false;
+        button.disabled =
+            false;
 
         button.textContent =
             button.dataset.previousText ||
@@ -1342,8 +1549,12 @@ const AtlasSettings = {
 
         if (!saved) {
 
-            this.saving = false;
-            this.restoreSaveButton(form);
+            this.saving =
+                false;
+
+            this.restoreSaveButton(
+                form
+            );
 
             AtlasUI.toast(
                 "No se pudieron guardar los cambios."
@@ -1354,7 +1565,7 @@ const AtlasSettings = {
         }
 
         this.data =
-            updatedData;
+            AtlasStorage.load();
 
         const callback =
             this.onComplete;
@@ -1367,12 +1578,14 @@ const AtlasSettings = {
         ) {
 
             callback(
-                updatedData
+                this.data
             );
 
         }
 
-        AtlasUI.toast(message);
+        AtlasUI.toast(
+            message
+        );
 
         return true;
 
@@ -1395,6 +1608,13 @@ const AtlasSettings = {
             goal < 0 ||
             goal > 100
         ) {
+
+            this.saving =
+                false;
+
+            this.restoreSaveButton(
+                form
+            );
 
             AtlasUI.toast(
                 "Introduce un objetivo entre 0 y 100."
@@ -1441,7 +1661,14 @@ const AtlasSettings = {
                     ).trim();
 
                 if (value) {
-                    account.name = value;
+
+                    account.name =
+                        value;
+
+                    account.updatedAt =
+                        new Date()
+                            .toISOString();
+
                 }
 
             }
@@ -1463,14 +1690,14 @@ const AtlasSettings = {
         const updatedData =
             this.cloneData();
 
-        const investmentAccounts =
+        const accounts =
             this.investmentAccounts(
                 updatedData
             );
 
         for (
             const account of
-            investmentAccounts
+            accounts
         ) {
 
             const value =
@@ -1485,8 +1712,12 @@ const AtlasSettings = {
                 value < 0
             ) {
 
-                this.saving = false;
-                this.restoreSaveButton(form);
+                this.saving =
+                    false;
+
+                this.restoreSaveButton(
+                    form
+                );
 
                 AtlasUI.toast(
                     "Introduce valores de inversión válidos."
@@ -1496,9 +1727,16 @@ const AtlasSettings = {
 
             }
 
-            account.balance = value;
+            account.balance =
+                value;
+
             account.valueUpdatedAt =
-                new Date().toISOString();
+                new Date()
+                    .toISOString();
+
+            account.updatedAt =
+                new Date()
+                    .toISOString();
 
         }
 
@@ -1516,12 +1754,21 @@ const AtlasSettings = {
     ) {
 
         const totals =
-            this.snapshotTotals(data);
+            this.snapshotTotals(
+                data
+            );
+
+        const now =
+            new Date()
+                .toISOString();
 
         return {
 
             id:
                 `snapshot_${monthKey}`,
+
+            type:
+                "calendar_month",
 
             monthKey,
 
@@ -1597,10 +1844,10 @@ const AtlasSettings = {
                 ),
 
             createdAt:
-                new Date().toISOString(),
+                now,
 
             updatedAt:
-                new Date().toISOString()
+                now
 
         };
 
@@ -1613,8 +1860,9 @@ const AtlasSettings = {
 
         const monthKey =
             String(
-                values.get("monthKey") ||
-                ""
+                values.get(
+                    "monthKey"
+                ) || ""
             );
 
         if (
@@ -1622,6 +1870,13 @@ const AtlasSettings = {
                 monthKey
             )
         ) {
+
+            this.saving =
+                false;
+
+            this.restoreSaveButton(
+                form
+            );
 
             AtlasUI.toast(
                 "Selecciona un mes válido."
@@ -1635,6 +1890,13 @@ const AtlasSettings = {
             monthKey >
             this.currentMonthKey()
         ) {
+
+            this.saving =
+                false;
+
+            this.restoreSaveButton(
+                form
+            );
 
             AtlasUI.toast(
                 "No puedes guardar un cierre futuro."
@@ -1652,7 +1914,10 @@ const AtlasSettings = {
                 updatedData.snapshots
             )
         ) {
-            updatedData.snapshots = [];
+
+            updatedData.snapshots =
+                [];
+
         }
 
         const existingIndex =
@@ -1660,7 +1925,9 @@ const AtlasSettings = {
                 .findIndex(
                     snapshot =>
                         snapshot.monthKey ===
-                        monthKey
+                        monthKey &&
+                        snapshot.type ===
+                        "calendar_month"
                 );
 
         const snapshot =
@@ -1714,33 +1981,55 @@ const AtlasSettings = {
             return;
         }
 
-        this.saving = true;
-        this.disableSaveButton(form);
+        this.saving =
+            true;
+
+        this.disableSaveButton(
+            form
+        );
 
         const type =
-            form.dataset.settingsForm;
+            form.dataset
+                .settingsForm;
 
         switch (type) {
 
             case "goal":
+
                 this.saveGoal(form);
+
                 break;
 
             case "accounts":
-                this.saveAccountNames(form);
+
+                this.saveAccountNames(
+                    form
+                );
+
                 break;
 
             case "investments":
-                this.saveInvestmentValues(form);
+
+                this.saveInvestmentValues(
+                    form
+                );
+
                 break;
 
             case "snapshot":
+
                 this.saveSnapshot(form);
+
                 break;
 
             default:
-                this.saving = false;
-                this.restoreSaveButton(form);
+
+                this.saving =
+                    false;
+
+                this.restoreSaveButton(
+                    form
+                );
 
         }
 
@@ -1759,7 +2048,8 @@ const AtlasSettings = {
             "atlas-settings-open"
         );
 
-        this.saving = false;
+        this.saving =
+            false;
 
     },
 
@@ -1800,7 +2090,9 @@ const AtlasSettings = {
                     actionButton.dataset
                         .settingsAction;
 
-                if (action === "close") {
+                if (
+                    action === "close"
+                ) {
 
                     this.close();
 
@@ -1808,7 +2100,9 @@ const AtlasSettings = {
 
                 }
 
-                if (action === "menu") {
+                if (
+                    action === "menu"
+                ) {
 
                     this.renderMenu();
 
