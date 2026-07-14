@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    app.js
-   Sprint 5.0 — Navegación de presupuestos
+   Sprint 7.2 — Estado de búsqueda y filtros de movimientos
 ========================================================== */
 
 const AtlasApp = {
@@ -21,6 +21,12 @@ const AtlasApp = {
     trendsPeriod: 6,
 
     trendMetric: "savings",
+
+    movementSearch: "",
+
+    movementTypeFilter: "all",
+
+    movementAccountFilter: "all",
 
     modalObserver: null,
 
@@ -49,6 +55,15 @@ const AtlasApp = {
 
         this.trendMetric =
             "savings";
+
+        this.movementSearch =
+            "";
+
+        this.movementTypeFilter =
+            "all";
+
+        this.movementAccountFilter =
+            "all";
 
         this.bindEvents();
 
@@ -172,6 +187,161 @@ const AtlasApp = {
             this.budgetMonth ===
             this.currentMonthKey()
         );
+
+    },
+
+    hasMovementFilters() {
+
+        return Boolean(
+            this.movementSearch ||
+            this.movementTypeFilter !==
+                "all" ||
+            this.movementAccountFilter !==
+                "all"
+        );
+
+    },
+
+    normalizeMovementSearch(value) {
+
+        return String(
+            value || ""
+        )
+            .replace(
+                /\s+/g,
+                " "
+            )
+            .trim();
+
+    },
+
+    normalizeMovementTypeFilter(value) {
+
+        const allowedTypes = [
+
+            "all",
+
+            "income",
+
+            "expense",
+
+            "investment",
+
+            "transfer",
+
+            "debt_payment"
+
+        ];
+
+        return allowedTypes.includes(
+            value
+        )
+            ? value
+            : "all";
+
+    },
+
+    normalizeMovementAccountFilter(value) {
+
+        const accountId =
+            String(
+                value || "all"
+            );
+
+        if (
+            accountId === "all"
+        ) {
+
+            return "all";
+
+        }
+
+        const accountExists =
+            (
+                this.data?.accounts ||
+                []
+            ).some(
+                account =>
+                    account.id ===
+                    accountId
+            );
+
+        return accountExists
+            ? accountId
+            : "all";
+
+    },
+
+    readMovementFilters(form) {
+
+        if (!form) {
+
+            return;
+
+        }
+
+        const values =
+            new FormData(
+                form
+            );
+
+        this.movementSearch =
+            this.normalizeMovementSearch(
+                values.get(
+                    "movementSearch"
+                )
+            );
+
+        this.movementTypeFilter =
+            this.normalizeMovementTypeFilter(
+                String(
+                    values.get(
+                        "movementTypeFilter"
+                    ) ||
+                    "all"
+                )
+            );
+
+        this.movementAccountFilter =
+            this.normalizeMovementAccountFilter(
+                String(
+                    values.get(
+                        "movementAccountFilter"
+                    ) ||
+                    "all"
+                )
+            );
+
+    },
+
+    applyMovementFilters(form) {
+
+        this.readMovementFilters(
+            form
+        );
+
+        this.route =
+            "movements";
+
+        this.render();
+
+    },
+
+    clearMovementFilters() {
+
+        this.movementSearch =
+            "";
+
+        this.movementTypeFilter =
+            "all";
+
+        this.movementAccountFilter =
+            "all";
+
+        this.route =
+            "movements";
+
+        this.render();
 
     },
 
@@ -338,6 +508,27 @@ const AtlasApp = {
 
                         break;
 
+                    case "applyMovementFilters": {
+
+                        const form =
+                            actionButton.closest(
+                                "[data-movement-filters-form]"
+                            );
+
+                        this.applyMovementFilters(
+                            form
+                        );
+
+                        break;
+
+                    }
+
+                    case "clearMovementFilters":
+
+                        this.clearMovementFilters();
+
+                        break;
+
                     case "previousBudgetMonth":
 
                         this.budgetMonth =
@@ -378,6 +569,77 @@ const AtlasApp = {
                         break;
 
                 }
+
+            }
+        );
+
+        document.addEventListener(
+            "change",
+            event => {
+
+                const typeFilter =
+                    event.target.closest(
+                        "[data-movement-type-filter]"
+                    );
+
+                if (typeFilter) {
+
+                    this.movementTypeFilter =
+                        this.normalizeMovementTypeFilter(
+                            typeFilter.value
+                        );
+
+                    this.route =
+                        "movements";
+
+                    this.render();
+
+                    return;
+
+                }
+
+                const accountFilter =
+                    event.target.closest(
+                        "[data-movement-account-filter]"
+                    );
+
+                if (accountFilter) {
+
+                    this.movementAccountFilter =
+                        this.normalizeMovementAccountFilter(
+                            accountFilter.value
+                        );
+
+                    this.route =
+                        "movements";
+
+                    this.render();
+
+                }
+
+            }
+        );
+
+        document.addEventListener(
+            "submit",
+            event => {
+
+                const filtersForm =
+                    event.target.closest(
+                        "[data-movement-filters-form]"
+                    );
+
+                if (!filtersForm) {
+
+                    return;
+
+                }
+
+                event.preventDefault();
+
+                this.applyMovementFilters(
+                    filtersForm
+                );
 
             }
         );
@@ -480,6 +742,11 @@ const AtlasApp = {
 
                 this.data =
                     updatedData;
+
+                this.movementAccountFilter =
+                    this.normalizeMovementAccountFilter(
+                        this.movementAccountFilter
+                    );
 
                 this.render();
 
@@ -925,6 +1192,31 @@ const AtlasApp = {
                 trendMetric:
                     this.trendMetric,
 
+                movementSearch:
+                    this.movementSearch,
+
+                movementTypeFilter:
+                    this.movementTypeFilter,
+
+                movementAccountFilter:
+                    this.movementAccountFilter,
+
+                movementFilters: {
+
+                    search:
+                        this.movementSearch,
+
+                    type:
+                        this.movementTypeFilter,
+
+                    accountId:
+                        this.movementAccountFilter,
+
+                    active:
+                        this.hasMovementFilters()
+
+                },
+
                 isCurrentAnalysisMonth:
                     this.isCurrentAnalysisMonth(),
 
@@ -998,6 +1290,15 @@ const AtlasApp = {
 
         this.trendMetric =
             "savings";
+
+        this.movementSearch =
+            "";
+
+        this.movementTypeFilter =
+            "all";
+
+        this.movementAccountFilter =
+            "all";
 
         this.render();
 
