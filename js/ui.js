@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    ui.js
-   Sprint 1
+   Sprint 1.5 — Dashboard definitivo
 ========================================================== */
 
 const AtlasUI = {
@@ -25,16 +25,30 @@ const AtlasUI = {
 
     },
 
-    today() {
+    shortDate() {
 
         return new Intl.DateTimeFormat(
             "es-ES",
             {
-                weekday: "long",
                 day: "numeric",
+                month: "short"
+            }
+        )
+            .format(new Date())
+            .replace(".", "");
+
+    },
+
+    currentMonth() {
+
+        return new Intl.DateTimeFormat(
+            "es-ES",
+            {
                 month: "long"
             }
-        ).format(new Date());
+        )
+            .format(new Date())
+            .toUpperCase();
 
     },
 
@@ -55,7 +69,7 @@ const AtlasUI = {
             <b>ATLAS</b>
 
             <small>
-                ${this.today()}
+                ${this.shortDate()}
             </small>
 
         </div>
@@ -64,10 +78,11 @@ const AtlasUI = {
 
     <button
         class="iconbtn"
-        data-route="settings">
-
+        type="button"
+        data-route="settings"
+        aria-label="Abrir ajustes"
+    >
         ⚙︎
-
     </button>
 
 </header>
@@ -76,7 +91,232 @@ const AtlasUI = {
 
     },
 
-    dashboard(summary) {
+    investmentProfitability(summary) {
+
+        const invested =
+            Number(summary.investedCapital) || 0;
+
+        const gain =
+            Number(summary.investmentGain) || 0;
+
+        if (invested <= 0) {
+
+            return 0;
+
+        }
+
+        return (gain / invested) * 100;
+
+    },
+
+    savingsStatus(data, summary) {
+
+        const income =
+            Number(summary.monthlyIncome) || 0;
+
+        const expenses =
+            Number(summary.monthlyExpenses) || 0;
+
+        const invested =
+            Number(summary.monthlyInvested) || 0;
+
+        const savings =
+            Number(summary.monthlySavings) || 0;
+
+        const goalPercent =
+            Number(
+                data.settings.monthlySavingGoal
+            ) || 0;
+
+        if (income <= 0) {
+
+            return {
+                label: "Sin ingresos registrados",
+                color: "var(--color-text-muted)",
+                icon: "⚪",
+                objectiveProgress: 0
+            };
+
+        }
+
+        const targetSavings =
+            income * (goalPercent / 100);
+
+        const spendableAmount =
+            Math.max(
+                0,
+                income -
+                targetSavings -
+                invested
+            );
+
+        const today =
+            new Date();
+
+        const daysInMonth =
+            new Date(
+                today.getFullYear(),
+                today.getMonth() + 1,
+                0
+            ).getDate();
+
+        const monthProgress =
+            today.getDate() / daysInMonth;
+
+        const expectedExpensesToday =
+            spendableAmount * monthProgress;
+
+        const expenseRatio =
+            expectedExpensesToday > 0
+                ? expenses / expectedExpensesToday
+                : 0;
+
+        const objectiveProgress =
+            targetSavings > 0
+                ? (savings / targetSavings) * 100
+                : 0;
+
+        if (expenseRatio <= 0.9) {
+
+            return {
+                label: "Vas por delante",
+                color: "var(--color-success)",
+                icon: "🟢",
+                objectiveProgress
+            };
+
+        }
+
+        if (expenseRatio <= 1.05) {
+
+            return {
+                label: "En línea",
+                color: "var(--color-success)",
+                icon: "🟢",
+                objectiveProgress
+            };
+
+        }
+
+        if (expenseRatio <= 1.2) {
+
+            return {
+                label: "Vigila el gasto",
+                color: "var(--color-warning)",
+                icon: "🟡",
+                objectiveProgress
+            };
+
+        }
+
+        if (expenseRatio <= 1.4) {
+
+            return {
+                label: "Ritmo insuficiente",
+                color: "var(--color-warning)",
+                icon: "🟠",
+                objectiveProgress
+            };
+
+        }
+
+        return {
+            label: "Requiere atención",
+            color: "var(--color-danger)",
+            icon: "🔴",
+            objectiveProgress
+        };
+
+    },
+
+    atlasMessage(data, summary) {
+
+        if (summary.netWorth === 0) {
+
+            return "Configura tus saldos iniciales para comenzar.";
+
+        }
+
+        const status =
+            this.savingsStatus(
+                data,
+                summary
+            );
+
+        if (
+            status.label ===
+            "Sin ingresos registrados"
+        ) {
+
+            return "Registra tus ingresos para analizar el mes.";
+
+        }
+
+        if (
+            status.label ===
+            "Vas por delante"
+        ) {
+
+            return "Vas por delante del ritmo previsto este mes.";
+
+        }
+
+        if (
+            status.label ===
+            "En línea"
+        ) {
+
+            return "Todo va según lo previsto este mes.";
+
+        }
+
+        if (
+            status.label ===
+            "Vigila el gasto"
+        ) {
+
+            return "El gasto está ligeramente por encima del ritmo previsto.";
+
+        }
+
+        if (
+            status.label ===
+            "Ritmo insuficiente"
+        ) {
+
+            return "Necesitas moderar el gasto para alcanzar tu objetivo.";
+
+        }
+
+        return "El ritmo de gasto actual pone en riesgo tu objetivo.";
+
+    },
+
+    dashboard(data) {
+
+        const summary =
+            AtlasCalculations
+                .financialSummary(data);
+
+        const profitability =
+            this.investmentProfitability(
+                summary
+            );
+
+        const savingsStatus =
+            this.savingsStatus(
+                data,
+                summary
+            );
+
+        const objectiveProgress =
+            Math.max(
+                0,
+                Math.min(
+                    999,
+                    savingsStatus.objectiveProgress
+                )
+            );
 
         return `
 
@@ -87,26 +327,25 @@ ${this.header()}
 <section class="hero">
 
     <div class="eyebrow">
-
-        Patrimonio Neto
-
+        Patrimonio neto
     </div>
 
     <div class="value">
-
-        ${this.formatCurrency(summary.netWorth)}
-
+        ${
+            summary.netWorth === 0
+                ? "—"
+                : this.formatCurrency(
+                    summary.netWorth
+                )
+        }
     </div>
 
     <div class="trend">
 
         ${
             summary.netWorth === 0
-
-            ? "Configura tus saldos iniciales"
-
-            : "Fotografía completa de tu patrimonio"
-
+                ? "Configura tus saldos iniciales"
+                : "Tu situación financiera actual"
         }
 
     </div>
@@ -115,265 +354,219 @@ ${this.header()}
 
 <div class="grid">
 
-<div class="card">
+    <button
+        class="card"
+        type="button"
+        data-route="analysis"
+        data-focus="liquidity"
+    >
 
-<div class="label">
+        <div class="label">
+            💵 Liquidez
+        </div>
 
-Liquidez
+        <div class="num">
+            ${this.formatCurrency(
+                summary.liquidity
+            )}
+        </div>
 
-</div>
+        <div class="note">
+            Disponible
+        </div>
 
-<div class="num">
+    </button>
 
-${this.formatCurrency(summary.liquidity)}
+    <button
+        class="card"
+        type="button"
+        data-route="analysis"
+        data-focus="investments"
+    >
 
-</div>
+        <div class="label">
+            📈 Inversiones
+        </div>
 
-<div class="note">
+        <div class="num">
+            ${this.formatCurrency(
+                summary.investments
+            )}
+        </div>
 
-BBVA + Trade Republic efectivo
+        <div class="note">
 
-</div>
+            ${
+                summary.investedCapital > 0
+                    ? `${profitability >= 0 ? "+" : ""}${this.formatPercent(
+                        profitability
+                    )}`
+                    : "Sin aportaciones"
+            }
 
-</div>
+        </div>
 
-<div class="card">
+    </button>
 
-<div class="label">
+    <button
+        class="card"
+        type="button"
+        data-route="analysis"
+        data-focus="debt"
+    >
 
-Inversiones
+        <div class="label">
+            💳 Deuda
+        </div>
 
-</div>
+        <div class="num">
+            ${this.formatCurrency(
+                summary.debt
+            )}
+        </div>
 
-<div class="num">
+        <div class="note">
 
-${this.formatCurrency(summary.investments)}
+            ${
+                summary.debt > 0
+                    ? "Pendiente"
+                    : "Sin deuda"
+            }
 
-</div>
+        </div>
 
-<div class="note">
+    </button>
 
-ETFs + Revolut Bot
+    <button
+        class="card"
+        type="button"
+        data-route="analysis"
+        data-focus="savings"
+    >
 
-</div>
+        <div class="label">
+            🐷 Ahorro ${this.currentMonth()}
+        </div>
 
-</div>
+        <div class="num">
+            ${this.formatCurrency(
+                summary.monthlySavings
+            )}
+        </div>
 
-<div class="card">
+        <div
+            class="note"
+            style="color:${savingsStatus.color}"
+        >
 
-<div class="label">
+            ${savingsStatus.icon}
+            ${savingsStatus.label}
 
-Deudas
+            <br>
 
-</div>
+            ${objectiveProgress.toFixed(0)}%
+            objetivo
 
-<div class="num">
+        </div>
 
-${this.formatCurrency(summary.debt)}
-
-</div>
-
-<div class="note">
-
-Préstamo y tarjetas
-
-</div>
-
-</div>
-
-<div class="card">
-
-<div class="label">
-
-Ahorro mensual
-
-</div>
-
-<div class="num">
-
-${this.formatCurrency(summary.monthlySavings)}
-
-</div>
-
-<div class="note">
-
-Ingresos − Gastos − Inversión
-
-</div>
-
-</div>
+    </button>
 
 </div>
 
 <section class="panel">
 
-<div class="panelhead">
+    <div class="insight">
 
-<h2>
+        <div class="badge">
+            ✨
+        </div>
 
-Objetivo mensual
+        <div>
 
-</h2>
+            <div class="label">
+                Atlas
+            </div>
 
-<button
-class="link"
-data-route="settings">
+            <p class="note">
+                ${this.atlasMessage(
+                    data,
+                    summary
+                )}
+            </p>
 
-Editar
+        </div>
 
-</button>
-
-</div>
-
-<div class="goal">
-
-<div class="goalrow">
-
-<span>
-
-Objetivo
-
-</span>
-
-<strong>
-
-${summary.monthlySavingsRate.toFixed(1)}%
-
-</strong>
-
-</div>
-
-<div class="progress">
-
-<i
-style="width:${Math.max(
-0,
-Math.min(
-100,
-summary.monthlySavingsRate
-)
-)}%">
-
-</i>
-
-</div>
-
-</div>
+    </div>
 
 </section>
-
-<section class="panel">
-
-<div class="panelhead">
-
-<h2>
-
-Atlas dice
-
-</h2>
-
-</div>
-
-<div class="insight">
-
-<div class="badge">
-
-✦
-
-</div>
-
-<div>
-
-<p class="note">
-
-${
-summary.netWorth === 0
-
-?
-
-`Introduce el saldo inicial de tus cuentas para que Atlas empiece a calcular tu patrimonio.`
-
-:
-
-`Atlas ya está calculando automáticamente tu liquidez, inversiones, deudas y patrimonio.`
-
-}
-
-</p>
-
-</div>
-
-</div>
-
-</section>
-
-<button
-class="primary"
-data-route="settings">
-
-Configurar Atlas
-
-</button>
 
 </div>
 
 `;
 
     },
-       settings(data) {
+
+    settings(data) {
 
         const liquidity =
-            data.accounts.filter(a => a.group === "liquidity");
+            data.accounts.filter(
+                account =>
+                    account.group ===
+                    "liquidity"
+            );
 
         const investments =
-            data.accounts.filter(a => a.group === "investment");
+            data.accounts.filter(
+                account =>
+                    account.group ===
+                    "investment"
+            );
 
         const debts =
-            data.accounts.filter(a => a.group === "debt");
+            data.accounts.filter(
+                account =>
+                    account.group ===
+                    "debt"
+            );
 
-        const renderGroup = (title, accounts) => `
+        const renderGroup =
+            (title, accounts) => `
 
-            <div class="group-title">
+<div class="group-title">
+    ${title}
+</div>
 
-                ${title}
+${accounts.map(account => `
+
+    <div class="account">
+
+        <div class="accounttop">
+
+            <div>
+
+                <strong>
+                    ${account.name}
+                </strong>
+
+                <div class="note">
+                    ${account.type}
+                </div>
 
             </div>
 
-            ${accounts.map(account => `
+            <div class="balance">
+                ${this.formatCurrency(
+                    account.balance
+                )}
+            </div>
 
-                <div class="account">
+        </div>
 
-                    <div class="accounttop">
+    </div>
 
-                        <div>
+`).join("")}
 
-                            <strong>
-
-                                ${account.name}
-
-                            </strong>
-
-                            <div class="note">
-
-                                ${account.type}
-
-                            </div>
-
-                        </div>
-
-                        <div class="balance">
-
-                            ${this.formatCurrency(account.balance)}
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-            `).join("")}
-
-        `;
+`;
 
         return `
 
@@ -382,90 +575,73 @@ Configurar Atlas
 ${this.header()}
 
 <h1 class="page-title">
-
-Configuración
-
+    Ajustes
 </h1>
 
 <p class="subtitle">
-
-Introduce los saldos iniciales de todas tus cuentas.
-
+    Configura tus cuentas, saldos y objetivos.
 </p>
 
 ${renderGroup(
-
-"💵 Liquidez",
-
-liquidity
-
+    "💵 Liquidez",
+    liquidity
 )}
 
 ${renderGroup(
-
-"📈 Inversiones",
-
-investments
-
+    "📈 Inversiones",
+    investments
 )}
 
 ${renderGroup(
-
-"💳 Deudas",
-
-debts
-
+    "💳 Deudas",
+    debts
 )}
 
 <section class="panel">
 
-<div class="panelhead">
+    <div class="panelhead">
 
-<h2>
+        <h2>
+            Objetivo de ahorro
+        </h2>
 
-Objetivo de ahorro
+    </div>
 
-</h2>
+    <div class="goal">
 
-</div>
+        <div class="goalrow">
 
-<div class="goal">
+            <span>
+                Objetivo mensual
+            </span>
 
-<div class="goalrow">
+            <strong>
+                ${data.settings.monthlySavingGoal}%
+            </strong>
 
-<span>
+        </div>
 
-Objetivo mensual
+        <div class="progress">
 
-</span>
+            <i
+                style="width:${Math.min(
+                    100,
+                    data.settings.monthlySavingGoal
+                )}%"
+            ></i>
 
-<strong>
+        </div>
 
-${data.settings.monthlySavingGoal}%
-
-</strong>
-
-</div>
-
-<div class="progress">
-
-<i
-style="width:${data.settings.monthlySavingGoal}%">
-
-</i>
-
-</div>
-
-</div>
+    </div>
 
 </section>
 
 <button
-class="primary"
-data-action="editAccounts">
-
-Editar saldos
-
+    class="primary"
+    type="button"
+    data-action="editAccounts"
+>
+    Editar saldos
 </button>
 
 </div>
@@ -474,7 +650,7 @@ Editar saldos
 
     },
 
-    movements(data) {
+    movements() {
 
         return `
 
@@ -483,53 +659,47 @@ Editar saldos
 ${this.header()}
 
 <h1 class="page-title">
-
-Movimientos
-
+    Movimientos
 </h1>
 
 <p class="subtitle">
-
-Aquí aparecerán todos los movimientos financieros.
-
+    Registra y consulta tu actividad financiera.
 </p>
 
 <section class="panel">
 
-<div class="list">
+    <div class="list">
 
-<div class="row">
+        <div class="row">
 
-<div>
+            <div>
 
-<b>
+                <b>
+                    Todavía no hay movimientos
+                </b>
 
-Todavía no hay movimientos
+                <small>
 
-</b>
+                    Aquí aparecerán tus ingresos,
+                    gastos, traspasos, inversiones
+                    y pagos de deuda.
 
-<small>
+                </small>
 
-En el Sprint 2 podrás registrar ingresos,
-gastos, traspasos, inversiones y pagos
-de préstamo.
+            </div>
 
-</small>
+        </div>
 
-</div>
-
-</div>
-
-</div>
+    </div>
 
 </section>
 
 <button
-class="primary"
-data-action="newMovement">
-
-Nuevo movimiento
-
+    class="primary"
+    type="button"
+    data-action="newMovement"
+>
+    Nuevo movimiento
 </button>
 
 </div>
@@ -537,10 +707,12 @@ Nuevo movimiento
 `;
 
     },
-       analysis(data) {
+
+    analysis(data) {
 
         const summary =
-            AtlasCalculations.financialSummary(data);
+            AtlasCalculations
+                .financialSummary(data);
 
         return `
 
@@ -549,178 +721,124 @@ Nuevo movimiento
 ${this.header()}
 
 <h1 class="page-title">
-
-Análisis
-
+    Análisis
 </h1>
 
 <p class="subtitle">
-
-Resumen financiero actual.
-
+    Evolución y distribución de tu patrimonio.
 </p>
-
-<section class="panel">
-
-<div class="panelhead">
-
-<h2>
-
-Indicadores
-
-</h2>
-
-</div>
 
 <div class="grid">
 
-<div class="card">
+    <div class="card">
 
-<div class="label">
+        <div class="label">
+            Patrimonio
+        </div>
 
-Patrimonio
+        <div class="num">
+            ${this.formatCurrency(
+                summary.netWorth
+            )}
+        </div>
 
-</div>
+    </div>
 
-<div class="num">
+    <div class="card">
 
-${this.formatCurrency(summary.netWorth)}
+        <div class="label">
+            Liquidez
+        </div>
 
-</div>
+        <div class="num">
+            ${this.formatCurrency(
+                summary.liquidity
+            )}
+        </div>
 
-</div>
+    </div>
 
-<div class="card">
+    <div class="card">
 
-<div class="label">
+        <div class="label">
+            Inversiones
+        </div>
 
-Liquidez
+        <div class="num">
+            ${this.formatCurrency(
+                summary.investments
+            )}
+        </div>
 
-</div>
+    </div>
 
-<div class="num">
+    <div class="card">
 
-${this.formatCurrency(summary.liquidity)}
+        <div class="label">
+            Deuda
+        </div>
 
-</div>
+        <div class="num">
+            ${this.formatCurrency(
+                summary.debt
+            )}
+        </div>
 
-</div>
-
-<div class="card">
-
-<div class="label">
-
-Invertido
-
-</div>
-
-<div class="num">
-
-${this.formatCurrency(summary.investments)}
-
-</div>
-
-</div>
-
-<div class="card">
-
-<div class="label">
-
-Deuda
-
-</div>
-
-<div class="num">
-
-${this.formatCurrency(summary.debt)}
+    </div>
 
 </div>
-
-</div>
-
-</div>
-
-</section>
 
 <section class="panel">
 
-<div class="panelhead">
+    <div class="panelhead">
 
-<h2>
+        <h2>
+            Evolución
+        </h2>
 
-Evolución
+    </div>
 
-</h2>
+    <div class="chart">
 
-</div>
+        <div class="bars">
 
-<div class="chart">
+            <div
+                class="bar"
+                style="height:45%"
+            ></div>
 
-<div class="bars">
+            <div
+                class="bar"
+                style="height:58%"
+            ></div>
 
-<div class="bar" style="height:45%"></div>
+            <div
+                class="bar"
+                style="height:52%"
+            ></div>
 
-<div class="bar" style="height:58%"></div>
+            <div
+                class="bar"
+                style="height:72%"
+            ></div>
 
-<div class="bar" style="height:52%"></div>
+            <div
+                class="bar"
+                style="height:64%"
+            ></div>
 
-<div class="bar" style="height:72%"></div>
+            <div
+                class="bar"
+                style="height:82%"
+            ></div>
 
-<div class="bar" style="height:64%"></div>
+        </div>
 
-<div class="bar" style="height:82%"></div>
+    </div>
 
-</div>
-
-</div>
-
-<p class="note">
-
-En el Sprint 2 este gráfico mostrará la evolución real de tu patrimonio.
-
-</p>
-
-</section>
-
-<section class="panel">
-
-<div class="panelhead">
-
-<h2>
-
-Atlas dice
-
-</h2>
-
-</div>
-
-<div class="insight">
-
-<div class="badge">
-
-📊
-
-</div>
-
-<div>
-
-<p class="note">
-
-Tu patrimonio se calculará utilizando:
-
-<br><br>
-
-Liquidez +
-
-Inversiones −
-
-Deudas.
-
-</p>
-
-</div>
-
-</div>
+    <p class="note">
+        El histórico real se activará al registrar datos.
+    </p>
 
 </section>
 
@@ -730,65 +848,95 @@ Deudas.
 
     },
 
-    render(route,data){
+    render(route, data) {
 
-        switch(route){
+        switch (route) {
 
             case "settings":
-                document.getElementById("app").innerHTML =
+
+                document
+                    .getElementById("app")
+                    .innerHTML =
                     this.settings(data);
+
                 break;
 
             case "movements":
-                document.getElementById("app").innerHTML =
+
+                document
+                    .getElementById("app")
+                    .innerHTML =
                     this.movements(data);
+
                 break;
 
             case "analysis":
-                document.getElementById("app").innerHTML =
+
+                document
+                    .getElementById("app")
+                    .innerHTML =
                     this.analysis(data);
+
                 break;
 
             default:
-                document.getElementById("app").innerHTML =
-                    this.dashboard(
-                        AtlasCalculations.financialSummary(data)
-                    );
+
+                document
+                    .getElementById("app")
+                    .innerHTML =
+                    this.dashboard(data);
 
         }
 
         document
-            .querySelectorAll("[data-route]")
-            .forEach(button=>{
+            .querySelectorAll(
+                ".tabbar button[data-route]"
+            )
+            .forEach(button => {
 
                 button.classList.toggle(
                     "active",
-                    button.dataset.route===route
+                    button.dataset.route === route
                 );
 
             });
 
     },
-       toast(message) {
+
+    toast(message) {
 
         const root =
-            document.getElementById("toast-root");
+            document.getElementById(
+                "toast-root"
+            );
 
-        if (!root) return;
+        if (!root) {
+
+            return;
+
+        }
 
         root.innerHTML = `
-            <div class="toast">
-                ${message}
-            </div>
-        `;
 
-        clearTimeout(this._toastTimer);
+<div class="toast">
+    ${message}
+</div>
 
-        this._toastTimer = setTimeout(() => {
+`;
 
-            root.innerHTML = "";
+        clearTimeout(
+            this._toastTimer
+        );
 
-        }, 2500);
+        this._toastTimer =
+            setTimeout(
+                () => {
+
+                    root.innerHTML = "";
+
+                },
+                2500
+            );
 
     },
 
@@ -805,7 +953,11 @@ Deudas.
         const app =
             document.getElementById("app");
 
-        if (!app) return;
+        if (!app) {
+
+            return;
+
+        }
 
         app.style.opacity =
             show ? "0.55" : "1";
