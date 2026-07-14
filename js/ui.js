@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    ui.js
-   Sprint 2.3 — Historial editable de movimientos
+   Sprint 2.5 — Gastos y salidas de caja
 ========================================================== */
 
 const AtlasUI = {
@@ -15,7 +15,8 @@ const AtlasUI = {
             {
                 style: "currency",
                 currency: "EUR",
-                maximumFractionDigits: 0
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 2
             }
         ).format(
             Number(value) || 0
@@ -34,11 +35,11 @@ const AtlasUI = {
     escapeHtml(value) {
 
         return String(value ?? "")
-            .replaceAll("&", "&amp;")
-            .replaceAll("<", "&lt;")
-            .replaceAll(">", "&gt;")
-            .replaceAll('"', "&quot;")
-            .replaceAll("'", "&#039;");
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
 
     },
 
@@ -165,7 +166,7 @@ const AtlasUI = {
 
     },
 
-    savingsStatus(data, summary) {
+    savingsStatus(data) {
 
         const calendarConfigured =
             data.settings
@@ -175,171 +176,17 @@ const AtlasUI = {
         if (!calendarConfigured) {
 
             return {
-                label:
-                    "Mes en curso",
-                icon:
-                    "",
+                label: "Mes en curso",
                 color:
-                    "var(--color-text-muted)",
-                objectiveProgress:
-                    null
-            };
-
-        }
-
-        const income =
-            Number(
-                summary.monthlyIncome
-            ) || 0;
-
-        const savings =
-            Number(
-                summary.monthlySavings
-            ) || 0;
-
-        const goalPercent =
-            Number(
-                data.settings
-                    .monthlySavingGoal
-            ) || 0;
-
-        if (income <= 0) {
-
-            return {
-                label:
-                    "Sin ingresos registrados",
-                icon:
-                    "⚪",
-                color:
-                    "var(--color-text-muted)",
-                objectiveProgress:
-                    0
-            };
-
-        }
-
-        const targetSavings =
-            income *
-            (
-                goalPercent /
-                100
-            );
-
-        const plannedIncomeToDate =
-            Number(
-                data.settings
-                    ?.plannedIncomeToDate
-            ) || income;
-
-        const plannedExpensesToDate =
-            Number(
-                data.settings
-                    ?.plannedExpensesToDate
-            ) || 0;
-
-        const plannedInvestmentToDate =
-            Number(
-                data.settings
-                    ?.plannedInvestmentToDate
-            ) || 0;
-
-        const expectedSavingsToday =
-            plannedIncomeToDate -
-            plannedExpensesToDate -
-            plannedInvestmentToDate;
-
-        const objectiveProgress =
-            targetSavings > 0
-                ? (
-                    savings /
-                    targetSavings
-                ) * 100
-                : 0;
-
-        if (
-            expectedSavingsToday <= 0
-        ) {
-
-            return {
-                label:
-                    "En línea",
-                icon:
-                    "🟢",
-                color:
-                    "var(--color-success)",
-                objectiveProgress
-            };
-
-        }
-
-        const pace =
-            savings /
-            expectedSavingsToday;
-
-        if (pace >= 1.1) {
-
-            return {
-                label:
-                    "Vas por delante",
-                icon:
-                    "🟢",
-                color:
-                    "var(--color-success)",
-                objectiveProgress
-            };
-
-        }
-
-        if (pace >= 0.9) {
-
-            return {
-                label:
-                    "En línea",
-                icon:
-                    "🟢",
-                color:
-                    "var(--color-success)",
-                objectiveProgress
-            };
-
-        }
-
-        if (pace >= 0.75) {
-
-            return {
-                label:
-                    "Vigila el gasto",
-                icon:
-                    "🟡",
-                color:
-                    "var(--color-warning)",
-                objectiveProgress
-            };
-
-        }
-
-        if (pace >= 0.5) {
-
-            return {
-                label:
-                    "Ritmo insuficiente",
-                icon:
-                    "🟠",
-                color:
-                    "var(--color-warning)",
-                objectiveProgress
+                    "var(--color-text-muted)"
             };
 
         }
 
         return {
-            label:
-                "Requiere atención",
-            icon:
-                "🔴",
+            label: "Calendario activo",
             color:
-                "var(--color-danger)",
-            objectiveProgress
+                "var(--color-success)"
         };
 
     },
@@ -349,48 +196,25 @@ const AtlasUI = {
         if (
             summary.liquidity === 0 &&
             summary.investments === 0 &&
-            summary.debt === 0
+            summary.debt === 0 &&
+            data.movements.length === 0
         ) {
             return "Configura Atlas para empezar.";
         }
 
-        const status =
-            this.savingsStatus(
-                data,
-                summary
-            );
+        if (
+            summary.monthlySavings < 0
+        ) {
+            return "Este mes has gastado e invertido más de lo que has ingresado.";
+        }
 
-        const messages = {
+        if (
+            summary.monthlySavings === 0
+        ) {
+            return "Ingresos, gastos e inversiones están equilibrados este mes.";
+        }
 
-            "Mes en curso":
-                "Atlas está registrando la evolución del mes.",
-
-            "Sin ingresos registrados":
-                "Registra tus ingresos para analizar el mes.",
-
-            "Vas por delante":
-                "Vas por delante del ritmo previsto este mes.",
-
-            "En línea":
-                "Todo va según lo previsto este mes.",
-
-            "Vigila el gasto":
-                "El gasto está ligeramente por encima del ritmo previsto.",
-
-            "Ritmo insuficiente":
-                "Necesitas moderar el gasto para alcanzar tu objetivo.",
-
-            "Requiere atención":
-                "El ritmo de gasto actual pone en riesgo tu objetivo."
-
-        };
-
-        return (
-            messages[
-                status.label
-            ] ||
-            "Atlas está analizando tu situación financiera."
-        );
+        return "Atlas está registrando la evolución del mes.";
 
     },
 
@@ -408,10 +232,7 @@ const AtlasUI = {
             );
 
         const savingsStatus =
-            this.savingsStatus(
-                data,
-                summary
-            );
+            this.savingsStatus(data);
 
         const investmentNote =
             summary.investedCapital > 0
@@ -423,30 +244,6 @@ const AtlasUI = {
                     profitability
                 )}`
                 : "Sin aportaciones";
-
-        const savingsDetail =
-            savingsStatus
-                .objectiveProgress ===
-            null
-                ? savingsStatus.label
-                : `
-
-                    ${savingsStatus.icon}
-
-                    ${savingsStatus.label}
-
-                    <br>
-
-                    ${Math.max(
-                        0,
-                        Math.min(
-                            999,
-                            savingsStatus
-                                .objectiveProgress
-                        )
-                    ).toFixed(0)}% objetivo
-
-                `;
 
         return `
 
@@ -480,15 +277,9 @@ const AtlasUI = {
 
                     <div
                         class="trend"
-                        style="
-                            margin-top:8px;
-                        "
+                        style="margin-top:8px"
                     >
-                        ${
-                            summary.netWorth === 0
-                                ? "Configura Atlas para empezar."
-                                : "Tu situación financiera actual"
-                        }
+                        Tu situación financiera actual
                     </div>
 
                 </section>
@@ -512,7 +303,6 @@ const AtlasUI = {
                         class="card"
                         type="button"
                         data-route="analysis"
-                        data-focus="liquidity"
                         style="
                             text-align:left;
                             min-width:0;
@@ -540,7 +330,6 @@ const AtlasUI = {
                         class="card"
                         type="button"
                         data-route="analysis"
-                        data-focus="investments"
                         style="
                             text-align:left;
                             min-width:0;
@@ -568,7 +357,6 @@ const AtlasUI = {
                         class="card"
                         type="button"
                         data-route="analysis"
-                        data-focus="debt"
                         style="
                             text-align:left;
                             min-width:0;
@@ -586,16 +374,7 @@ const AtlasUI = {
                             )}
                         </div>
 
-                        <div
-                            class="note"
-                            style="
-                                color:${
-                                    summary.debt > 0
-                                        ? "var(--color-text-muted)"
-                                        : "var(--color-success)"
-                                };
-                            "
-                        >
+                        <div class="note">
                             ${
                                 summary.debt > 0
                                     ? "Pendiente"
@@ -609,7 +388,6 @@ const AtlasUI = {
                         class="card"
                         type="button"
                         data-route="analysis"
-                        data-focus="savings"
                         style="
                             text-align:left;
                             min-width:0;
@@ -635,7 +413,7 @@ const AtlasUI = {
                                     ${savingsStatus.color};
                             "
                         >
-                            ${savingsDetail}
+                            ${savingsStatus.label}
                         </div>
 
                     </button>
@@ -664,9 +442,7 @@ const AtlasUI = {
 
                             <p
                                 class="note"
-                                style="
-                                    margin-top:5px;
-                                "
+                                style="margin-top:5px"
                             >
                                 ${this.atlasMessage(
                                     data,
@@ -759,6 +535,12 @@ const AtlasUI = {
 
             `;
 
+        const hasMovements =
+            Array.isArray(
+                data.movements
+            ) &&
+            data.movements.length > 0;
+
         return `
 
             <div class="app">
@@ -770,7 +552,7 @@ const AtlasUI = {
                 </h1>
 
                 <p class="subtitle">
-                    Configura tus cuentas, saldos y objetivos.
+                    Consulta tus cuentas y objetivo de ahorro.
                 </p>
 
                 ${renderGroup(
@@ -822,8 +604,10 @@ const AtlasUI = {
                                     width:${
                                         Math.min(
                                             100,
-                                            data.settings
-                                                .monthlySavingGoal
+                                            Number(
+                                                data.settings
+                                                    .monthlySavingGoal
+                                            ) || 0
                                         )
                                     }%;
                                 "
@@ -840,12 +624,101 @@ const AtlasUI = {
                     type="button"
                     data-action="editAccounts"
                 >
-                    Editar saldos
+                    ${
+                        hasMovements
+                            ? "Saldos calculados por Atlas"
+                            : "Editar saldos iniciales"
+                    }
                 </button>
+
+                ${
+                    hasMovements
+                        ? `
+                            <p
+                                class="note"
+                                style="
+                                    text-align:center;
+                                    margin-top:12px;
+                                "
+                            >
+                                Los saldos se actualizan mediante movimientos.
+                            </p>
+                        `
+                        : ""
+                }
 
             </div>
 
         `;
+
+    },
+
+    movementLabel(movement) {
+
+        if (
+            movement.kind ===
+            "debt_payment"
+        ) {
+            return "Pago de deuda";
+        }
+
+        const labels = {
+            income: "Ingreso",
+            expense: "Gasto",
+            transfer: "Traspaso",
+            investment: "Inversión"
+        };
+
+        return (
+            labels[movement.type] ||
+            "Movimiento"
+        );
+
+    },
+
+    movementAmount(movement) {
+
+        if (
+            movement.type ===
+            "income"
+        ) {
+            return `+${this.formatCurrency(
+                movement.amount
+            )}`;
+        }
+
+        if (
+            movement.type ===
+            "transfer"
+        ) {
+            return this.formatCurrency(
+                movement.amount
+            );
+        }
+
+        return `−${this.formatCurrency(
+            movement.amount
+        )}`;
+
+    },
+
+    movementColor(movement) {
+
+        if (
+            movement.type ===
+            "income"
+        ) {
+            return "var(--color-success)";
+        }
+
+        if (
+            movement.type ===
+            "transfer"
+        ) {
+            return "var(--color-primary)";
+        }
+
+        return "var(--color-danger)";
 
     },
 
@@ -882,88 +755,6 @@ const AtlasUI = {
                     }
                 );
 
-        const movementLabel =
-            movement => {
-
-                if (
-                    movement.kind ===
-                    "debt_payment"
-                ) {
-                    return "Pago de deuda";
-                }
-
-                const labels = {
-                    income:
-                        "Ingreso",
-                    expense:
-                        "Gasto",
-                    transfer:
-                        "Traspaso",
-                    investment:
-                        "Inversión"
-                };
-
-                return (
-                    labels[
-                        movement.type
-                    ] ||
-                    "Movimiento"
-                );
-
-            };
-
-        const movementAmount =
-            movement => {
-
-                if (
-                    movement.type ===
-                    "income"
-                ) {
-
-                    return `+${this.formatCurrency(
-                        movement.amount
-                    )}`;
-
-                }
-
-                if (
-                    movement.type ===
-                    "transfer"
-                ) {
-
-                    return this.formatCurrency(
-                        movement.amount
-                    );
-
-                }
-
-                return `−${this.formatCurrency(
-                    movement.amount
-                )}`;
-
-            };
-
-        const movementColor =
-            movement => {
-
-                if (
-                    movement.type ===
-                    "income"
-                ) {
-                    return "var(--color-success)";
-                }
-
-                if (
-                    movement.type ===
-                    "transfer"
-                ) {
-                    return "var(--color-primary)";
-                }
-
-                return "var(--color-danger)";
-
-            };
-
         return `
 
             <div class="app">
@@ -995,9 +786,7 @@ const AtlasUI = {
                                             </b>
 
                                             <small>
-                                                Aquí aparecerán tus ingresos,
-                                                gastos, traspasos, inversiones
-                                                y pagos de deuda.
+                                                Aquí aparecerá tu actividad financiera.
                                             </small>
 
                                         </div>
@@ -1035,43 +824,32 @@ const AtlasUI = {
                                                     <div>
 
                                                         <b>
-                                                            ${
-                                                                this.escapeHtml(
+                                                            ${this.escapeHtml(
+                                                                movement.category ||
+                                                                this.movementLabel(
                                                                     movement
-                                                                        .category ||
-                                                                    movementLabel(
-                                                                        movement
-                                                                    )
                                                                 )
-                                                            }
+                                                            )}
                                                         </b>
 
                                                         <small>
-                                                            ${
-                                                                this.formatMovementDate(
-                                                                    movement.date
-                                                                )
-                                                            }
+                                                            ${this.formatMovementDate(
+                                                                movement.date
+                                                            )}
                                                             ·
-                                                            ${
-                                                                movementLabel(
-                                                                    movement
-                                                                )
-                                                            }
+                                                            ${this.movementLabel(
+                                                                movement
+                                                            )}
                                                         </small>
 
                                                         ${
                                                             movement.note
                                                                 ? `
-
                                                                     <small>
-                                                                        ${
-                                                                            this.escapeHtml(
-                                                                                movement.note
-                                                                            )
-                                                                        }
+                                                                        ${this.escapeHtml(
+                                                                            movement.note
+                                                                        )}
                                                                     </small>
-
                                                                 `
                                                                 : ""
                                                         }
@@ -1081,20 +859,16 @@ const AtlasUI = {
                                                     <strong
                                                         style="
                                                             color:
-                                                                ${
-                                                                    movementColor(
-                                                                        movement
-                                                                    )
-                                                                };
+                                                                ${this.movementColor(
+                                                                    movement
+                                                                )};
                                                             white-space:
                                                                 nowrap;
                                                         "
                                                     >
-                                                        ${
-                                                            movementAmount(
-                                                                movement
-                                                            )
-                                                        }
+                                                        ${this.movementAmount(
+                                                            movement
+                                                        )}
                                                     </strong>
 
                                                 </button>
@@ -1132,6 +906,11 @@ const AtlasUI = {
                     data
                 );
 
+        const savingRate =
+            summary.monthlyIncome > 0
+                ? summary.monthlySavingRate
+                : 0;
+
         return `
 
             <div class="app">
@@ -1143,73 +922,115 @@ const AtlasUI = {
                 </h1>
 
                 <p class="subtitle">
-                    Evolución y distribución de tu patrimonio.
+                    Resumen financiero del mes actual.
                 </p>
 
                 <div
                     class="grid"
                     style="
+                        display:grid;
                         grid-template-columns:
                             repeat(
                                 2,
                                 minmax(0,1fr)
                             );
                         gap:12px;
+                        margin-bottom:18px;
                     "
                 >
 
-                    <div class="card">
+                    <div
+                        class="card"
+                        style="
+                            min-width:0;
+                            padding:16px;
+                        "
+                    >
 
                         <div class="label">
-                            Patrimonio
+                            🟢 Ingresos
                         </div>
 
                         <div class="num">
                             ${this.formatCurrency(
-                                summary.netWorth
+                                summary.monthlyIncome
                             )}
+                        </div>
+
+                        <div class="note">
+                            Recibidos este mes
                         </div>
 
                     </div>
 
-                    <div class="card">
+                    <div
+                        class="card"
+                        style="
+                            min-width:0;
+                            padding:16px;
+                        "
+                    >
 
                         <div class="label">
-                            Liquidez
+                            🔴 Gastos
                         </div>
 
                         <div class="num">
                             ${this.formatCurrency(
-                                summary.liquidity
+                                summary.monthlyExpenses
                             )}
+                        </div>
+
+                        <div class="note">
+                            Consumo real
                         </div>
 
                     </div>
 
-                    <div class="card">
+                    <div
+                        class="card"
+                        style="
+                            min-width:0;
+                            padding:16px;
+                        "
+                    >
 
                         <div class="label">
-                            Inversiones
+                            📈 Invertido
                         </div>
 
                         <div class="num">
                             ${this.formatCurrency(
-                                summary.investments
+                                summary.monthlyInvested
                             )}
+                        </div>
+
+                        <div class="note">
+                            Aportaciones del mes
                         </div>
 
                     </div>
 
-                    <div class="card">
+                    <div
+                        class="card"
+                        style="
+                            min-width:0;
+                            padding:16px;
+                        "
+                    >
 
                         <div class="label">
-                            Deuda
+                            💸 Salidas de caja
                         </div>
 
                         <div class="num">
                             ${this.formatCurrency(
-                                summary.debt
+                                summary.monthlyCashOutflow
                             )}
+                        </div>
+
+                        <div class="note">
+                            Dinero salido del banco
                         </div>
 
                     </div>
@@ -1221,64 +1042,181 @@ const AtlasUI = {
                     <div class="panelhead">
 
                         <h2>
-                            Evolución
+                            Resultado del mes
                         </h2>
 
                     </div>
 
-                    <div class="chart">
+                    <div
+                        class="list"
+                        style="margin-top:8px"
+                    >
 
-                        <div class="bars">
+                        <div class="row">
 
-                            <div
-                                class="bar"
+                            <div>
+
+                                <b>
+                                    Ahorro mensual
+                                </b>
+
+                                <small>
+                                    Ingresos − gastos − inversión
+                                </small>
+
+                            </div>
+
+                            <strong
                                 style="
-                                    height:45%;
+                                    color:${
+                                        summary.monthlySavings >= 0
+                                            ? "var(--color-success)"
+                                            : "var(--color-danger)"
+                                    };
                                 "
-                            ></div>
+                            >
+                                ${this.formatCurrency(
+                                    summary.monthlySavings
+                                )}
+                            </strong>
 
-                            <div
-                                class="bar"
-                                style="
-                                    height:58%;
-                                "
-                            ></div>
+                        </div>
 
-                            <div
-                                class="bar"
-                                style="
-                                    height:52%;
-                                "
-                            ></div>
+                        <div class="row">
 
-                            <div
-                                class="bar"
-                                style="
-                                    height:72%;
-                                "
-                            ></div>
+                            <div>
 
-                            <div
-                                class="bar"
-                                style="
-                                    height:64%;
-                                "
-                            ></div>
+                                <b>
+                                    Tasa de ahorro
+                                </b>
 
-                            <div
-                                class="bar"
-                                style="
-                                    height:82%;
-                                "
-                            ></div>
+                                <small>
+                                    Porcentaje sobre ingresos
+                                </small>
+
+                            </div>
+
+                            <strong>
+                                ${this.formatPercent(
+                                    savingRate
+                                )}
+                            </strong>
 
                         </div>
 
                     </div>
 
-                    <p class="note">
-                        El histórico real se activará al registrar datos.
-                    </p>
+                </section>
+
+                <section class="panel">
+
+                    <div class="panelhead">
+
+                        <h2>
+                            Situación actual
+                        </h2>
+
+                    </div>
+
+                    <div class="list">
+
+                        <div class="row">
+
+                            <div>
+
+                                <b>
+                                    Liquidez
+                                </b>
+
+                                <small>
+                                    Dinero disponible
+                                </small>
+
+                            </div>
+
+                            <strong>
+                                ${this.formatCurrency(
+                                    summary.liquidity
+                                )}
+                            </strong>
+
+                        </div>
+
+                        <div class="row">
+
+                            <div>
+
+                                <b>
+                                    Inversiones
+                                </b>
+
+                                <small>
+                                    Valor actual
+                                </small>
+
+                            </div>
+
+                            <strong>
+                                ${this.formatCurrency(
+                                    summary.investments
+                                )}
+                            </strong>
+
+                        </div>
+
+                        <div class="row">
+
+                            <div>
+
+                                <b>
+                                    Deuda
+                                </b>
+
+                                <small>
+                                    Saldo pendiente
+                                </small>
+
+                            </div>
+
+                            <strong>
+                                ${this.formatCurrency(
+                                    summary.debt
+                                )}
+                            </strong>
+
+                        </div>
+
+                        <div class="row">
+
+                            <div>
+
+                                <b>
+                                    Patrimonio neto
+                                </b>
+
+                                <small>
+                                    Liquidez + inversiones − deuda
+                                </small>
+
+                            </div>
+
+                            <strong
+                                style="
+                                    color:${
+                                        summary.netWorth >= 0
+                                            ? "var(--color-success)"
+                                            : "var(--color-danger)"
+                                    };
+                                "
+                            >
+                                ${this.formatCurrency(
+                                    summary.netWorth
+                                )}
+                            </strong>
+
+                        </div>
+
+                    </div>
 
                 </section>
 
@@ -1374,8 +1312,7 @@ const AtlasUI = {
             setTimeout(
                 () => {
 
-                    root.innerHTML =
-                        "";
+                    root.innerHTML = "";
 
                 },
                 2500
