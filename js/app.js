@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    app.js
-   Sprint 3.2 — Selector mensual en Movimientos
+   Sprint 3.3 — Mensual y Tendencias
 ========================================================== */
 
 const AtlasApp = {
@@ -14,6 +14,10 @@ const AtlasApp = {
 
     movementsMonth: null,
 
+    analysisView: "monthly",
+
+    trendsPeriod: 6,
+
     init() {
 
         this.data =
@@ -24,6 +28,12 @@ const AtlasApp = {
 
         this.movementsMonth =
             this.currentMonthKey();
+
+        this.analysisView =
+            "monthly";
+
+        this.trendsPeriod =
+            6;
 
         this.bindEvents();
 
@@ -196,6 +206,14 @@ const AtlasApp = {
                                             7
                                         );
 
+                                    this.analysisMonth =
+                                        String(
+                                            movement.date
+                                        ).slice(
+                                            0,
+                                            7
+                                        );
+
                                 }
 
                                 this.route =
@@ -218,6 +236,38 @@ const AtlasApp = {
 
                         break;
 
+                    case "showMonthlyAnalysis":
+
+                        this.analysisView =
+                            "monthly";
+
+                        this.route =
+                            "analysis";
+
+                        this.render();
+
+                        break;
+
+                    case "showTrendsAnalysis":
+
+                        this.analysisView =
+                            "trends";
+
+                        this.route =
+                            "analysis";
+
+                        this.render();
+
+                        break;
+
+                    case "setTrendsPeriod":
+
+                        this.setTrendsPeriod(
+                            actionButton.dataset.period
+                        );
+
+                        break;
+
                     case "previousAnalysisMonth":
 
                         this.analysisMonth =
@@ -225,6 +275,9 @@ const AtlasApp = {
                                 this.analysisMonth,
                                 -1
                             );
+
+                        this.analysisView =
+                            "monthly";
 
                         this.route =
                             "analysis";
@@ -257,6 +310,9 @@ const AtlasApp = {
 
                         }
 
+                        this.analysisView =
+                            "monthly";
+
                         this.route =
                             "analysis";
 
@@ -268,6 +324,9 @@ const AtlasApp = {
 
                         this.analysisMonth =
                             this.currentMonthKey();
+
+                        this.analysisView =
+                            "monthly";
 
                         this.route =
                             "analysis";
@@ -347,6 +406,39 @@ const AtlasApp = {
 
     },
 
+    setTrendsPeriod(value) {
+
+        const period =
+            Number(value);
+
+        const allowedPeriods =
+            [
+                3,
+                6,
+                12
+            ];
+
+        if (
+            !allowedPeriods.includes(
+                period
+            )
+        ) {
+            return;
+        }
+
+        this.trendsPeriod =
+            period;
+
+        this.analysisView =
+            "trends";
+
+        this.route =
+            "analysis";
+
+        this.render();
+
+    },
+
     navigate(route) {
 
         this.route =
@@ -375,6 +467,12 @@ const AtlasApp = {
 
                 currentMonth:
                     this.currentMonthKey(),
+
+                analysisView:
+                    this.analysisView,
+
+                trendsPeriod:
+                    this.trendsPeriod,
 
                 isCurrentAnalysisMonth:
                     this.isCurrentAnalysisMonth(),
@@ -557,6 +655,12 @@ const AtlasApp = {
 
         this.movementsMonth =
             this.currentMonthKey();
+
+        this.analysisView =
+            "monthly";
+
+        this.trendsPeriod =
+            6;
 
         this.render();
 
