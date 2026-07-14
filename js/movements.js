@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    movements.js
-   Sprint 4.0 — Categorías y subcategorías
+   Sprint 4.1 — Edición y pagos de deuda corregidos
 ========================================================== */
 
 const AtlasMovements = {
@@ -146,7 +146,9 @@ const AtlasMovements = {
 
     findMovement(id) {
 
-        return this.data.movements.find(
+        return (
+            this.data.movements || []
+        ).find(
             movement =>
                 movement.id === id
         );
@@ -158,7 +160,9 @@ const AtlasMovements = {
         data = this.data
     ) {
 
-        return data.accounts.find(
+        return (
+            data.accounts || []
+        ).find(
             account =>
                 account.id === id
         );
@@ -171,7 +175,9 @@ const AtlasMovements = {
             movement.kind ===
             "debt_payment"
         ) {
+
             return "debt_payment";
+
         }
 
         return movement.type;
@@ -187,7 +193,9 @@ const AtlasMovements = {
         if (
             !Array.isArray(categories)
         ) {
+
             return [];
+
         }
 
         return categories
@@ -236,7 +244,9 @@ const AtlasMovements = {
                 category.subcategories
             )
         ) {
+
             return null;
+
         }
 
         return category
@@ -254,7 +264,9 @@ const AtlasMovements = {
         selectedId = null
     ) {
 
-        return this.data.accounts
+        return (
+            this.data.accounts || []
+        )
             .filter(
                 account =>
                     filter(account)
@@ -380,12 +392,8 @@ const AtlasMovements = {
         selectedId = ""
     ) {
 
-        const categories =
-            this.catalogCategories(
-                type
-            );
-
-        return categories
+        return this
+            .catalogCategories(type)
             .map(
                 category => `
 
@@ -432,7 +440,9 @@ const AtlasMovements = {
                 category.subcategories
             )
         ) {
+
             return "";
+
         }
 
         return category.subcategories
@@ -482,12 +492,14 @@ const AtlasMovements = {
         if (movement?.categoryId) {
 
             return {
+
                 categoryId:
                     movement.categoryId,
 
                 subcategoryId:
                     movement.subcategoryId ||
                     ""
+
             };
 
         }
@@ -598,11 +610,13 @@ const AtlasMovements = {
         if (match) {
 
             return {
+
                 categoryId:
                     match[0],
 
                 subcategoryId:
                     match[1]
+
             };
 
         }
@@ -613,6 +627,7 @@ const AtlasMovements = {
             )[0];
 
         return {
+
             categoryId:
                 firstCategory?.id ||
                 "",
@@ -622,6 +637,7 @@ const AtlasMovements = {
                     ?.subcategories?.[0]
                     ?.id ||
                 ""
+
         };
 
     },
@@ -1009,7 +1025,9 @@ const AtlasMovements = {
             this.root();
 
         if (!root) {
+
             return;
+
         }
 
         document.body.classList.add(
@@ -1122,7 +1140,7 @@ const AtlasMovements = {
                     "transfer",
                     "🔁",
                     "Traspaso",
-                    "Mover dinero entre cuentas o pagar una tarjeta."
+                    "Mover dinero entre cuentas."
                 )}
 
                 ${this.typeButton(
@@ -1134,9 +1152,9 @@ const AtlasMovements = {
 
                 ${this.typeButton(
                     "debt_payment",
-                    "🚗",
+                    "💳",
                     "Pago de deuda",
-                    "Pagar el préstamo y reducir la deuda."
+                    "Pagar una tarjeta o reducir un préstamo."
                 )}
 
             </div>
@@ -1719,7 +1737,9 @@ const AtlasMovements = {
             );
 
         if (!form) {
+
             return;
+
         }
 
         const subcategorySelect =
@@ -1728,7 +1748,9 @@ const AtlasMovements = {
             );
 
         if (!subcategorySelect) {
+
             return;
+
         }
 
         const type =
@@ -1950,6 +1972,11 @@ const AtlasMovements = {
 
     validateMovement(movement) {
 
+        const kind =
+            this.getMovementKind(
+                movement
+            );
+
         if (
             !Number.isFinite(
                 movement.amount
@@ -1967,12 +1994,20 @@ const AtlasMovements = {
 
         }
 
+        /*
+         * Solo los ingresos y los gastos
+         * normales necesitan categoría.
+         *
+         * Pago de deuda se guarda con
+         * type expense, pero su kind es
+         * debt_payment y no utiliza
+         * categorías.
+         */
+
         if (
             (
-                movement.type ===
-                    "income" ||
-                movement.type ===
-                    "expense"
+                kind === "income" ||
+                kind === "expense"
             ) &&
             (
                 !movement.categoryId ||
@@ -1981,6 +2016,36 @@ const AtlasMovements = {
         ) {
 
             return "Selecciona una categoría y subcategoría.";
+
+        }
+
+        if (
+            kind === "income" ||
+            kind === "expense"
+        ) {
+
+            if (!movement.accountId) {
+
+                return "Selecciona una cuenta.";
+
+            }
+
+        }
+
+        if (
+            kind === "transfer" ||
+            kind === "investment" ||
+            kind === "debt_payment"
+        ) {
+
+            if (
+                !movement.fromAccountId ||
+                !movement.toAccountId
+            ) {
+
+                return "Selecciona la cuenta de origen y destino.";
+
+            }
 
         }
 
@@ -2017,6 +2082,40 @@ const AtlasMovements = {
 
         }
 
+        if (
+            kind === "debt_payment"
+        ) {
+
+            const fromAccount =
+                this.findAccount(
+                    movement.fromAccountId
+                );
+
+            const debtAccount =
+                this.findAccount(
+                    movement.toAccountId
+                );
+
+            if (
+                fromAccount?.group !==
+                "liquidity"
+            ) {
+
+                return "El pago debe salir de una cuenta con liquidez.";
+
+            }
+
+            if (
+                debtAccount?.group !==
+                "debt"
+            ) {
+
+                return "Selecciona una deuda válida.";
+
+            }
+
+        }
+
         return null;
 
     },
@@ -2027,14 +2126,18 @@ const AtlasMovements = {
     ) {
 
         if (!account) {
+
             return;
+
         }
 
         account.balance =
             this.number(
                 account.balance
             ) +
-            this.number(amount);
+            this.number(
+                amount
+            );
 
         account.updatedAt =
             new Date()
@@ -2048,14 +2151,18 @@ const AtlasMovements = {
     ) {
 
         if (!account) {
+
             return;
+
         }
 
         account.invested =
             this.number(
                 account.invested
             ) +
-            this.number(amount);
+            this.number(
+                amount
+            );
 
         account.updatedAt =
             new Date()
@@ -2106,7 +2213,9 @@ const AtlasMovements = {
                 );
 
             if (!account) {
+
                 return;
+
             }
 
             if (
@@ -2249,13 +2358,36 @@ const AtlasMovements = {
 
     },
 
+    restoreSaveButton(
+        saveButton,
+        editing
+    ) {
+
+        if (!saveButton) {
+
+            return;
+
+        }
+
+        saveButton.disabled =
+            false;
+
+        saveButton.textContent =
+            editing
+                ? "Guardar cambios"
+                : "Guardar movimiento";
+
+    },
+
     saveMovement(
         form,
         type
     ) {
 
         if (this.saving) {
+
             return;
+
         }
 
         const movement =
@@ -2271,7 +2403,9 @@ const AtlasMovements = {
 
         if (error) {
 
-            AtlasUI.toast(error);
+            AtlasUI.toast(
+                error
+            );
 
             return;
 
@@ -2312,6 +2446,11 @@ const AtlasMovements = {
 
                 this.saving =
                     false;
+
+                this.restoreSaveButton(
+                    saveButton,
+                    true
+                );
 
                 AtlasUI.toast(
                     "No se pudo editar el movimiento."
@@ -2366,17 +2505,12 @@ const AtlasMovements = {
             this.saving =
                 false;
 
-            if (saveButton) {
-
-                saveButton.disabled =
-                    false;
-
-                saveButton.textContent =
+            this.restoreSaveButton(
+                saveButton,
+                Boolean(
                     this.editingId
-                        ? "Guardar cambios"
-                        : "Guardar movimiento";
-
-            }
+                )
+            );
 
             AtlasUI.toast(
                 "No se pudo guardar el movimiento."
@@ -2414,7 +2548,9 @@ const AtlasMovements = {
             !this.editingId ||
             this.saving
         ) {
+
             return;
+
         }
 
         const movement =
@@ -2438,7 +2574,9 @@ const AtlasMovements = {
             );
 
         if (!confirmed) {
+
             return;
+
         }
 
         this.saving =
@@ -2534,7 +2672,9 @@ const AtlasMovements = {
             this.root();
 
         if (root) {
+
             root.innerHTML = "";
+
         }
 
         document.body.classList.remove(
@@ -2602,7 +2742,9 @@ const AtlasMovements = {
                     );
 
                 if (!actionButton) {
+
                     return;
+
                 }
 
                 const action =
@@ -2652,7 +2794,9 @@ const AtlasMovements = {
                     );
 
                 if (!categorySelect) {
+
                     return;
+
                 }
 
                 this.updateSubcategorySelect(
@@ -2672,7 +2816,9 @@ const AtlasMovements = {
                     );
 
                 if (!form) {
+
                     return;
+
                 }
 
                 event.preventDefault();
