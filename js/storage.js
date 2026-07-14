@@ -1,40 +1,67 @@
 /* ==========================================================
    ATLAS
    storage.js
-   Gestión del almacenamiento local
+   Sprint 4.0 — Persistencia y migración automática
 ========================================================== */
 
 const AtlasStorage = {
 
-    KEY: "atlas-data-v1",
+    key:
+        "atlas-data-v1",
 
     load() {
 
         try {
 
-            const data = localStorage.getItem(this.KEY);
+            const rawData =
+                localStorage.getItem(
+                    this.key
+                );
 
-            if (!data) {
+            if (!rawData) {
 
-                return structuredClone(AtlasData);
+                const initialData =
+                    AtlasData.create();
+
+                this.save(
+                    initialData
+                );
+
+                return initialData;
 
             }
 
-            const parsed = JSON.parse(data);
+            const parsedData =
+                JSON.parse(
+                    rawData
+                );
 
-            return {
+            const ensuredData =
+                AtlasData.ensure(
+                    parsedData
+                );
 
-                ...structuredClone(AtlasData),
+            this.save(
+                ensuredData
+            );
 
-                ...parsed
-
-            };
+            return ensuredData;
 
         } catch (error) {
 
-            console.error("Error cargando datos:", error);
+            console.error(
+                "AtlasStorage.load:",
+                error
+            );
 
-            return structuredClone(AtlasData);
+            const fallbackData =
+                AtlasData.create();
+
+            this.save(
+                fallbackData
+            );
+
+            return fallbackData;
 
         }
 
@@ -44,16 +71,30 @@ const AtlasStorage = {
 
         try {
 
+            const ensuredData =
+                AtlasData.ensure(
+                    data
+                );
+
+            ensuredData.updatedAt =
+                new Date()
+                    .toISOString();
+
             localStorage.setItem(
-                this.KEY,
-                JSON.stringify(data)
+                this.key,
+                JSON.stringify(
+                    ensuredData
+                )
             );
 
             return true;
 
         } catch (error) {
 
-            console.error("Error guardando datos:", error);
+            console.error(
+                "AtlasStorage.save:",
+                error
+            );
 
             return false;
 
@@ -63,9 +104,98 @@ const AtlasStorage = {
 
     reset() {
 
-        localStorage.removeItem(this.KEY);
+        try {
 
-        return structuredClone(AtlasData);
+            localStorage.removeItem(
+                this.key
+            );
+
+            const initialData =
+                AtlasData.create();
+
+            this.save(
+                initialData
+            );
+
+            return initialData;
+
+        } catch (error) {
+
+            console.error(
+                "AtlasStorage.reset:",
+                error
+            );
+
+            return AtlasData.create();
+
+        }
+
+    },
+
+    exportData() {
+
+        try {
+
+            const data =
+                this.load();
+
+            return JSON.stringify(
+                data,
+                null,
+                2
+            );
+
+        } catch (error) {
+
+            console.error(
+                "AtlasStorage.exportData:",
+                error
+            );
+
+            return null;
+
+        }
+
+    },
+
+    importData(rawData) {
+
+        try {
+
+            const parsedData =
+                typeof rawData ===
+                "string"
+                    ? JSON.parse(
+                        rawData
+                    )
+                    : rawData;
+
+            const ensuredData =
+                AtlasData.ensure(
+                    parsedData
+                );
+
+            const saved =
+                this.save(
+                    ensuredData
+                );
+
+            if (!saved) {
+                return null;
+            }
+
+            return ensuredData;
+
+        } catch (error) {
+
+            console.error(
+                "AtlasStorage.importData:",
+                error
+            );
+
+            return null;
+
+        }
 
     }
 
