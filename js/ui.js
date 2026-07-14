@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    ui.js
-   Sprint 1.5 — DEFINITIVO
+   Sprint 2.2 — Estado neutral del ahorro
 ========================================================== */
 
 const AtlasUI = {
@@ -84,6 +84,18 @@ const AtlasUI = {
 
     savingsStatus(data, summary) {
 
+        const calendarConfigured =
+            data.settings?.financialCalendarConfigured === true;
+
+        if (!calendarConfigured) {
+            return {
+                label: "Mes en curso",
+                icon: "",
+                color: "var(--color-text-muted)",
+                objectiveProgress: null
+            };
+        }
+
         const income =
             Number(summary.monthlyIncome) || 0;
 
@@ -101,7 +113,7 @@ const AtlasUI = {
 
         if (income <= 0) {
             return {
-                label: "Sin datos",
+                label: "Sin ingresos registrados",
                 icon: "⚪",
                 color: "var(--color-text-muted)",
                 objectiveProgress: 0
@@ -111,46 +123,32 @@ const AtlasUI = {
         const targetSavings =
             income * (goalPercent / 100);
 
-        const availableForExpenses =
-            Math.max(
-                0,
-                income - targetSavings - invested
-            );
+        const plannedIncomeToDate =
+            Number(
+                data.settings?.plannedIncomeToDate
+            ) || income;
 
-        const today = new Date();
+        const plannedExpensesToDate =
+            Number(
+                data.settings?.plannedExpensesToDate
+            ) || 0;
 
-        const daysInMonth = new Date(
-            today.getFullYear(),
-            today.getMonth() + 1,
-            0
-        ).getDate();
+        const plannedInvestmentToDate =
+            Number(
+                data.settings?.plannedInvestmentToDate
+            ) || 0;
 
-        const monthProgress =
-            today.getDate() / daysInMonth;
-
-        const expectedExpensesToday =
-            availableForExpenses * monthProgress;
-
-        const expensePace =
-            expectedExpensesToday > 0
-                ? expenses / expectedExpensesToday
-                : 0;
+        const expectedSavingsToday =
+            plannedIncomeToDate -
+            plannedExpensesToDate -
+            plannedInvestmentToDate;
 
         const objectiveProgress =
             targetSavings > 0
                 ? (savings / targetSavings) * 100
                 : 0;
 
-        if (expensePace <= 0.9) {
-            return {
-                label: "Vas por delante",
-                icon: "🟢",
-                color: "var(--color-success)",
-                objectiveProgress
-            };
-        }
-
-        if (expensePace <= 1.05) {
+        if (expectedSavingsToday <= 0) {
             return {
                 label: "En línea",
                 icon: "🟢",
@@ -159,7 +157,28 @@ const AtlasUI = {
             };
         }
 
-        if (expensePace <= 1.2) {
+        const pace =
+            savings / expectedSavingsToday;
+
+        if (pace >= 1.1) {
+            return {
+                label: "Vas por delante",
+                icon: "🟢",
+                color: "var(--color-success)",
+                objectiveProgress
+            };
+        }
+
+        if (pace >= 0.9) {
+            return {
+                label: "En línea",
+                icon: "🟢",
+                color: "var(--color-success)",
+                objectiveProgress
+            };
+        }
+
+        if (pace >= 0.75) {
             return {
                 label: "Vigila el gasto",
                 icon: "🟡",
@@ -168,7 +187,7 @@ const AtlasUI = {
             };
         }
 
-        if (expensePace <= 1.4) {
+        if (pace >= 0.5) {
             return {
                 label: "Ritmo insuficiente",
                 icon: "🟠",
@@ -200,7 +219,10 @@ const AtlasUI = {
 
         const messages = {
 
-            "Sin datos":
+            "Mes en curso":
+                "Atlas está registrando la evolución del mes.",
+
+            "Sin ingresos registrados":
                 "Registra tus ingresos para analizar el mes.",
 
             "Vas por delante":
@@ -237,21 +259,28 @@ const AtlasUI = {
         const savingsStatus =
             this.savingsStatus(data, summary);
 
-        const objectiveProgress =
-            Math.max(
-                0,
-                Math.min(
-                    999,
-                    savingsStatus.objectiveProgress
-                )
-            );
-
         const investmentNote =
             summary.investedCapital > 0
                 ? `${profitability >= 0 ? "+" : ""}${this.formatPercent(
                     profitability
                 )}`
                 : "Sin aportaciones";
+
+        const savingsDetail =
+            savingsStatus.objectiveProgress === null
+                ? savingsStatus.label
+                : `
+                    ${savingsStatus.icon}
+                    ${savingsStatus.label}
+                    <br>
+                    ${Math.max(
+                        0,
+                        Math.min(
+                            999,
+                            savingsStatus.objectiveProgress
+                        )
+                    ).toFixed(0)}% objetivo
+                `;
 
         return `
             <div class="app">
@@ -316,20 +345,11 @@ const AtlasUI = {
                         "
                     >
 
-                        <div
-                            class="label"
-                            style="font-size:11px"
-                        >
+                        <div class="label">
                             💵 Liquidez
                         </div>
 
-                        <div
-                            class="num"
-                            style="
-                                font-size:24px;
-                                margin-top:12px;
-                            "
-                        >
+                        <div class="num">
                             ${this.formatCurrency(summary.liquidity)}
                         </div>
 
@@ -351,20 +371,11 @@ const AtlasUI = {
                         "
                     >
 
-                        <div
-                            class="label"
-                            style="font-size:11px"
-                        >
+                        <div class="label">
                             📈 Inversiones
                         </div>
 
-                        <div
-                            class="num"
-                            style="
-                                font-size:24px;
-                                margin-top:12px;
-                            "
-                        >
+                        <div class="num">
                             ${this.formatCurrency(summary.investments)}
                         </div>
 
@@ -386,20 +397,11 @@ const AtlasUI = {
                         "
                     >
 
-                        <div
-                            class="label"
-                            style="font-size:11px"
-                        >
+                        <div class="label">
                             💳 Deuda
                         </div>
 
-                        <div
-                            class="num"
-                            style="
-                                font-size:24px;
-                                margin-top:12px;
-                            "
-                        >
+                        <div class="num">
                             ${this.formatCurrency(summary.debt)}
                         </div>
 
@@ -434,20 +436,11 @@ const AtlasUI = {
                         "
                     >
 
-                        <div
-                            class="label"
-                            style="font-size:11px"
-                        >
+                        <div class="label">
                             🐷 Ahorro ${this.currentMonth()}
                         </div>
 
-                        <div
-                            class="num"
-                            style="
-                                font-size:24px;
-                                margin-top:12px;
-                            "
-                        >
+                        <div class="num">
                             ${this.formatCurrency(
                                 summary.monthlySavings
                             )}
@@ -459,13 +452,7 @@ const AtlasUI = {
                                 color:${savingsStatus.color};
                             "
                         >
-                            ${savingsStatus.icon}
-                            ${savingsStatus.label}
-
-                            <br>
-
-                            ${objectiveProgress.toFixed(0)}%
-                            objetivo
+                            ${savingsDetail}
                         </div>
 
                     </button>
@@ -482,13 +469,7 @@ const AtlasUI = {
 
                     <div class="insight">
 
-                        <div
-                            class="badge"
-                            style="
-                                width:36px;
-                                height:36px;
-                            "
-                        >
+                        <div class="badge">
                             ✨
                         </div>
 
@@ -609,11 +590,9 @@ const AtlasUI = {
                 <section class="panel">
 
                     <div class="panelhead">
-
                         <h2>
                             Objetivo de ahorro
                         </h2>
-
                     </div>
 
                     <div class="goal">
@@ -659,7 +638,66 @@ const AtlasUI = {
         `;
     },
 
-    movements() {
+    movements(data) {
+
+        const list =
+            [...data.movements]
+                .sort(
+                    (a, b) =>
+                        String(b.date)
+                            .localeCompare(
+                                String(a.date)
+                            )
+                );
+
+        const movementLabel =
+            movement => {
+
+                if (
+                    movement.kind ===
+                    "debt_payment"
+                ) {
+                    return "Pago de deuda";
+                }
+
+                const labels = {
+                    income: "Ingreso",
+                    expense: "Gasto",
+                    transfer: "Traspaso",
+                    investment: "Inversión"
+                };
+
+                return (
+                    labels[movement.type] ||
+                    "Movimiento"
+                );
+            };
+
+        const movementAmount =
+            movement => {
+
+                if (
+                    movement.type ===
+                    "income"
+                ) {
+                    return `+${this.formatCurrency(
+                        movement.amount
+                    )}`;
+                }
+
+                if (
+                    movement.type ===
+                    "transfer"
+                ) {
+                    return this.formatCurrency(
+                        movement.amount
+                    );
+                }
+
+                return `−${this.formatCurrency(
+                    movement.amount
+                )}`;
+            };
 
         return `
 
@@ -677,29 +715,84 @@ const AtlasUI = {
 
                 <section class="panel">
 
-                    <div class="list">
+                    ${
+                        list.length === 0
+                            ? `
+                                <div class="list">
 
-                        <div class="row">
+                                    <div class="row">
 
-                            <div>
+                                        <div>
 
-                                <b>
-                                    Todavía no hay movimientos
-                                </b>
+                                            <b>
+                                                Todavía no hay movimientos
+                                            </b>
 
-                                <small>
+                                            <small>
+                                                Aquí aparecerán tus ingresos,
+                                                gastos, traspasos, inversiones
+                                                y pagos de deuda.
+                                            </small>
 
-                                    Aquí aparecerán tus ingresos,
-                                    gastos, traspasos, inversiones
-                                    y pagos de deuda.
+                                        </div>
 
-                                </small>
+                                    </div>
 
-                            </div>
+                                </div>
+                            `
+                            : `
+                                <div class="list">
 
-                        </div>
+                                    ${list.map(movement => `
 
-                    </div>
+                                        <div class="row">
+
+                                            <div>
+
+                                                <b>
+                                                    ${
+                                                        movement.category ||
+                                                        movementLabel(
+                                                            movement
+                                                        )
+                                                    }
+                                                </b>
+
+                                                <small>
+                                                    ${movement.date}
+                                                    ·
+                                                    ${movementLabel(
+                                                        movement
+                                                    )}
+                                                </small>
+
+                                            </div>
+
+                                            <strong
+                                                style="
+                                                    color:${
+                                                        movement.type ===
+                                                        "income"
+                                                            ? "var(--color-success)"
+                                                            : movement.type ===
+                                                              "transfer"
+                                                                ? "var(--color-primary)"
+                                                                : "var(--color-danger)"
+                                                    };
+                                                "
+                                            >
+                                                ${movementAmount(
+                                                    movement
+                                                )}
+                                            </strong>
+
+                                        </div>
+
+                                    `).join("")}
+
+                                </div>
+                            `
+                    }
 
                 </section>
 
@@ -803,11 +896,9 @@ const AtlasUI = {
                 <section class="panel">
 
                     <div class="panelhead">
-
                         <h2>
                             Evolución
                         </h2>
-
                     </div>
 
                     <div class="chart">
@@ -934,9 +1025,7 @@ const AtlasUI = {
         this._toastTimer =
             setTimeout(
                 () => {
-
                     root.innerHTML = "";
-
                 },
                 2500
             );
