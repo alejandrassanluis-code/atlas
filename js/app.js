@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    app.js
-   Sprint 4.0 — Inicio limpio y ajustes conectados
+   Sprint 4.0 — Limpieza visual y navegación
 ========================================================== */
 
 const AtlasApp = {
@@ -19,6 +19,8 @@ const AtlasApp = {
     trendsPeriod: 6,
 
     trendMetric: "savings",
+
+    modalObserver: null,
 
     init() {
 
@@ -41,6 +43,8 @@ const AtlasApp = {
             "savings";
 
         this.bindEvents();
+
+        this.observeModals();
 
         this.render();
 
@@ -330,6 +334,45 @@ const AtlasApp = {
 
     },
 
+    observeModals() {
+
+        const modalRoot =
+            document.getElementById(
+                "modal-root"
+            );
+
+        if (!modalRoot) {
+            return;
+        }
+
+        if (this.modalObserver) {
+
+            this.modalObserver.disconnect();
+
+        }
+
+        this.modalObserver =
+            new MutationObserver(
+                () => {
+
+                    this.cleanSettingsNotices();
+
+                }
+            );
+
+        this.modalObserver.observe(
+            modalRoot,
+            {
+                childList:
+                    true,
+
+                subtree:
+                    true
+            }
+        );
+
+    },
+
     openNewMovement() {
 
         AtlasMovements.open(
@@ -389,6 +432,8 @@ const AtlasApp = {
 
             }
         );
+
+        this.cleanSettingsNotices();
 
     },
 
@@ -548,7 +593,7 @@ const AtlasApp = {
 
     },
 
-    removeDashboardInsight() {
+    cleanDashboard() {
 
         if (
             this.route !==
@@ -557,25 +602,196 @@ const AtlasApp = {
             return;
         }
 
-        const insight =
-            document.querySelector(
-                "#app .insight"
+        const app =
+            document.getElementById(
+                "app"
             );
 
-        if (!insight) {
+        if (!app) {
             return;
         }
 
-        const panel =
-            insight.closest(
-                ".panel"
+        const insight =
+            app.querySelector(
+                ".insight"
             );
 
-        if (panel) {
+        if (insight) {
 
-            panel.remove();
+            const panel =
+                insight.closest(
+                    ".panel"
+                );
+
+            if (panel) {
+
+                panel.remove();
+
+            }
 
         }
+
+        const dashboard =
+            app.querySelector(
+                ".app"
+            );
+
+        if (!dashboard) {
+            return;
+        }
+
+        const lastVisibleElement =
+            Array.from(
+                dashboard.children
+            )
+                .filter(
+                    element =>
+                        element.offsetParent !==
+                        null
+                )
+                .pop();
+
+        if (lastVisibleElement) {
+
+            lastVisibleElement.style
+                .marginBottom =
+                "0";
+
+        }
+
+        dashboard.style.paddingBottom =
+            "110px";
+
+        dashboard.style.minHeight =
+            "auto";
+
+    },
+
+    enhanceNavigation() {
+
+        const fab =
+            document.querySelector(
+                ".tabbar .fab"
+            );
+
+        if (fab) {
+
+            fab.style.fontSize =
+                "38px";
+
+            fab.style.fontWeight =
+                "400";
+
+            fab.style.lineHeight =
+                "1";
+
+            fab.style.display =
+                "flex";
+
+            fab.style.alignItems =
+                "center";
+
+            fab.style.justifyContent =
+                "center";
+
+            fab.style.paddingBottom =
+                "5px";
+
+            fab.style.width =
+                "64px";
+
+            fab.style.height =
+                "64px";
+
+            fab.style.minWidth =
+                "64px";
+
+            fab.style.minHeight =
+                "64px";
+
+        }
+
+        document
+            .querySelectorAll(
+                ".tabbar button:not(.fab) > span"
+            )
+            .forEach(
+                icon => {
+
+                    icon.style.fontSize =
+                        "28px";
+
+                    icon.style.lineHeight =
+                        "1";
+
+                }
+            );
+
+    },
+
+    cleanSettingsNotices() {
+
+        const modalRoot =
+            document.getElementById(
+                "modal-root"
+            );
+
+        if (!modalRoot) {
+            return;
+        }
+
+        modalRoot
+            .querySelectorAll(
+                ".atlas-settings-warning"
+            )
+            .forEach(
+                notice => {
+
+                    const text =
+                        String(
+                            notice.textContent ||
+                            ""
+                        )
+                            .replace(
+                                /\s+/g,
+                                " "
+                            )
+                            .trim()
+                            .toLowerCase();
+
+                    const isInitialBalanceNotice =
+                        text.includes(
+                            "los saldos iniciales"
+                        ) &&
+                        (
+                            text.includes(
+                                "movimientos"
+                            ) ||
+                            text.includes(
+                                "ya no se pueden editar"
+                            )
+                        );
+
+                    if (
+                        isInitialBalanceNotice
+                    ) {
+
+                        notice.remove();
+
+                    }
+
+                }
+            );
+
+    },
+
+    applyInterfaceFixes() {
+
+        this.cleanDashboard();
+
+        this.enhanceNavigation();
+
+        this.cleanSettingsNotices();
 
     },
 
@@ -613,7 +829,7 @@ const AtlasApp = {
             }
         );
 
-        this.removeDashboardInsight();
+        this.applyInterfaceFixes();
 
     },
 
