@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    app.js
-   Arranque y navegación principal
+   Sprint 1
 ========================================================== */
 
 const AtlasApp = {
@@ -33,6 +33,8 @@ const AtlasApp = {
 
                 if (routeButton) {
 
+                    event.preventDefault();
+
                     this.navigate(
                         routeButton.dataset.route
                     );
@@ -41,14 +43,36 @@ const AtlasApp = {
 
                 }
 
-                const addMovementButton =
+                const action =
                     event.target.closest(
-                        "[data-action='add-movement']"
+                        "[data-action]"
                     );
 
-                if (addMovementButton) {
+                if (!action) {
 
-                    this.navigate("movements");
+                    return;
+
+                }
+
+                switch (
+                    action.dataset.action
+                ) {
+
+                    case "newMovement":
+
+                        AtlasUI.toast(
+                            "Los movimientos llegarán en el Sprint 2."
+                        );
+
+                        break;
+
+                    case "editAccounts":
+
+                        AtlasUI.toast(
+                            "La edición de saldos llegará en el siguiente paso del Sprint 1."
+                        );
+
+                        break;
 
                 }
 
@@ -64,8 +88,11 @@ const AtlasApp = {
         this.render();
 
         window.scrollTo({
+
             top: 0,
+
             behavior: "smooth"
+
         });
 
     },
@@ -73,8 +100,11 @@ const AtlasApp = {
     render() {
 
         AtlasUI.render(
+
             this.route,
+
             this.data
+
         );
 
     },
@@ -82,19 +112,76 @@ const AtlasApp = {
     save() {
 
         AtlasStorage.save(
-            this.data
-        );
 
-        this.render();
+            this.data
+
+        );
 
     },
 
     reset() {
 
         this.data =
+
             AtlasStorage.reset();
 
         this.route = "home";
+
+        this.render();
+
+    },
+       updateAccountBalance(accountId, value) {
+
+        const account = this.data.accounts.find(
+            account => account.id === accountId
+        );
+
+        if (!account) {
+
+            return false;
+
+        }
+
+        account.balance = Number(value) || 0;
+
+        this.save();
+
+        this.render();
+
+        return true;
+
+    },
+
+    updateInvestment(accountId, invested, currentValue) {
+
+        const account = this.data.accounts.find(
+            account => account.id === accountId
+        );
+
+        if (!account) {
+
+            return false;
+
+        }
+
+        account.invested = Number(invested) || 0;
+
+        account.balance = Number(currentValue) || 0;
+
+        this.save();
+
+        this.render();
+
+        return true;
+
+    },
+
+    updateSavingGoal(percent) {
+
+        this.data.settings.monthlySavingGoal =
+            Number(percent) || 0;
+
+        this.save();
 
         this.render();
 
@@ -103,10 +190,13 @@ const AtlasApp = {
 };
 
 document.addEventListener(
+
     "DOMContentLoaded",
+
     () => {
 
         AtlasApp.init();
 
     }
+
 );
