@@ -1,12 +1,13 @@
 /* ==========================================================
    ATLAS
    data.js
-   Configuración inicial
 ========================================================== */
 
 const AtlasData = {
 
     version: "1.0",
+
+    initialized: false,
 
     settings: {
 
@@ -14,121 +15,103 @@ const AtlasData = {
 
         locale: "es-ES",
 
-        monthlySavingGoal: 25,
-
-        firstDayOfMonth: 1
+        monthlySavingGoal: 25
 
     },
 
     accounts: [
 
+        // ----------- LIQUIDEZ -----------
+
         {
             id: "bbva_nomina",
             name: "BBVA Cuenta Nómina",
-            type: "liquidity",
-            balance: 0,
-            icon: "🏦"
+            group: "liquidity",
+            type: "bank",
+            balance: 0
         },
 
         {
             id: "bbva_secundaria",
             name: "BBVA Cuenta Secundaria",
-            type: "liquidity",
-            balance: 0,
-            icon: "🏦"
+            group: "liquidity",
+            type: "bank",
+            balance: 0
         },
 
         {
             id: "trade_cash",
             name: "Trade Republic Efectivo",
-            type: "liquidity",
-            balance: 0,
-            icon: "💶"
+            group: "liquidity",
+            type: "broker_cash",
+            balance: 0
         },
 
+        // ----------- INVERSIONES -----------
+
         {
-            id: "trade_etf",
+            id: "trade_etfs",
             name: "Trade Republic ETFs",
-            type: "investment",
-            balance: 0,
-            profitability: 0,
-            icon: "📈"
+            group: "investment",
+            type: "etf",
+            invested: 0,
+            balance: 0
         },
 
         {
             id: "revolut_bot",
             name: "Revolut Bot",
-            type: "investment",
-            balance: 0,
-            profitability: 0,
-            icon: "🤖"
+            group: "investment",
+            type: "roboadvisor",
+            invested: 0,
+            balance: 0
+        },
+
+        // ----------- DEUDAS -----------
+
+        {
+            id: "loan_car",
+
+            name: "Préstamo coche",
+
+            group: "debt",
+
+            type: "loan",
+
+            balance: 0
         },
 
         {
             id: "amex",
+
             name: "American Express",
-            type: "creditcard",
-            balance: 0,
-            icon: "💳"
+
+            group: "debt",
+
+            type: "credit",
+
+            balance: 0
         },
 
         {
             id: "bbva_credit",
-            name: "Tarjeta Crédito BBVA",
-            type: "creditcard",
-            balance: 0,
-            icon: "💳"
-        },
 
-        {
-            id: "loan_car",
-            name: "Préstamo Coche",
-            type: "loan",
-            balance: 0,
-            icon: "🚗"
+            name: "Tarjeta Crédito BBVA",
+
+            group: "debt",
+
+            type: "credit",
+
+            balance: 0
         }
 
     ],
-
-    categories: {
-
-        income: [
-
-            "Nómina",
-            "Bonus",
-            "Intereses",
-            "Dividendos",
-            "Otros"
-
-        ],
-
-        expense: [
-
-            "Vivienda",
-            "Supermercado",
-            "Restaurantes",
-            "Ocio",
-            "Transporte",
-            "Viajes",
-            "Salud",
-            "Compras",
-            "Suscripciones",
-            "Seguros",
-            "Impuestos",
-            "Coche",
-            "Otros"
-
-        ]
-
-    },
 
     movements: [],
 
     budgets: [],
 
     goals: [],
-
-    investments: [],
 
     snapshots: []
 
