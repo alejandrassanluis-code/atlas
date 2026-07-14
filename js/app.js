@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    app.js
-   Sprint 1
+   Sprint 2.1 — Integración de configuración inicial
 ========================================================== */
 
 const AtlasApp = {
@@ -12,11 +12,39 @@ const AtlasApp = {
 
     init() {
 
-        this.data = AtlasStorage.load();
+        this.data =
+            AtlasStorage.load();
 
         this.bindEvents();
 
         this.render();
+
+        if (
+            AtlasSetup.shouldOpen(
+                this.data
+            )
+        ) {
+
+            AtlasSetup.open(
+                this.data,
+                updatedData => {
+
+                    this.data =
+                        updatedData;
+
+                    this.route =
+                        "home";
+
+                    this.render();
+
+                    AtlasUI.toast(
+                        "Atlas ya está configurado."
+                    );
+
+                }
+            );
+
+        }
 
     },
 
@@ -36,40 +64,57 @@ const AtlasApp = {
                     event.preventDefault();
 
                     this.navigate(
-                        routeButton.dataset.route
+                        routeButton
+                            .dataset
+                            .route
                     );
+
+                    return;
+
+                }
+
+                const actionButton =
+                    event.target.closest(
+                        "[data-action]"
+                    );
+
+                if (!actionButton) {
 
                     return;
 
                 }
 
                 const action =
-                    event.target.closest(
-                        "[data-action]"
-                    );
+                    actionButton
+                        .dataset
+                        .action;
 
-                if (!action) {
-
-                    return;
-
-                }
-
-                switch (
-                    action.dataset.action
-                ) {
+                switch (action) {
 
                     case "newMovement":
 
                         AtlasUI.toast(
-                            "Los movimientos llegarán en el Sprint 2."
+                            "El registro de movimientos llegará en el Sprint 2.2."
                         );
 
                         break;
 
                     case "editAccounts":
 
-                        AtlasUI.toast(
-                            "La edición de saldos llegará en el siguiente paso del Sprint 1."
+                        AtlasSetup.open(
+                            this.data,
+                            updatedData => {
+
+                                this.data =
+                                    updatedData;
+
+                                this.render();
+
+                                AtlasUI.toast(
+                                    "Datos actualizados."
+                                );
+
+                            }
                         );
 
                         break;
@@ -83,16 +128,14 @@ const AtlasApp = {
 
     navigate(route) {
 
-        this.route = route;
+        this.route =
+            route || "home";
 
         this.render();
 
         window.scrollTo({
-
             top: 0,
-
             behavior: "smooth"
-
         });
 
     },
@@ -100,41 +143,41 @@ const AtlasApp = {
     render() {
 
         AtlasUI.render(
-
             this.route,
-
             this.data
-
         );
 
     },
 
     save() {
 
-        AtlasStorage.save(
+        const saved =
+            AtlasStorage.save(
+                this.data
+            );
 
-            this.data
+        if (!saved) {
 
-        );
+            AtlasUI.toast(
+                "No se pudieron guardar los datos."
+            );
 
-    },
+        }
 
-    reset() {
-
-        this.data =
-
-            AtlasStorage.reset();
-
-        this.route = "home";
-
-        this.render();
+        return saved;
 
     },
-       updateAccountBalance(accountId, value) {
 
-        const account = this.data.accounts.find(
-            account => account.id === accountId
-        );
+    updateAccountBalance(
+        accountId,
+        value
+    ) {
+
+        const account =
+            this.data.accounts.find(
+                item =>
+                    item.id === accountId
+            );
 
         if (!account) {
 
@@ -142,7 +185,8 @@ const AtlasApp = {
 
         }
 
-        account.balance = Number(value) || 0;
+        account.balance =
+            Number(value) || 0;
 
         this.save();
 
@@ -152,11 +196,17 @@ const AtlasApp = {
 
     },
 
-    updateInvestment(accountId, invested, currentValue) {
+    updateInvestment(
+        accountId,
+        invested,
+        currentValue
+    ) {
 
-        const account = this.data.accounts.find(
-            account => account.id === accountId
-        );
+        const account =
+            this.data.accounts.find(
+                item =>
+                    item.id === accountId
+            );
 
         if (!account) {
 
@@ -164,9 +214,11 @@ const AtlasApp = {
 
         }
 
-        account.invested = Number(invested) || 0;
+        account.invested =
+            Number(invested) || 0;
 
-        account.balance = Number(currentValue) || 0;
+        account.balance =
+            Number(currentValue) || 0;
 
         this.save();
 
@@ -178,25 +230,59 @@ const AtlasApp = {
 
     updateSavingGoal(percent) {
 
-        this.data.settings.monthlySavingGoal =
+        this.data.settings
+            .monthlySavingGoal =
             Number(percent) || 0;
 
         this.save();
 
         this.render();
 
+    },
+
+    reset() {
+
+        const confirmed =
+            AtlasUI.confirm(
+                "Reiniciar Atlas",
+                "Se eliminarán todos los datos guardados en este dispositivo."
+            );
+
+        if (!confirmed) {
+
+            return;
+
+        }
+
+        this.data =
+            AtlasStorage.reset();
+
+        this.route =
+            "home";
+
+        this.render();
+
+        AtlasSetup.open(
+            this.data,
+            updatedData => {
+
+                this.data =
+                    updatedData;
+
+                this.render();
+
+            }
+        );
+
     }
 
 };
 
 document.addEventListener(
-
     "DOMContentLoaded",
-
     () => {
 
         AtlasApp.init();
 
     }
-
 );
