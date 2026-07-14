@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    ui.js
-   Sprint 3.2 — Movimientos mensuales y análisis comparativo
+   Sprint 3.3 — Análisis mensual y tendencias
 ========================================================== */
 
 const AtlasUI = {
@@ -103,6 +103,37 @@ const AtlasUI = {
             label.charAt(0).toUpperCase() +
             label.slice(1)
         );
+
+    },
+
+    formatShortMonth(monthKey) {
+
+        const [
+            year,
+            month
+        ] = String(monthKey || "")
+            .split("-")
+            .map(Number);
+
+        if (!year || !month) {
+            return "";
+        }
+
+        return new Intl.DateTimeFormat(
+            "es-ES",
+            {
+                month: "short"
+            }
+        )
+            .format(
+                new Date(
+                    year,
+                    month - 1,
+                    1
+                )
+            )
+            .replace(".", "")
+            .toUpperCase();
 
     },
 
@@ -293,6 +324,100 @@ const AtlasUI = {
                 }
 
             </section>
+
+        `;
+
+    },
+
+    analysisTabs(activeView) {
+
+        return `
+
+            <div
+                style="
+                    display:grid;
+                    grid-template-columns:
+                        repeat(
+                            2,
+                            minmax(0,1fr)
+                        );
+                    gap:8px;
+                    padding:5px;
+                    margin-bottom:18px;
+                    border-radius:18px;
+                    background:
+                        rgba(
+                            255,
+                            255,
+                            255,
+                            0.04
+                        );
+                    border:
+                        1px solid
+                        rgba(
+                            145,
+                            164,
+                            202,
+                            0.14
+                        );
+                "
+            >
+
+                <button
+                    type="button"
+                    data-action="showMonthlyAnalysis"
+                    style="
+                        min-height:46px;
+                        border-radius:14px;
+                        font-weight:700;
+                        color:${
+                            activeView === "monthly"
+                                ? "#ffffff"
+                                : "var(--color-text-muted)"
+                        };
+                        background:${
+                            activeView === "monthly"
+                                ? "rgba(77,163,255,0.18)"
+                                : "transparent"
+                        };
+                        border:${
+                            activeView === "monthly"
+                                ? "1px solid rgba(77,163,255,0.25)"
+                                : "1px solid transparent"
+                        };
+                    "
+                >
+                    Mensual
+                </button>
+
+                <button
+                    type="button"
+                    data-action="showTrendsAnalysis"
+                    style="
+                        min-height:46px;
+                        border-radius:14px;
+                        font-weight:700;
+                        color:${
+                            activeView === "trends"
+                                ? "#ffffff"
+                                : "var(--color-text-muted)"
+                        };
+                        background:${
+                            activeView === "trends"
+                                ? "rgba(77,163,255,0.18)"
+                                : "transparent"
+                        };
+                        border:${
+                            activeView === "trends"
+                                ? "1px solid rgba(77,163,255,0.25)"
+                                : "1px solid transparent"
+                        };
+                    "
+                >
+                    Tendencias
+                </button>
+
+            </div>
 
         `;
 
@@ -1408,7 +1533,7 @@ const AtlasUI = {
 
     },
 
-    analysis(
+    monthlyAnalysis(
         data,
         options = {}
     ) {
@@ -1460,6 +1585,1029 @@ const AtlasUI = {
 
         return `
 
+            ${this.monthSelector({
+                monthKey:
+                    analysisMonth,
+
+                isCurrentMonth,
+
+                previousAction:
+                    "previousAnalysisMonth",
+
+                nextAction:
+                    "nextAnalysisMonth",
+
+                currentAction:
+                    "currentAnalysisMonth",
+
+                subtitle:
+                    isCurrentMonth
+                        ? "Mes actual"
+                        : "Histórico mensual"
+            })}
+
+            <section
+                class="panel"
+                style="
+                    margin-bottom:18px;
+                "
+            >
+
+                <div class="panelhead">
+
+                    <div>
+
+                        <h2>
+                            Comparativa mensual
+                        </h2>
+
+                        <p
+                            class="note"
+                            style="
+                                margin-top:5px;
+                            "
+                        >
+                            Frente a
+                            ${this.formatMonthKey(
+                                comparison.previousMonthKey
+                            )}
+                        </p>
+
+                    </div>
+
+                </div>
+
+                <div
+                    class="grid"
+                    style="
+                        display:grid;
+                        grid-template-columns:
+                            repeat(
+                                2,
+                                minmax(0,1fr)
+                            );
+                        gap:12px;
+                        margin-top:14px;
+                    "
+                >
+
+                    ${this.comparisonCard(
+                        "🟢 Ingresos",
+                        comparison.income,
+                        true
+                    )}
+
+                    ${this.comparisonCard(
+                        "🔴 Gastos",
+                        comparison.expenses,
+                        false
+                    )}
+
+                    ${this.comparisonCard(
+                        "📈 Invertido",
+                        comparison.invested,
+                        true
+                    )}
+
+                    ${this.comparisonCard(
+                        "💸 Salidas de caja",
+                        comparison.cashOutflow,
+                        false
+                    )}
+
+                </div>
+
+            </section>
+
+            <section class="panel">
+
+                <div class="panelhead">
+
+                    <h2>
+                        Resultado del mes
+                    </h2>
+
+                </div>
+
+                <div
+                    class="list"
+                    style="
+                        margin-top:8px;
+                    "
+                >
+
+                    <div class="row">
+
+                        <div>
+
+                            <b>
+                                Ahorro mensual
+                            </b>
+
+                            <small>
+                                Ingresos − gastos − inversión
+                            </small>
+
+                            <small
+                                style="
+                                    color:
+                                        ${savingComparison.color};
+                                    margin-top:4px;
+                                "
+                            >
+                                ${savingComparison.icon}
+                                ${savingComparison.text}
+                            </small>
+
+                        </div>
+
+                        <strong
+                            style="
+                                color:${
+                                    summary.monthlySavings >= 0
+                                        ? "var(--color-success)"
+                                        : "var(--color-danger)"
+                                };
+                            "
+                        >
+                            ${this.formatCurrency(
+                                summary.monthlySavings
+                            )}
+                        </strong>
+
+                    </div>
+
+                    <div class="row">
+
+                        <div>
+
+                            <b>
+                                Tasa de ahorro
+                            </b>
+
+                            <small>
+                                Porcentaje sobre ingresos
+                            </small>
+
+                            <small
+                                style="
+                                    color:
+                                        ${rateComparison.color};
+                                    margin-top:4px;
+                                "
+                            >
+                                ${rateComparison.icon}
+                                ${rateComparison.text}
+                            </small>
+
+                        </div>
+
+                        <strong>
+                            ${this.formatPercent(
+                                summary.monthlySavingRate
+                            )}
+                        </strong>
+
+                    </div>
+
+                    <div class="row">
+
+                        <div>
+
+                            <b>
+                                Movimientos
+                            </b>
+
+                            <small>
+                                Registros del mes
+                            </small>
+
+                        </div>
+
+                        <strong>
+                            ${monthMovements.length}
+                        </strong>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+            <section class="panel">
+
+                <div class="panelhead">
+
+                    <div>
+
+                        <h2>
+                            Gastos por categoría
+                        </h2>
+
+                        <p
+                            class="note"
+                            style="
+                                margin-top:5px;
+                            "
+                        >
+                            Distribución del consumo real
+                        </p>
+
+                    </div>
+
+                </div>
+
+                ${this.categoryRows(
+                    comparison.categories
+                )}
+
+            </section>
+
+            ${
+                monthMovements.length === 0
+                    ? `
+
+                        <section
+                            class="panel"
+                            style="
+                                text-align:center;
+                                padding:24px 18px;
+                            "
+                        >
+
+                            <div
+                                style="
+                                    font-size:30px;
+                                    margin-bottom:10px;
+                                "
+                            >
+                                🗓️
+                            </div>
+
+                            <strong>
+                                Sin actividad registrada
+                            </strong>
+
+                            <p
+                                class="note"
+                                style="
+                                    margin-top:8px;
+                                "
+                            >
+                                No hay datos financieros en
+                                ${this.formatMonthKey(
+                                    analysisMonth
+                                )}.
+                            </p>
+
+                        </section>
+
+                    `
+                    : ""
+            }
+
+        `;
+
+    },
+
+    trendPeriodSelector(activePeriod) {
+
+        return `
+
+            <div
+                style="
+                    display:grid;
+                    grid-template-columns:
+                        repeat(
+                            3,
+                            minmax(0,1fr)
+                        );
+                    gap:8px;
+                    margin-bottom:18px;
+                "
+            >
+
+                ${[
+                    3,
+                    6,
+                    12
+                ].map(period => `
+
+                    <button
+                        type="button"
+                        data-action="setTrendsPeriod"
+                        data-period="${period}"
+                        style="
+                            min-height:44px;
+                            border-radius:14px;
+                            font-weight:700;
+                            color:${
+                                activePeriod === period
+                                    ? "#ffffff"
+                                    : "var(--color-text-muted)"
+                            };
+                            background:${
+                                activePeriod === period
+                                    ? "rgba(77,163,255,0.18)"
+                                    : "rgba(255,255,255,0.03)"
+                            };
+                            border:
+                                1px solid
+                                ${
+                                    activePeriod === period
+                                        ? "rgba(77,163,255,0.3)"
+                                        : "rgba(145,164,202,0.12)"
+                                };
+                        "
+                    >
+                        ${period} meses
+                    </button>
+
+                `).join("")}
+
+            </div>
+
+        `;
+
+    },
+
+    trendMetricRows(trend) {
+
+        return `
+
+            <div class="list">
+
+                <div class="row">
+
+                    <div>
+
+                        <b>
+                            Ingresos medios
+                        </b>
+
+                        <small>
+                            Promedio mensual
+                        </small>
+
+                    </div>
+
+                    <strong>
+                        ${this.formatCurrency(
+                            trend.averages.income
+                        )}
+                    </strong>
+
+                </div>
+
+                <div class="row">
+
+                    <div>
+
+                        <b>
+                            Gastos medios
+                        </b>
+
+                        <small>
+                            Promedio mensual
+                        </small>
+
+                    </div>
+
+                    <strong>
+                        ${this.formatCurrency(
+                            trend.averages.expenses
+                        )}
+                    </strong>
+
+                </div>
+
+                <div class="row">
+
+                    <div>
+
+                        <b>
+                            Ahorro medio
+                        </b>
+
+                        <small>
+                            Promedio mensual
+                        </small>
+
+                    </div>
+
+                    <strong
+                        style="
+                            color:${
+                                trend.averages.savings >= 0
+                                    ? "var(--color-success)"
+                                    : "var(--color-danger)"
+                            };
+                        "
+                    >
+                        ${this.formatCurrency(
+                            trend.averages.savings
+                        )}
+                    </strong>
+
+                </div>
+
+                <div class="row">
+
+                    <div>
+
+                        <b>
+                            Tasa media de ahorro
+                        </b>
+
+                        <small>
+                            Sobre los ingresos
+                        </small>
+
+                    </div>
+
+                    <strong>
+                        ${this.formatPercent(
+                            trend.averages.savingRate
+                        )}
+                    </strong>
+
+                </div>
+
+            </div>
+
+        `;
+
+    },
+
+    trendBars(
+        months,
+        property,
+        positiveNegative = false
+    ) {
+
+        const values =
+            months.map(
+                month =>
+                    Number(
+                        month[property]
+                    ) || 0
+            );
+
+        const maximum =
+            Math.max(
+                1,
+                ...values.map(
+                    value =>
+                        Math.abs(value)
+                )
+            );
+
+        return `
+
+            <div
+                style="
+                    display:grid;
+                    grid-template-columns:
+                        repeat(
+                            ${Math.max(
+                                1,
+                                months.length
+                            )},
+                            minmax(26px,1fr)
+                        );
+                    align-items:end;
+                    gap:8px;
+                    min-height:190px;
+                    padding-top:14px;
+                    overflow-x:auto;
+                "
+            >
+
+                ${months
+                    .map(
+                        month => {
+
+                            const value =
+                                Number(
+                                    month[property]
+                                ) || 0;
+
+                            const height =
+                                Math.max(
+                                    value === 0
+                                        ? 4
+                                        : 14,
+                                    (
+                                        Math.abs(value) /
+                                        maximum
+                                    ) * 120
+                                );
+
+                            const barColor =
+                                positiveNegative
+                                    ? (
+                                        value >= 0
+                                            ? "var(--color-success)"
+                                            : "var(--color-danger)"
+                                    )
+                                    : "var(--color-primary)";
+
+                            return `
+
+                                <div
+                                    style="
+                                        min-width:30px;
+                                        display:flex;
+                                        flex-direction:column;
+                                        align-items:center;
+                                        justify-content:flex-end;
+                                        gap:7px;
+                                    "
+                                >
+
+                                    <small
+                                        style="
+                                            color:
+                                                ${barColor};
+                                            font-size:10px;
+                                            white-space:nowrap;
+                                        "
+                                    >
+                                        ${this.formatCurrency(
+                                            value
+                                        )}
+                                    </small>
+
+                                    <div
+                                        style="
+                                            width:100%;
+                                            max-width:34px;
+                                            height:${height}px;
+                                            border-radius:
+                                                10px 10px 4px 4px;
+                                            background:
+                                                ${barColor};
+                                            opacity:${
+                                                value === 0
+                                                    ? "0.25"
+                                                    : "0.85"
+                                            };
+                                        "
+                                    ></div>
+
+                                    <small
+                                        class="note"
+                                        style="
+                                            font-size:10px;
+                                        "
+                                    >
+                                        ${this.formatShortMonth(
+                                            month.monthKey
+                                        )}
+                                    </small>
+
+                                </div>
+
+                            `;
+
+                        }
+                    )
+                    .join("")}
+
+            </div>
+
+        `;
+
+    },
+
+    trendHighlights(trend) {
+
+        const best =
+            trend.bestSavingsMonth;
+
+        const worst =
+            trend.worstSavingsMonth;
+
+        const highestExpenses =
+            trend.highestExpenseMonth;
+
+        return `
+
+            <div class="list">
+
+                <div class="row">
+
+                    <div>
+
+                        <b>
+                            Mejor mes de ahorro
+                        </b>
+
+                        <small>
+                            ${
+                                best
+                                    ? this.formatMonthKey(
+                                        best.monthKey
+                                    )
+                                    : "Sin datos"
+                            }
+                        </small>
+
+                    </div>
+
+                    <strong
+                        style="
+                            color:
+                                var(--color-success);
+                        "
+                    >
+                        ${
+                            best
+                                ? this.formatCurrency(
+                                    best.savings
+                                )
+                                : "—"
+                        }
+                    </strong>
+
+                </div>
+
+                <div class="row">
+
+                    <div>
+
+                        <b>
+                            Peor mes de ahorro
+                        </b>
+
+                        <small>
+                            ${
+                                worst
+                                    ? this.formatMonthKey(
+                                        worst.monthKey
+                                    )
+                                    : "Sin datos"
+                            }
+                        </small>
+
+                    </div>
+
+                    <strong
+                        style="
+                            color:
+                                var(--color-danger);
+                        "
+                    >
+                        ${
+                            worst
+                                ? this.formatCurrency(
+                                    worst.savings
+                                )
+                                : "—"
+                        }
+                    </strong>
+
+                </div>
+
+                <div class="row">
+
+                    <div>
+
+                        <b>
+                            Mes con más gastos
+                        </b>
+
+                        <small>
+                            ${
+                                highestExpenses
+                                    ? this.formatMonthKey(
+                                        highestExpenses.monthKey
+                                    )
+                                    : "Sin datos"
+                            }
+                        </small>
+
+                    </div>
+
+                    <strong>
+                        ${
+                            highestExpenses
+                                ? this.formatCurrency(
+                                    highestExpenses.expenses
+                                )
+                                : "—"
+                        }
+                    </strong>
+
+                </div>
+
+            </div>
+
+        `;
+
+    },
+
+    trendsAnalysis(
+        data,
+        options = {}
+    ) {
+
+        const trendsPeriod =
+            Number(
+                options.trendsPeriod
+            ) || 6;
+
+        const currentMonth =
+            options.currentMonth ||
+            AtlasCalculations.monthKey();
+
+        const trend =
+            AtlasCalculations
+                .trendSummary(
+                    data,
+                    trendsPeriod,
+                    currentMonth
+                );
+
+        const hasActivity =
+            trend.months.some(
+                month =>
+                    month.movements > 0
+            );
+
+        return `
+
+            ${this.trendPeriodSelector(
+                trendsPeriod
+            )}
+
+            <section
+                class="panel"
+                style="
+                    margin-bottom:18px;
+                "
+            >
+
+                <div class="panelhead">
+
+                    <div>
+
+                        <h2>
+                            Resumen del periodo
+                        </h2>
+
+                        <p
+                            class="note"
+                            style="
+                                margin-top:5px;
+                            "
+                        >
+                            ${
+                                this.formatMonthKey(
+                                    trend.startMonthKey
+                                )
+                            }
+                            —
+                            ${
+                                this.formatMonthKey(
+                                    trend.endMonthKey
+                                )
+                            }
+                        </p>
+
+                    </div>
+
+                </div>
+
+                ${this.trendMetricRows(
+                    trend
+                )}
+
+            </section>
+
+            <section class="panel">
+
+                <div class="panelhead">
+
+                    <div>
+
+                        <h2>
+                            Evolución del ahorro
+                        </h2>
+
+                        <p
+                            class="note"
+                            style="
+                                margin-top:5px;
+                            "
+                        >
+                            Resultado mensual
+                        </p>
+
+                    </div>
+
+                </div>
+
+                ${this.trendBars(
+                    trend.months,
+                    "savings",
+                    true
+                )}
+
+            </section>
+
+            <section class="panel">
+
+                <div class="panelhead">
+
+                    <div>
+
+                        <h2>
+                            Evolución de gastos
+                        </h2>
+
+                        <p
+                            class="note"
+                            style="
+                                margin-top:5px;
+                            "
+                        >
+                            Consumo real por mes
+                        </p>
+
+                    </div>
+
+                </div>
+
+                ${this.trendBars(
+                    trend.months,
+                    "expenses"
+                )}
+
+            </section>
+
+            <section class="panel">
+
+                <div class="panelhead">
+
+                    <div>
+
+                        <h2>
+                            Evolución de ingresos
+                        </h2>
+
+                        <p
+                            class="note"
+                            style="
+                                margin-top:5px;
+                            "
+                        >
+                            Ingresos registrados por mes
+                        </p>
+
+                    </div>
+
+                </div>
+
+                ${this.trendBars(
+                    trend.months,
+                    "income"
+                )}
+
+            </section>
+
+            <section class="panel">
+
+                <div class="panelhead">
+
+                    <h2>
+                        Meses destacados
+                    </h2>
+
+                </div>
+
+                ${this.trendHighlights(
+                    trend
+                )}
+
+            </section>
+
+            <section class="panel">
+
+                <div class="panelhead">
+
+                    <div>
+
+                        <h2>
+                            Categorías del periodo
+                        </h2>
+
+                        <p
+                            class="note"
+                            style="
+                                margin-top:5px;
+                            "
+                        >
+                            Gastos acumulados
+                        </p>
+
+                    </div>
+
+                </div>
+
+                ${this.categoryRows(
+                    trend.categories
+                )}
+
+            </section>
+
+            ${
+                !hasActivity
+                    ? `
+
+                        <section
+                            class="panel"
+                            style="
+                                text-align:center;
+                                padding:26px 18px;
+                            "
+                        >
+
+                            <div
+                                style="
+                                    font-size:30px;
+                                    margin-bottom:10px;
+                                "
+                            >
+                                📊
+                            </div>
+
+                            <strong>
+                                Todavía no hay histórico
+                            </strong>
+
+                            <p
+                                class="note"
+                                style="
+                                    margin-top:8px;
+                                "
+                            >
+                                Las tendencias aparecerán cuando
+                                existan movimientos en varios meses.
+                            </p>
+
+                        </section>
+
+                    `
+                    : ""
+            }
+
+            <section class="panel">
+
+                <div class="panelhead">
+
+                    <div>
+
+                        <h2>
+                            Patrimonio histórico
+                        </h2>
+
+                        <p
+                            class="note"
+                            style="
+                                margin-top:5px;
+                            "
+                        >
+                            Pendiente de snapshots mensuales
+                        </p>
+
+                    </div>
+
+                </div>
+
+                <p class="note">
+                    La evolución histórica de liquidez, inversiones,
+                    deuda y patrimonio se añadirá cuando Atlas guarde
+                    una fotografía de los saldos al cierre de cada mes.
+                </p>
+
+            </section>
+
+        `;
+
+    },
+
+    analysis(
+        data,
+        options = {}
+    ) {
+
+        const activeView =
+            options.analysisView ||
+            "monthly";
+
+        return `
+
             <div class="app">
 
                 ${this.header()}
@@ -1469,412 +2617,23 @@ const AtlasUI = {
                 </h1>
 
                 <p class="subtitle">
-                    Consulta los datos y comparativas de cada mes.
+                    Consulta un mes concreto o la evolución de varios meses.
                 </p>
 
-                ${this.monthSelector({
-                    monthKey:
-                        analysisMonth,
-
-                    isCurrentMonth,
-
-                    previousAction:
-                        "previousAnalysisMonth",
-
-                    nextAction:
-                        "nextAnalysisMonth",
-
-                    currentAction:
-                        "currentAnalysisMonth",
-
-                    subtitle:
-                        isCurrentMonth
-                            ? "Mes actual"
-                            : this.formatMonthKey(
-                                comparison.previousMonthKey
-                            )
-                                ? "Histórico mensual"
-                                : ""
-                })}
-
-                <section
-                    class="panel"
-                    style="
-                        margin-bottom:18px;
-                    "
-                >
-
-                    <div class="panelhead">
-
-                        <div>
-
-                            <h2>
-                                Comparativa mensual
-                            </h2>
-
-                            <p
-                                class="note"
-                                style="
-                                    margin-top:5px;
-                                "
-                            >
-                                Frente a
-                                ${this.formatMonthKey(
-                                    comparison.previousMonthKey
-                                )}
-                            </p>
-
-                        </div>
-
-                    </div>
-
-                    <div
-                        class="grid"
-                        style="
-                            display:grid;
-                            grid-template-columns:
-                                repeat(
-                                    2,
-                                    minmax(0,1fr)
-                                );
-                            gap:12px;
-                            margin-top:14px;
-                        "
-                    >
-
-                        ${this.comparisonCard(
-                            "🟢 Ingresos",
-                            comparison.income,
-                            true
-                        )}
-
-                        ${this.comparisonCard(
-                            "🔴 Gastos",
-                            comparison.expenses,
-                            false
-                        )}
-
-                        ${this.comparisonCard(
-                            "📈 Invertido",
-                            comparison.invested,
-                            true
-                        )}
-
-                        ${this.comparisonCard(
-                            "💸 Salidas de caja",
-                            comparison.cashOutflow,
-                            false
-                        )}
-
-                    </div>
-
-                </section>
-
-                <section class="panel">
-
-                    <div class="panelhead">
-
-                        <h2>
-                            Resultado del mes
-                        </h2>
-
-                    </div>
-
-                    <div
-                        class="list"
-                        style="
-                            margin-top:8px;
-                        "
-                    >
-
-                        <div class="row">
-
-                            <div>
-
-                                <b>
-                                    Ahorro mensual
-                                </b>
-
-                                <small>
-                                    Ingresos − gastos − inversión
-                                </small>
-
-                                <small
-                                    style="
-                                        color:
-                                            ${savingComparison.color};
-                                        margin-top:4px;
-                                    "
-                                >
-                                    ${savingComparison.icon}
-                                    ${savingComparison.text}
-                                </small>
-
-                            </div>
-
-                            <strong
-                                style="
-                                    color:${
-                                        summary.monthlySavings >= 0
-                                            ? "var(--color-success)"
-                                            : "var(--color-danger)"
-                                    };
-                                "
-                            >
-                                ${this.formatCurrency(
-                                    summary.monthlySavings
-                                )}
-                            </strong>
-
-                        </div>
-
-                        <div class="row">
-
-                            <div>
-
-                                <b>
-                                    Tasa de ahorro
-                                </b>
-
-                                <small>
-                                    Porcentaje sobre ingresos
-                                </small>
-
-                                <small
-                                    style="
-                                        color:
-                                            ${rateComparison.color};
-                                        margin-top:4px;
-                                    "
-                                >
-                                    ${rateComparison.icon}
-                                    ${rateComparison.text}
-                                </small>
-
-                            </div>
-
-                            <strong>
-                                ${this.formatPercent(
-                                    summary.monthlySavingRate
-                                )}
-                            </strong>
-
-                        </div>
-
-                        <div class="row">
-
-                            <div>
-
-                                <b>
-                                    Movimientos
-                                </b>
-
-                                <small>
-                                    Registros del mes
-                                </small>
-
-                            </div>
-
-                            <strong>
-                                ${monthMovements.length}
-                            </strong>
-
-                        </div>
-
-                    </div>
-
-                </section>
-
-                <section class="panel">
-
-                    <div class="panelhead">
-
-                        <div>
-
-                            <h2>
-                                Gastos por categoría
-                            </h2>
-
-                            <p
-                                class="note"
-                                style="
-                                    margin-top:5px;
-                                "
-                            >
-                                Distribución del consumo real
-                            </p>
-
-                        </div>
-
-                    </div>
-
-                    ${this.categoryRows(
-                        comparison.categories
-                    )}
-
-                </section>
+                ${this.analysisTabs(
+                    activeView
+                )}
 
                 ${
-                    monthMovements.length === 0
-                        ? `
-
-                            <section
-                                class="panel"
-                                style="
-                                    text-align:center;
-                                    padding:24px 18px;
-                                "
-                            >
-
-                                <div
-                                    style="
-                                        font-size:30px;
-                                        margin-bottom:10px;
-                                    "
-                                >
-                                    🗓️
-                                </div>
-
-                                <strong>
-                                    Sin actividad registrada
-                                </strong>
-
-                                <p
-                                    class="note"
-                                    style="
-                                        margin-top:8px;
-                                    "
-                                >
-                                    No hay datos financieros en
-                                    ${this.formatMonthKey(
-                                        analysisMonth
-                                    )}.
-                                </p>
-
-                            </section>
-
-                        `
-                        : ""
-                }
-
-                ${
-                    isCurrentMonth
-                        ? `
-
-                            <section class="panel">
-
-                                <div class="panelhead">
-
-                                    <h2>
-                                        Situación actual
-                                    </h2>
-
-                                </div>
-
-                                <div class="list">
-
-                                    <div class="row">
-
-                                        <div>
-
-                                            <b>
-                                                Liquidez
-                                            </b>
-
-                                            <small>
-                                                Dinero disponible
-                                            </small>
-
-                                        </div>
-
-                                        <strong>
-                                            ${this.formatCurrency(
-                                                summary.liquidity
-                                            )}
-                                        </strong>
-
-                                    </div>
-
-                                    <div class="row">
-
-                                        <div>
-
-                                            <b>
-                                                Inversiones
-                                            </b>
-
-                                            <small>
-                                                Valor actual
-                                            </small>
-
-                                        </div>
-
-                                        <strong>
-                                            ${this.formatCurrency(
-                                                summary.investments
-                                            )}
-                                        </strong>
-
-                                    </div>
-
-                                    <div class="row">
-
-                                        <div>
-
-                                            <b>
-                                                Deuda
-                                            </b>
-
-                                            <small>
-                                                Saldo pendiente
-                                            </small>
-
-                                        </div>
-
-                                        <strong>
-                                            ${this.formatCurrency(
-                                                summary.debt
-                                            )}
-                                        </strong>
-
-                                    </div>
-
-                                    <div class="row">
-
-                                        <div>
-
-                                            <b>
-                                                Patrimonio neto
-                                            </b>
-
-                                            <small>
-                                                Liquidez + inversiones − deuda
-                                            </small>
-
-                                        </div>
-
-                                        <strong
-                                            style="
-                                                color:${
-                                                    summary.netWorth >= 0
-                                                        ? "var(--color-success)"
-                                                        : "var(--color-danger)"
-                                                };
-                                            "
-                                        >
-                                            ${this.formatCurrency(
-                                                summary.netWorth
-                                            )}
-                                        </strong>
-
-                                    </div>
-
-                                </div>
-
-                            </section>
-
-                        `
-                        : ""
+                    activeView === "trends"
+                        ? this.trendsAnalysis(
+                            data,
+                            options
+                        )
+                        : this.monthlyAnalysis(
+                            data,
+                            options
+                        )
                 }
 
             </div>
