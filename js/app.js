@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    app.js
-   Sprint 3.1 — Navegación histórica por meses
+   Sprint 3.2 — Selector mensual en Movimientos
 ========================================================== */
 
 const AtlasApp = {
@@ -12,12 +12,17 @@ const AtlasApp = {
 
     analysisMonth: null,
 
+    movementsMonth: null,
+
     init() {
 
         this.data =
             AtlasStorage.load();
 
         this.analysisMonth =
+            this.currentMonthKey();
+
+        this.movementsMonth =
             this.currentMonthKey();
 
         this.bindEvents();
@@ -78,7 +83,9 @@ const AtlasApp = {
         const [
             year,
             month
-        ] = String(monthKey)
+        ] = String(
+            monthKey || ""
+        )
             .split("-")
             .map(Number);
 
@@ -114,6 +121,15 @@ const AtlasApp = {
 
         return (
             this.analysisMonth ===
+            this.currentMonthKey()
+        );
+
+    },
+
+    isCurrentMovementsMonth() {
+
+        return (
+            this.movementsMonth ===
             this.currentMonthKey()
         );
 
@@ -160,13 +176,30 @@ const AtlasApp = {
 
                         AtlasMovements.open(
                             this.data,
-                            updatedData => {
+                            (
+                                updatedData,
+                                movement
+                            ) => {
 
                                 this.data =
                                     updatedData;
 
+                                if (
+                                    movement?.date
+                                ) {
+
+                                    this.movementsMonth =
+                                        String(
+                                            movement.date
+                                        ).slice(
+                                            0,
+                                            7
+                                        );
+
+                                }
+
                                 this.route =
-                                    "home";
+                                    "movements";
 
                                 this.render();
 
@@ -218,8 +251,10 @@ const AtlasApp = {
                             this.analysisMonth >
                             this.currentMonthKey()
                         ) {
+
                             this.analysisMonth =
                                 this.currentMonthKey();
+
                         }
 
                         this.route =
@@ -236,6 +271,64 @@ const AtlasApp = {
 
                         this.route =
                             "analysis";
+
+                        this.render();
+
+                        break;
+
+                    case "previousMovementsMonth":
+
+                        this.movementsMonth =
+                            this.shiftMonth(
+                                this.movementsMonth,
+                                -1
+                            );
+
+                        this.route =
+                            "movements";
+
+                        this.render();
+
+                        break;
+
+                    case "nextMovementsMonth":
+
+                        if (
+                            this.isCurrentMovementsMonth()
+                        ) {
+                            return;
+                        }
+
+                        this.movementsMonth =
+                            this.shiftMonth(
+                                this.movementsMonth,
+                                1
+                            );
+
+                        if (
+                            this.movementsMonth >
+                            this.currentMonthKey()
+                        ) {
+
+                            this.movementsMonth =
+                                this.currentMonthKey();
+
+                        }
+
+                        this.route =
+                            "movements";
+
+                        this.render();
+
+                        break;
+
+                    case "currentMovementsMonth":
+
+                        this.movementsMonth =
+                            this.currentMonthKey();
+
+                        this.route =
+                            "movements";
 
                         this.render();
 
@@ -277,11 +370,17 @@ const AtlasApp = {
                 analysisMonth:
                     this.analysisMonth,
 
+                movementsMonth:
+                    this.movementsMonth,
+
                 currentMonth:
                     this.currentMonthKey(),
 
                 isCurrentAnalysisMonth:
-                    this.isCurrentAnalysisMonth()
+                    this.isCurrentAnalysisMonth(),
+
+                isCurrentMovementsMonth:
+                    this.isCurrentMovementsMonth()
             }
         );
 
@@ -454,6 +553,9 @@ const AtlasApp = {
             "home";
 
         this.analysisMonth =
+            this.currentMonthKey();
+
+        this.movementsMonth =
             this.currentMonthKey();
 
         this.render();
