@@ -74,8 +74,13 @@
 
     <style>
 
+        /* ==================================================
+           MENÚ INFERIOR COMPACTO
+        ================================================== */
+
         .tabbar {
             min-height: 68px !important;
+
             height:
                 calc(
                     68px +
@@ -83,37 +88,48 @@
                         safe-area-inset-bottom
                     )
                 ) !important;
+
             padding:
                 5px
                 12px
                 env(
                     safe-area-inset-bottom
                 ) !important;
+
             align-items: center !important;
         }
 
         .tabbar button:not(.fab) {
             min-height: 54px !important;
+
             padding:
                 5px
                 2px !important;
+
             gap: 2px !important;
         }
 
         .tabbar button:not(.fab) span {
             display: block;
-            font-size: 25px;
-            line-height: 1;
-            margin: 0 0 3px;
+
+            margin:
+                0
+                0
+                3px;
+
             font-family:
                 -apple-system,
                 BlinkMacSystemFont,
                 "Segoe UI",
                 sans-serif;
+
+            font-size: 25px;
+            line-height: 1;
         }
 
         .tabbar button:not(.fab) small {
             display: block;
+
             font-size: 10px !important;
             line-height: 1.1;
         }
@@ -121,21 +137,241 @@
         .tabbar .fab {
             width: 56px !important;
             height: 56px !important;
+
             min-width: 56px !important;
             min-height: 56px !important;
+
+            display: flex !important;
+
+            align-items: center !important;
+            justify-content: center !important;
+
             padding:
                 0
                 0
-                5px !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
+                4px !important;
+
             border-radius: 19px !important;
-            font-size: 36px !important;
+
+            font-size: 38px !important;
             font-weight: 300 !important;
             line-height: 1 !important;
+
             transform:
-                translateY(-8px);
+                translateY(-7px);
+        }
+
+
+        /* ==================================================
+           INICIO
+        ================================================== */
+
+        #app > .app:has(> .grid) {
+            height:
+                calc(
+                    100dvh -
+                    68px -
+                    env(
+                        safe-area-inset-bottom
+                    )
+                ) !important;
+
+            min-height: 0 !important;
+
+            display: flex !important;
+            flex-direction: column !important;
+
+            justify-content:
+                space-between !important;
+
+            gap:
+                clamp(
+                    11px,
+                    1.65vh,
+                    18px
+                ) !important;
+
+            overflow: hidden !important;
+
+            padding-bottom:
+                calc(
+                    78px +
+                    env(
+                        safe-area-inset-bottom
+                    )
+                ) !important;
+        }
+
+
+        /* ==================================================
+           CABECERA
+        ================================================== */
+
+        #app > .app:has(> .grid) > .header {
+            flex: 0 0 auto;
+
+            margin: 0 !important;
+        }
+
+
+        /* ==================================================
+           PATRIMONIO NETO
+        ================================================== */
+
+        #app > .app:has(> .grid) > .hero {
+            flex: 0 0 auto;
+
+            min-height: 0 !important;
+
+            margin: 0 !important;
+
+            padding:
+                18px
+                20px !important;
+        }
+
+        #app > .app:has(> .grid) > .hero .eyebrow {
+            font-size: 12px !important;
+        }
+
+        #app > .app:has(> .grid) > .hero .value {
+            margin-top: 7px !important;
+
+            font-size: 38px !important;
+            line-height: 1 !important;
+        }
+
+        #app > .app:has(> .grid) > .hero .trend {
+            display: none !important;
+        }
+
+
+        /* ==================================================
+           TARJETAS GLOBALES
+        ================================================== */
+
+        #app > .app:has(> .grid) > .grid {
+            flex: 0 0 auto;
+
+            display: grid !important;
+
+            grid-template-columns:
+                repeat(
+                    2,
+                    minmax(
+                        0,
+                        1fr
+                    )
+                ) !important;
+
+            gap:
+                clamp(
+                    10px,
+                    1.35vh,
+                    14px
+                ) !important;
+
+            margin: 0 !important;
+        }
+
+        #app > .app:has(> .grid) > .grid .card {
+            min-height:
+                clamp(
+                    84px,
+                    10.5vh,
+                    102px
+                ) !important;
+
+            padding:
+                14px
+                15px !important;
+        }
+
+        #app > .app:has(> .grid) > .grid .label {
+            font-size: 11px !important;
+            line-height: 1.25 !important;
+        }
+
+        #app > .app:has(> .grid) > .grid .num {
+            margin-top: 9px !important;
+
+            font-size: 23px !important;
+            line-height: 1 !important;
+        }
+
+
+        /* ==================================================
+           RESUMEN DEL MES
+        ================================================== */
+
+        #app > .app:has(> .grid) > button.panel {
+            flex: 0 0 auto;
+
+            width: 100% !important;
+
+            min-height:
+                clamp(
+                    112px,
+                    14vh,
+                    132px
+                ) !important;
+
+            margin: 0 !important;
+
+            padding:
+                15px
+                17px !important;
+        }
+
+
+        /* ==================================================
+           IPHONES MÁS BAJOS
+        ================================================== */
+
+        @media (
+            max-height: 720px
+        ) {
+
+            #app > .app:has(> .grid) {
+                gap: 8px !important;
+            }
+
+            #app > .app:has(> .grid) > .hero {
+                padding:
+                    13px
+                    17px !important;
+            }
+
+            #app > .app:has(> .grid) > .hero .value {
+                font-size: 32px !important;
+            }
+
+            #app > .app:has(> .grid) > .grid {
+                gap: 8px !important;
+            }
+
+            #app > .app:has(> .grid) > .grid .card {
+                min-height: 74px !important;
+
+                padding:
+                    10px
+                    12px !important;
+            }
+
+            #app > .app:has(> .grid) > .grid .num {
+                margin-top: 6px !important;
+
+                font-size: 20px !important;
+            }
+
+            #app > .app:has(> .grid) > button.panel {
+                min-height: 96px !important;
+
+                padding:
+                    10px
+                    13px !important;
+            }
+
         }
 
     </style>
