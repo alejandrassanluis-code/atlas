@@ -1,53 +1,118 @@
 /* ==========================================================
    ATLAS
    movements.js
-   Sprint 2.2 — Registro de movimientos
+   Sprint 2.3 — Crear, editar y eliminar movimientos
 ========================================================== */
 
 const AtlasMovements = {
 
     data: null,
-
-    onSave: null,
-
-    selectedType: null,
+    onComplete: null,
+    editingId: null,
+    saving: false,
 
     categories: {
         income: [
             "Nómina",
-            "Bonus",
             "Intereses",
-            "Dividendos",
-            "Devoluciones",
+            "Reembolso",
+            "Venta",
             "Otros ingresos"
         ],
-
         expense: [
             "Vivienda",
-            "Supermercado",
-            "Restaurantes",
-            "Ocio",
+            "Alimentación",
             "Transporte",
-            "Viajes",
             "Salud",
+            "Ocio",
             "Compras",
             "Suscripciones",
-            "Seguros",
+            "Viajes",
             "Impuestos",
-            "Coche",
             "Otros gastos"
         ],
-
-        debt: [
-            "Préstamo coche",
-            "Amortización",
-            "Otros pagos de deuda"
+        investment: [
+            "Aportación periódica",
+            "Aportación extraordinaria",
+            "Otros"
         ]
     },
 
-    uid() {
+    open(data, onComplete, movementId = null) {
+
+        this.data = data;
+        this.onComplete = onComplete;
+        this.editingId = movementId;
+        this.saving = false;
+
+        if (movementId) {
+
+            const movement =
+                this.findMovement(movementId);
+
+            if (!movement) {
+                AtlasUI.toast(
+                    "No se encontró el movimiento."
+                );
+                return;
+            }
+
+            this.renderForm(
+                this.getMovementKind(movement),
+                movement
+            );
+
+            return;
+        }
+
+        this.renderTypeSelector();
+
+    },
+
+    root() {
+        return document.getElementById(
+            "modal-root"
+        );
+    },
+
+    findMovement(id) {
+        return this.data.movements.find(
+            movement =>
+                movement.id === id
+        );
+    },
+
+    findAccount(id, data = this.data) {
+        return data.accounts.find(
+            account =>
+                account.id === id
+        );
+    },
+
+    getMovementKind(movement) {
+
+        if (
+            movement.kind ===
+            "debt_payment"
+        ) {
+            return "debt_payment";
+        }
+
+        return movement.type;
+
+    },
+
+    cloneData() {
+        return JSON.parse(
+            JSON.stringify(this.data)
+        );
+    },
+
+    generateId() {
         return (
-            Date.now().toString(36) +
+            "mov_" +
+            Date.now() +
+            "_" +
             Math.random()
                 .toString(36)
                 .slice(2, 8)
@@ -55,325 +120,165 @@ const AtlasMovements = {
     },
 
     today() {
-        return new Date()
-            .toISOString()
-            .slice(0, 10);
+
+        const now = new Date();
+
+        const year =
+            now.getFullYear();
+
+        const month =
+            String(
+                now.getMonth() + 1
+            ).padStart(2, "0");
+
+        const day =
+            String(
+                now.getDate()
+            ).padStart(2, "0");
+
+        return `${year}-${month}-${day}`;
+
     },
 
-    number(value) {
-        return (
-            Number(
-                String(value || "")
-                    .replace(",", ".")
-            ) || 0
-        );
+    escape(value) {
+
+        return String(value ?? "")
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#039;");
+
     },
 
-    account(id) {
-        return this.data.accounts.find(
-            account => account.id === id
-        );
+    formatAccountOptions(
+        accounts,
+        selectedId = ""
+    ) {
+
+        return accounts
+            .map(account => `
+
+                <option
+                    value="${account.id}"
+                    ${
+                        account.id ===
+                        selectedId
+                            ? "selected"
+                            : ""
+                    }
+                >
+                    ${this.escape(account.name)}
+                </option>
+
+            `)
+            .join("");
+
     },
 
-    accountsByGroup(group) {
-        return this.data.accounts.filter(
-            account => account.group === group
-        );
-    },
+    liquidityAccounts(data = this.data) {
 
-    liquidityAccounts() {
-        return this.accountsByGroup(
-            "liquidity"
-        );
-    },
-
-    investmentAccounts() {
-        return this.accountsByGroup(
-            "investment"
-        );
-    },
-
-    debtAccounts() {
-        return this.accountsByGroup(
-            "debt"
-        );
-    },
-
-    allPaymentAccounts() {
-        return this.data.accounts.filter(
+        return data.accounts.filter(
             account =>
-                account.group === "liquidity" ||
-                account.group === "debt"
+                account.group ===
+                "liquidity"
         );
+
     },
 
-    open(data, onSave) {
-        this.data = data;
-        this.onSave = onSave;
-        this.selectedType = null;
-        this.renderTypeSelector();
+    investmentAccounts(data = this.data) {
+
+        return data.accounts.filter(
+            account =>
+                account.group ===
+                "investment"
+        );
+
     },
 
-    close() {
+    debtAccounts(data = this.data) {
+
+        return data.accounts.filter(
+            account =>
+                account.group ===
+                "debt"
+        );
+
+    },
+
+    paymentAccounts(data = this.data) {
+
+        return data.accounts.filter(
+            account =>
+                account.group ===
+                "liquidity" ||
+                account.id === "amex" ||
+                account.id === "bbva_credit"
+        );
+
+    },
+
+    transferAccounts(data = this.data) {
+
+        return data.accounts.filter(
+            account =>
+                account.group ===
+                "liquidity" ||
+                account.group ===
+                "debt"
+        );
+
+    },
+
+    renderSheet(content) {
+
         const root =
-            document.getElementById(
-                "modal-root"
-            );
+            this.root();
 
-        if (root) {
-            root.innerHTML = "";
+        if (!root) {
+            return;
         }
-    },
 
-    shell(content) {
-        return `
+        root.innerHTML = `
+
             <div
-                style="
-                    position:fixed;
-                    inset:0;
-                    z-index:3500;
-                    display:flex;
-                    align-items:flex-end;
-                    background:rgba(3,7,18,.76);
-                    backdrop-filter:blur(10px);
-                "
-                data-movement-action="close-background"
+                class="modal-backdrop"
+                data-movement-action="close"
+            ></div>
+
+            <section
+                class="sheet"
+                role="dialog"
+                aria-modal="true"
             >
 
-                <section
-                    style="
-                        width:100%;
-                        max-width:680px;
-                        max-height:94vh;
-                        margin:0 auto;
-                        padding:
-                            18px
-                            20px
-                            calc(
-                                22px +
-                                env(safe-area-inset-bottom)
-                            );
-                        overflow-y:auto;
-                        border-radius:28px 28px 0 0;
-                        background:var(--color-background-secondary);
-                        border:1px solid var(--color-border-strong);
-                        box-shadow:0 -24px 60px rgba(0,0,0,.45);
-                    "
-                    data-movement-sheet
-                >
+                <div class="sheet-handle"></div>
 
-                    <div
-                        style="
-                            width:42px;
-                            height:5px;
-                            margin:0 auto 18px;
-                            border-radius:999px;
-                            background:rgba(255,255,255,.18);
-                        "
-                    ></div>
+                ${content}
 
-                    ${content}
+            </section>
 
-                </section>
-
-            </div>
         `;
-    },
 
-    field({
-        id,
-        label,
-        type = "text",
-        value = "",
-        placeholder = "",
-        inputmode = "",
-        min = "",
-        step = ""
-    }) {
-        return `
-            <div style="margin-bottom:16px">
-
-                <label
-                    for="${id}"
-                    style="
-                        display:block;
-                        margin-bottom:7px;
-                        color:var(--color-text-secondary);
-                        font-size:12px;
-                        font-weight:700;
-                        text-transform:uppercase;
-                        letter-spacing:.6px;
-                    "
-                >
-                    ${label}
-                </label>
-
-                <input
-                    id="${id}"
-                    type="${type}"
-                    value="${value}"
-                    placeholder="${placeholder}"
-                    ${inputmode ? `inputmode="${inputmode}"` : ""}
-                    ${min !== "" ? `min="${min}"` : ""}
-                    ${step !== "" ? `step="${step}"` : ""}
-                    style="
-                        width:100%;
-                        min-height:52px;
-                        padding:0 14px;
-                        border-radius:14px;
-                        border:1px solid var(--color-border-strong);
-                        background:var(--color-background-secondary);
-                        color:var(--color-text);
-                        font-size:16px;
-                        outline:none;
-                    "
-                >
-
-            </div>
-        `;
-    },
-
-    select({
-        id,
-        label,
-        options
-    }) {
-        return `
-            <div style="margin-bottom:16px">
-
-                <label
-                    for="${id}"
-                    style="
-                        display:block;
-                        margin-bottom:7px;
-                        color:var(--color-text-secondary);
-                        font-size:12px;
-                        font-weight:700;
-                        text-transform:uppercase;
-                        letter-spacing:.6px;
-                    "
-                >
-                    ${label}
-                </label>
-
-                <select
-                    id="${id}"
-                    style="
-                        width:100%;
-                        min-height:52px;
-                        padding:0 14px;
-                        border-radius:14px;
-                        border:1px solid var(--color-border-strong);
-                        background:var(--color-background-secondary);
-                        color:var(--color-text);
-                        font-size:16px;
-                        outline:none;
-                    "
-                >
-
-                    ${options.map(option => `
-                        <option value="${option.value}">
-                            ${option.label}
-                        </option>
-                    `).join("")}
-
-                </select>
-
-            </div>
-        `;
-    },
-
-    accountOptions(accounts) {
-        return accounts.map(account => ({
-            value: account.id,
-            label: account.name
-        }));
-    },
-
-    categoryOptions(categories) {
-        return categories.map(category => ({
-            value: category,
-            label: category
-        }));
-    },
-
-    footerButtons() {
-        return `
-            <div
-                style="
-                    display:grid;
-                    grid-template-columns:1fr 1.7fr;
-                    gap:10px;
-                    margin-top:22px;
-                "
-            >
-
-                <button
-                    type="button"
-                    data-movement-action="back"
-                    style="
-                        min-height:52px;
-                        border-radius:15px;
-                        border:1px solid var(--color-border-strong);
-                        background:var(--color-surface);
-                        color:var(--color-text-secondary);
-                        font-weight:700;
-                    "
-                >
-                    Atrás
-                </button>
-
-                <button
-                    type="button"
-                    data-movement-action="save"
-                    style="
-                        min-height:52px;
-                        border-radius:15px;
-                        background:var(--gradient-primary);
-                        color:white;
-                        font-weight:800;
-                        box-shadow:var(--shadow-md);
-                    "
-                >
-                    Guardar movimiento
-                </button>
-
-            </div>
-        `;
     },
 
     renderTypeSelector() {
-        const root =
-            document.getElementById(
-                "modal-root"
-            );
 
-        root.innerHTML = this.shell(`
-            <h2
-                style="
-                    margin:0 0 6px;
-                    font-size:26px;
-                "
-            >
-                Registrar movimiento
-            </h2>
+        this.renderSheet(`
 
-            <p
-                style="
-                    margin:0 0 20px;
-                    color:var(--color-text-muted);
-                    line-height:1.5;
-                "
-            >
-                ¿Qué quieres registrar?
-            </p>
+            <div class="sheet-header">
 
-            <div
-                style="
-                    display:grid;
-                    gap:10px;
-                "
-            >
+                <h2>
+                    Registrar movimiento
+                </h2>
+
+                <p class="subtitle">
+                    ¿Qué quieres registrar?
+                </p>
+
+            </div>
+
+            <div class="movement-types">
 
                 ${this.typeButton(
                     "income",
@@ -407,25 +312,21 @@ const AtlasMovements = {
                     "debt_payment",
                     "💳",
                     "Pago de deuda",
-                    "Pagar el préstamo y reducir deuda"
+                    "Pagar el préstamo o reducir deuda"
                 )}
 
             </div>
 
             <button
+                class="secondary"
                 type="button"
                 data-movement-action="close"
-                style="
-                    width:100%;
-                    min-height:50px;
-                    margin-top:14px;
-                    color:var(--color-text-muted);
-                    font-weight:700;
-                "
             >
                 Cancelar
             </button>
+
         `);
+
     },
 
     typeButton(
@@ -434,723 +335,1118 @@ const AtlasMovements = {
         title,
         description
     ) {
+
         return `
+
             <button
+                class="movement-type"
                 type="button"
                 data-movement-type="${type}"
-                style="
-                    width:100%;
-                    display:flex;
-                    align-items:center;
-                    gap:14px;
-                    padding:15px;
-                    text-align:left;
-                    border-radius:17px;
-                    border:1px solid var(--color-border);
-                    background:var(--color-surface);
-                    color:var(--color-text);
-                "
             >
 
-                <span
-                    style="
-                        width:42px;
-                        height:42px;
-                        display:grid;
-                        place-items:center;
-                        flex:0 0 auto;
-                        border-radius:14px;
-                        background:var(--color-surface-hover);
-                        font-size:20px;
-                    "
-                >
+                <span class="movement-type-icon">
                     ${icon}
                 </span>
 
                 <span>
-                    <strong
-                        style="
-                            display:block;
-                            font-size:15px;
-                        "
-                    >
+
+                    <strong>
                         ${title}
                     </strong>
 
-                    <small
-                        style="
-                            display:block;
-                            margin-top:4px;
-                            color:var(--color-text-muted);
-                            line-height:1.35;
-                        "
-                    >
+                    <small>
                         ${description}
                     </small>
+
                 </span>
 
             </button>
+
         `;
+
     },
 
-    renderForm(type) {
-        this.selectedType = type;
+    renderForm(type, movement = null) {
 
-        const root =
-            document.getElementById(
-                "modal-root"
-            );
+        const isEditing =
+            Boolean(movement);
 
-        const forms = {
-            income:
-                () => this.incomeForm(),
+        const title =
+            isEditing
+                ? "Editar movimiento"
+                : this.formTitle(type);
 
-            expense:
-                () => this.expenseForm(),
+        this.renderSheet(`
 
-            transfer:
-                () => this.transferForm(),
+            <div class="sheet-header">
 
-            investment:
-                () => this.investmentForm(),
-
-            debt_payment:
-                () => this.debtPaymentForm()
-        };
-
-        root.innerHTML =
-            this.shell(
-                forms[type]()
-            );
-    },
-
-    commonFields() {
-        return `
-            ${this.field({
-                id: "movement-amount",
-                label: "Importe",
-                type: "number",
-                inputmode: "decimal",
-                min: "0",
-                step: "0.01",
-                placeholder: "0,00"
-            })}
-
-            ${this.field({
-                id: "movement-date",
-                label: "Fecha del movimiento",
-                type: "date",
-                value: this.today()
-            })}
-
-            ${this.field({
-                id: "movement-note",
-                label: "Nota opcional",
-                type: "text",
-                placeholder: "Añade una nota"
-            })}
-        `;
-    },
-
-    incomeForm() {
-        return `
-            ${this.formHeader(
-                "🟢",
-                "Nuevo ingreso",
-                "El dinero aumentará el saldo de la cuenta."
-            )}
-
-            ${this.select({
-                id: "movement-account",
-                label: "Cuenta de destino",
-                options:
-                    this.accountOptions(
-                        this.liquidityAccounts()
-                    )
-            })}
-
-            ${this.select({
-                id: "movement-category",
-                label: "Categoría",
-                options:
-                    this.categoryOptions(
-                        this.categories.income
-                    )
-            })}
-
-            ${this.commonFields()}
-
-            ${this.footerButtons()}
-        `;
-    },
-
-    expenseForm() {
-        return `
-            ${this.formHeader(
-                "🔴",
-                "Nuevo gasto",
-                "Puedes pagar desde una cuenta o registrar una compra con tarjeta."
-            )}
-
-            ${this.select({
-                id: "movement-account",
-                label: "Cuenta o tarjeta",
-                options:
-                    this.accountOptions(
-                        this.allPaymentAccounts()
-                    )
-            })}
-
-            ${this.select({
-                id: "movement-category",
-                label: "Categoría",
-                options:
-                    this.categoryOptions(
-                        this.categories.expense
-                    )
-            })}
-
-            ${this.commonFields()}
-
-            ${this.footerButtons()}
-        `;
-    },
-
-    transferForm() {
-        return `
-            ${this.formHeader(
-                "🔄",
-                "Nuevo traspaso",
-                "No contará como ingreso ni como gasto."
-            )}
-
-            ${this.select({
-                id: "movement-from-account",
-                label: "Cuenta de origen",
-                options:
-                    this.accountOptions(
-                        this.data.accounts
-                    )
-            })}
-
-            ${this.select({
-                id: "movement-to-account",
-                label: "Cuenta de destino",
-                options:
-                    this.accountOptions(
-                        this.data.accounts
-                    )
-            })}
-
-            ${this.commonFields()}
-
-            ${this.footerButtons()}
-        `;
-    },
-
-    investmentForm() {
-        return `
-            ${this.formHeader(
-                "📈",
-                "Nueva inversión",
-                "La aportación reducirá tu liquidez y aumentará el capital invertido."
-            )}
-
-            ${this.select({
-                id: "movement-from-account",
-                label: "Cuenta de origen",
-                options:
-                    this.accountOptions(
-                        this.liquidityAccounts()
-                    )
-            })}
-
-            ${this.select({
-                id: "movement-to-account",
-                label: "Inversión de destino",
-                options:
-                    this.accountOptions(
-                        this.investmentAccounts()
-                    )
-            })}
-
-            ${this.commonFields()}
-
-            ${this.footerButtons()}
-        `;
-    },
-
-    debtPaymentForm() {
-        return `
-            ${this.formHeader(
-                "💳",
-                "Pago de deuda",
-                "Saldrá dinero de la cuenta y se reducirá la deuda pendiente."
-            )}
-
-            ${this.select({
-                id: "movement-from-account",
-                label: "Cuenta de origen",
-                options:
-                    this.accountOptions(
-                        this.liquidityAccounts()
-                    )
-            })}
-
-            ${this.select({
-                id: "movement-to-account",
-                label: "Deuda que pagas",
-                options:
-                    this.accountOptions(
-                        this.debtAccounts()
-                    )
-            })}
-
-            ${this.select({
-                id: "movement-category",
-                label: "Categoría",
-                options:
-                    this.categoryOptions(
-                        this.categories.debt
-                    )
-            })}
-
-            ${this.commonFields()}
-
-            ${this.footerButtons()}
-        `;
-    },
-
-    formHeader(
-        icon,
-        title,
-        description
-    ) {
-        return `
-            <div
-                style="
-                    display:flex;
-                    gap:13px;
-                    align-items:flex-start;
-                    margin-bottom:22px;
-                "
-            >
-
-                <div
-                    style="
-                        width:46px;
-                        height:46px;
-                        display:grid;
-                        place-items:center;
-                        flex:0 0 auto;
-                        border-radius:15px;
-                        background:var(--color-surface-hover);
-                        font-size:21px;
-                    "
+                <button
+                    class="sheet-back"
+                    type="button"
+                    data-movement-action="${
+                        isEditing
+                            ? "close"
+                            : "types"
+                    }"
+                    aria-label="Volver"
                 >
-                    ${icon}
-                </div>
+                    ‹
+                </button>
 
                 <div>
-                    <h2
-                        style="
-                            margin:0;
-                            font-size:25px;
-                        "
-                    >
+
+                    <h2>
                         ${title}
                     </h2>
 
-                    <p
-                        style="
-                            margin:6px 0 0;
-                            color:var(--color-text-muted);
-                            font-size:13px;
-                            line-height:1.45;
-                        "
-                    >
-                        ${description}
+                    <p class="subtitle">
+                        ${
+                            isEditing
+                                ? "Modifica los datos o elimina el movimiento."
+                                : "Introduce los datos del movimiento."
+                        }
                     </p>
+
                 </div>
 
             </div>
-        `;
+
+            <form
+                id="movement-form"
+                data-movement-form="${type}"
+            >
+
+                ${this.formFields(
+                    type,
+                    movement
+                )}
+
+                <button
+                    class="primary"
+                    type="submit"
+                    data-movement-save
+                >
+                    ${
+                        isEditing
+                            ? "Guardar cambios"
+                            : "Guardar movimiento"
+                    }
+                </button>
+
+                ${
+                    isEditing
+                        ? `
+                            <button
+                                class="secondary"
+                                type="button"
+                                data-movement-action="delete"
+                                style="
+                                    margin-top:12px;
+                                    color:var(--color-danger);
+                                "
+                            >
+                                Eliminar movimiento
+                            </button>
+                        `
+                        : ""
+                }
+
+                <button
+                    class="secondary"
+                    type="button"
+                    data-movement-action="close"
+                >
+                    Cancelar
+                </button>
+
+            </form>
+
+        `);
+
     },
 
-    readValue(id) {
-        const element =
-            document.getElementById(id);
+    formTitle(type) {
 
-        return element
-            ? element.value
-            : "";
+        const titles = {
+            income: "Registrar ingreso",
+            expense: "Registrar gasto",
+            transfer: "Registrar traspaso",
+            investment: "Registrar inversión",
+            debt_payment: "Registrar pago de deuda"
+        };
+
+        return titles[type] ||
+            "Registrar movimiento";
+
     },
 
-    validateAmount() {
+    formFields(type, movement = null) {
+
+        const date =
+            movement?.date ||
+            this.today();
+
         const amount =
-            this.number(
-                this.readValue(
-                    "movement-amount"
-                )
-            );
+            movement?.amount || "";
 
-        if (amount <= 0) {
-            AtlasUI.toast(
-                "Introduce un importe válido."
-            );
+        const note =
+            movement?.note || "";
 
-            return false;
+        const commonEnd = `
+
+            <label class="field">
+
+                <span>
+                    Fecha del movimiento
+                </span>
+
+                <input
+                    name="date"
+                    type="date"
+                    value="${this.escape(date)}"
+                    required
+                >
+
+            </label>
+
+            <label class="field">
+
+                <span>
+                    Nota opcional
+                </span>
+
+                <input
+                    name="note"
+                    type="text"
+                    value="${this.escape(note)}"
+                    placeholder="Añadir una nota"
+                    maxlength="120"
+                >
+
+            </label>
+
+        `;
+
+        if (type === "income") {
+
+            return `
+
+                ${this.amountField(amount)}
+
+                <label class="field">
+
+                    <span>
+                        Categoría
+                    </span>
+
+                    <select
+                        name="category"
+                        required
+                    >
+                        ${this.categoryOptions(
+                            "income",
+                            movement?.category
+                        )}
+                    </select>
+
+                </label>
+
+                <label class="field">
+
+                    <span>
+                        Cuenta de destino
+                    </span>
+
+                    <select
+                        name="accountId"
+                        required
+                    >
+                        ${this.formatAccountOptions(
+                            this.liquidityAccounts(),
+                            movement?.accountId
+                        )}
+                    </select>
+
+                </label>
+
+                ${commonEnd}
+
+            `;
+
         }
 
-        return true;
+        if (type === "expense") {
+
+            return `
+
+                ${this.amountField(amount)}
+
+                <label class="field">
+
+                    <span>
+                        Categoría
+                    </span>
+
+                    <select
+                        name="category"
+                        required
+                    >
+                        ${this.categoryOptions(
+                            "expense",
+                            movement?.category
+                        )}
+                    </select>
+
+                </label>
+
+                <label class="field">
+
+                    <span>
+                        Cuenta o tarjeta
+                    </span>
+
+                    <select
+                        name="accountId"
+                        required
+                    >
+                        ${this.formatAccountOptions(
+                            this.paymentAccounts(),
+                            movement?.accountId
+                        )}
+                    </select>
+
+                </label>
+
+                ${commonEnd}
+
+            `;
+
+        }
+
+        if (type === "transfer") {
+
+            return `
+
+                ${this.amountField(amount)}
+
+                <label class="field">
+
+                    <span>
+                        Cuenta de origen
+                    </span>
+
+                    <select
+                        name="fromAccountId"
+                        required
+                    >
+                        ${this.formatAccountOptions(
+                            this.transferAccounts(),
+                            movement?.fromAccountId
+                        )}
+                    </select>
+
+                </label>
+
+                <label class="field">
+
+                    <span>
+                        Cuenta de destino
+                    </span>
+
+                    <select
+                        name="toAccountId"
+                        required
+                    >
+                        ${this.formatAccountOptions(
+                            this.transferAccounts(),
+                            movement?.toAccountId
+                        )}
+                    </select>
+
+                </label>
+
+                ${commonEnd}
+
+            `;
+
+        }
+
+        if (type === "investment") {
+
+            return `
+
+                ${this.amountField(amount)}
+
+                <label class="field">
+
+                    <span>
+                        Categoría
+                    </span>
+
+                    <select
+                        name="category"
+                        required
+                    >
+                        ${this.categoryOptions(
+                            "investment",
+                            movement?.category
+                        )}
+                    </select>
+
+                </label>
+
+                <label class="field">
+
+                    <span>
+                        Cuenta de origen
+                    </span>
+
+                    <select
+                        name="fromAccountId"
+                        required
+                    >
+                        ${this.formatAccountOptions(
+                            this.liquidityAccounts(),
+                            movement?.fromAccountId
+                        )}
+                    </select>
+
+                </label>
+
+                <label class="field">
+
+                    <span>
+                        Inversión de destino
+                    </span>
+
+                    <select
+                        name="toAccountId"
+                        required
+                    >
+                        ${this.formatAccountOptions(
+                            this.investmentAccounts(),
+                            movement?.toAccountId
+                        )}
+                    </select>
+
+                </label>
+
+                ${commonEnd}
+
+            `;
+
+        }
+
+        return `
+
+            ${this.amountField(amount)}
+
+            <label class="field">
+
+                <span>
+                    Cuenta de origen
+                </span>
+
+                <select
+                    name="fromAccountId"
+                    required
+                >
+                    ${this.formatAccountOptions(
+                        this.liquidityAccounts(),
+                        movement?.fromAccountId
+                    )}
+                </select>
+
+            </label>
+
+            <label class="field">
+
+                <span>
+                    Deuda que reduces
+                </span>
+
+                <select
+                    name="toAccountId"
+                    required
+                >
+                    ${this.formatAccountOptions(
+                        this.debtAccounts(),
+                        movement?.toAccountId
+                    )}
+                </select>
+
+            </label>
+
+            ${commonEnd}
+
+        `;
+
     },
 
-    createBaseMovement() {
-        return {
-            id: this.uid(),
+    amountField(amount) {
+
+        return `
+
+            <label class="field">
+
+                <span>
+                    Importe
+                </span>
+
+                <div class="money-input">
+
+                    <input
+                        name="amount"
+                        type="number"
+                        inputmode="decimal"
+                        min="0.01"
+                        step="0.01"
+                        value="${this.escape(amount)}"
+                        placeholder="0,00"
+                        required
+                    >
+
+                    <span>
+                        €
+                    </span>
+
+                </div>
+
+            </label>
+
+        `;
+
+    },
+
+    categoryOptions(
+        type,
+        selectedCategory = ""
+    ) {
+
+        return this.categories[type]
+            .map(category => `
+
+                <option
+                    value="${this.escape(category)}"
+                    ${
+                        category ===
+                        selectedCategory
+                            ? "selected"
+                            : ""
+                    }
+                >
+                    ${this.escape(category)}
+                </option>
+
+            `)
+            .join("");
+
+    },
+
+    readForm(form, type) {
+
+        const values =
+            new FormData(form);
+
+        const movement = {
+            id:
+                this.editingId ||
+                this.generateId(),
+
+            type:
+                type === "debt_payment"
+                    ? "expense"
+                    : type,
+
+            kind:
+                type === "debt_payment"
+                    ? "debt_payment"
+                    : type,
 
             amount:
-                this.number(
-                    this.readValue(
-                        "movement-amount"
-                    )
+                Number(
+                    values.get("amount")
                 ),
 
             date:
-                this.readValue(
-                    "movement-date"
-                ) || this.today(),
-
-            createdAt:
-                new Date().toISOString(),
+                String(
+                    values.get("date") || ""
+                ),
 
             note:
                 String(
-                    this.readValue(
-                        "movement-note"
-                    ) || ""
-                ).trim()
+                    values.get("note") || ""
+                ).trim(),
+
+            createdAt:
+                this.editingId
+                    ? (
+                        this.findMovement(
+                            this.editingId
+                        )?.createdAt ||
+                        new Date().toISOString()
+                    )
+                    : new Date().toISOString(),
+
+            updatedAt:
+                new Date().toISOString()
         };
+
+        if (
+            type === "income" ||
+            type === "expense"
+        ) {
+
+            movement.accountId =
+                String(
+                    values.get("accountId") ||
+                    ""
+                );
+
+            movement.category =
+                String(
+                    values.get("category") ||
+                    ""
+                );
+
+        }
+
+        if (
+            type === "transfer" ||
+            type === "investment" ||
+            type === "debt_payment"
+        ) {
+
+            movement.fromAccountId =
+                String(
+                    values.get("fromAccountId") ||
+                    ""
+                );
+
+            movement.toAccountId =
+                String(
+                    values.get("toAccountId") ||
+                    ""
+                );
+
+        }
+
+        if (type === "investment") {
+
+            movement.category =
+                String(
+                    values.get("category") ||
+                    "Aportación"
+                );
+
+        }
+
+        if (type === "transfer") {
+            movement.category =
+                "Traspaso";
+        }
+
+        if (type === "debt_payment") {
+            movement.category =
+                "Pago de deuda";
+        }
+
+        return movement;
+
     },
 
-    saveMovement() {
-        if (!this.validateAmount()) {
+    validateMovement(movement) {
+
+        if (
+            !Number.isFinite(
+                movement.amount
+            ) ||
+            movement.amount <= 0
+        ) {
+            return "Introduce un importe válido.";
+        }
+
+        if (!movement.date) {
+            return "Selecciona la fecha.";
+        }
+
+        if (
+            movement.fromAccountId &&
+            movement.toAccountId &&
+            movement.fromAccountId ===
+                movement.toAccountId
+        ) {
+            return "La cuenta de origen y destino deben ser diferentes.";
+        }
+
+        const ids = [
+            movement.accountId,
+            movement.fromAccountId,
+            movement.toAccountId
+        ].filter(Boolean);
+
+        const missingAccount =
+            ids.some(
+                id =>
+                    !this.findAccount(id)
+            );
+
+        if (missingAccount) {
+            return "Una de las cuentas no existe.";
+        }
+
+        return null;
+
+    },
+
+    changeBalance(
+        account,
+        amount
+    ) {
+
+        account.balance =
+            Number(account.balance || 0) +
+            Number(amount || 0);
+
+    },
+
+    changeInvested(
+        account,
+        amount
+    ) {
+
+        account.invested =
+            Number(account.invested || 0) +
+            Number(amount || 0);
+
+    },
+
+    applyMovement(
+        data,
+        movement,
+        direction = 1
+    ) {
+
+        const amount =
+            Number(movement.amount) *
+            direction;
+
+        const kind =
+            this.getMovementKind(
+                movement
+            );
+
+        if (kind === "income") {
+
+            const account =
+                this.findAccount(
+                    movement.accountId,
+                    data
+                );
+
+            this.changeBalance(
+                account,
+                amount
+            );
+
+            return;
+
+        }
+
+        if (kind === "expense") {
+
+            const account =
+                this.findAccount(
+                    movement.accountId,
+                    data
+                );
+
+            if (
+                account.group ===
+                "debt"
+            ) {
+
+                this.changeBalance(
+                    account,
+                    amount
+                );
+
+            } else {
+
+                this.changeBalance(
+                    account,
+                    -amount
+                );
+
+            }
+
+            return;
+
+        }
+
+        if (kind === "transfer") {
+
+            const fromAccount =
+                this.findAccount(
+                    movement.fromAccountId,
+                    data
+                );
+
+            const toAccount =
+                this.findAccount(
+                    movement.toAccountId,
+                    data
+                );
+
+            if (
+                fromAccount.group ===
+                "debt"
+            ) {
+
+                this.changeBalance(
+                    fromAccount,
+                    amount
+                );
+
+            } else {
+
+                this.changeBalance(
+                    fromAccount,
+                    -amount
+                );
+
+            }
+
+            if (
+                toAccount.group ===
+                "debt"
+            ) {
+
+                this.changeBalance(
+                    toAccount,
+                    -amount
+                );
+
+            } else {
+
+                this.changeBalance(
+                    toAccount,
+                    amount
+                );
+
+            }
+
+            return;
+
+        }
+
+        if (kind === "investment") {
+
+            const fromAccount =
+                this.findAccount(
+                    movement.fromAccountId,
+                    data
+                );
+
+            const investmentAccount =
+                this.findAccount(
+                    movement.toAccountId,
+                    data
+                );
+
+            this.changeBalance(
+                fromAccount,
+                -amount
+            );
+
+            this.changeInvested(
+                investmentAccount,
+                amount
+            );
+
+            this.changeBalance(
+                investmentAccount,
+                amount
+            );
+
+            return;
+
+        }
+
+        if (kind === "debt_payment") {
+
+            const fromAccount =
+                this.findAccount(
+                    movement.fromAccountId,
+                    data
+                );
+
+            const debtAccount =
+                this.findAccount(
+                    movement.toAccountId,
+                    data
+                );
+
+            this.changeBalance(
+                fromAccount,
+                -amount
+            );
+
+            this.changeBalance(
+                debtAccount,
+                -amount
+            );
+
+        }
+
+    },
+
+    saveMovement(form, type) {
+
+        if (this.saving) {
             return;
         }
 
         const movement =
-            this.createBaseMovement();
+            this.readForm(
+                form,
+                type
+            );
 
-        switch (this.selectedType) {
+        const error =
+            this.validateMovement(
+                movement
+            );
 
-            case "income":
-                this.applyIncome(
-                    movement
+        if (error) {
+            AtlasUI.toast(error);
+            return;
+        }
+
+        this.saving = true;
+
+        const saveButton =
+            form.querySelector(
+                "[data-movement-save]"
+            );
+
+        if (saveButton) {
+            saveButton.disabled = true;
+            saveButton.textContent =
+                "Guardando…";
+        }
+
+        const updatedData =
+            this.cloneData();
+
+        if (this.editingId) {
+
+            const oldIndex =
+                updatedData.movements
+                    .findIndex(
+                        item =>
+                            item.id ===
+                            this.editingId
+                    );
+
+            if (oldIndex === -1) {
+                this.saving = false;
+                AtlasUI.toast(
+                    "No se pudo editar el movimiento."
                 );
-                break;
+                return;
+            }
 
-            case "expense":
-                this.applyExpense(
-                    movement
-                );
-                break;
+            const oldMovement =
+                updatedData.movements[
+                    oldIndex
+                ];
 
-            case "transfer":
-                if (
-                    !this.applyTransfer(
-                        movement
-                    )
-                ) {
-                    return;
-                }
-                break;
+            this.applyMovement(
+                updatedData,
+                oldMovement,
+                -1
+            );
 
-            case "investment":
-                if (
-                    !this.applyInvestment(
-                        movement
-                    )
-                ) {
-                    return;
-                }
-                break;
+            updatedData.movements[
+                oldIndex
+            ] = movement;
 
-            case "debt_payment":
-                if (
-                    !this.applyDebtPayment(
-                        movement
-                    )
-                ) {
-                    return;
-                }
-                break;
+            this.applyMovement(
+                updatedData,
+                movement,
+                1
+            );
+
+        } else {
+
+            updatedData.movements.push(
+                movement
+            );
+
+            this.applyMovement(
+                updatedData,
+                movement,
+                1
+            );
 
         }
 
-        this.data.movements.push(
-            movement
-        );
+        const saved =
+            AtlasStorage.save(
+                updatedData
+            );
 
-        AtlasStorage.save(
-            this.data
-        );
+        if (!saved) {
+
+            this.saving = false;
+
+            if (saveButton) {
+                saveButton.disabled = false;
+                saveButton.textContent =
+                    this.editingId
+                        ? "Guardar cambios"
+                        : "Guardar movimiento";
+            }
+
+            AtlasUI.toast(
+                "No se pudo guardar el movimiento."
+            );
+
+            return;
+
+        }
+
+        this.data =
+            updatedData;
 
         this.close();
 
         if (
-            typeof this.onSave ===
+            typeof this.onComplete ===
             "function"
         ) {
-            this.onSave(
-                this.data,
+            this.onComplete(
+                updatedData,
                 movement
             );
         }
+
     },
 
-    applyIncome(movement) {
-        const accountId =
-            this.readValue(
-                "movement-account"
-            );
-
-        const account =
-            this.account(accountId);
-
-        movement.type =
-            "income";
-
-        movement.accountId =
-            accountId;
-
-        movement.category =
-            this.readValue(
-                "movement-category"
-            );
-
-        account.balance =
-            this.number(account.balance) +
-            movement.amount;
-    },
-
-    applyExpense(movement) {
-        const accountId =
-            this.readValue(
-                "movement-account"
-            );
-
-        const account =
-            this.account(accountId);
-
-        movement.type =
-            "expense";
-
-        movement.kind =
-            "standard";
-
-        movement.accountId =
-            accountId;
-
-        movement.category =
-            this.readValue(
-                "movement-category"
-            );
+    deleteMovement() {
 
         if (
-            account.group === "debt"
+            !this.editingId ||
+            this.saving
         ) {
-            account.balance =
-                Math.abs(
-                    this.number(
-                        account.balance
-                    )
-                ) +
-                movement.amount;
-        } else {
-            account.balance =
-                this.number(
-                    account.balance
-                ) -
-                movement.amount;
+            return;
         }
-    },
 
-    applyTransfer(movement) {
-        const fromId =
-            this.readValue(
-                "movement-from-account"
+        const movement =
+            this.findMovement(
+                this.editingId
             );
 
-        const toId =
-            this.readValue(
-                "movement-to-account"
-            );
-
-        if (fromId === toId) {
+        if (!movement) {
             AtlasUI.toast(
-                "Elige dos cuentas diferentes."
+                "No se encontró el movimiento."
             );
-
-            return false;
+            return;
         }
 
-        const from =
-            this.account(fromId);
+        const confirmed =
+            window.confirm(
+                "¿Eliminar este movimiento?\n\nLos saldos de las cuentas se corregirán automáticamente."
+            );
 
-        const to =
-            this.account(toId);
+        if (!confirmed) {
+            return;
+        }
 
-        movement.type =
-            "transfer";
+        this.saving = true;
 
-        movement.fromAccountId =
-            fromId;
+        const updatedData =
+            this.cloneData();
 
-        movement.toAccountId =
-            toId;
-
-        from.balance =
-            this.number(from.balance) -
-            movement.amount;
-
-        if (
-            to.group === "debt"
-        ) {
-            to.balance =
-                Math.max(
-                    0,
-                    Math.abs(
-                        this.number(
-                            to.balance
-                        )
-                    ) -
-                    movement.amount
+        const movementIndex =
+            updatedData.movements
+                .findIndex(
+                    item =>
+                        item.id ===
+                        this.editingId
                 );
-        } else {
-            to.balance =
-                this.number(to.balance) +
-                movement.amount;
+
+        const movementToDelete =
+            updatedData.movements[
+                movementIndex
+            ];
+
+        this.applyMovement(
+            updatedData,
+            movementToDelete,
+            -1
+        );
+
+        updatedData.movements.splice(
+            movementIndex,
+            1
+        );
+
+        const saved =
+            AtlasStorage.save(
+                updatedData
+            );
+
+        if (!saved) {
+
+            this.saving = false;
+
+            AtlasUI.toast(
+                "No se pudo eliminar el movimiento."
+            );
+
+            return;
+
         }
 
-        return true;
-    },
+        this.data =
+            updatedData;
 
-    applyInvestment(movement) {
-        const fromId =
-            this.readValue(
-                "movement-from-account"
-            );
-
-        const toId =
-            this.readValue(
-                "movement-to-account"
-            );
-
-        const from =
-            this.account(fromId);
-
-        const to =
-            this.account(toId);
+        this.close();
 
         if (
-            !from ||
-            !to
+            typeof this.onComplete ===
+            "function"
         ) {
-            AtlasUI.toast(
-                "Selecciona las cuentas."
+            this.onComplete(
+                updatedData,
+                null
             );
-
-            return false;
         }
 
-        movement.type =
-            "investment";
+        AtlasUI.toast(
+            "Movimiento eliminado."
+        );
 
-        movement.fromAccountId =
-            fromId;
-
-        movement.toAccountId =
-            toId;
-
-        from.balance =
-            this.number(from.balance) -
-            movement.amount;
-
-        to.invested =
-            this.number(to.invested) +
-            movement.amount;
-
-        to.balance =
-            this.number(to.balance) +
-            movement.amount;
-
-        return true;
     },
 
-    applyDebtPayment(movement) {
-        const fromId =
-            this.readValue(
-                "movement-from-account"
-            );
+    close() {
 
-        const toId =
-            this.readValue(
-                "movement-to-account"
-            );
+        const root =
+            this.root();
 
-        const from =
-            this.account(fromId);
-
-        const debt =
-            this.account(toId);
-
-        if (
-            !from ||
-            !debt
-        ) {
-            AtlasUI.toast(
-                "Selecciona la cuenta y la deuda."
-            );
-
-            return false;
+        if (root) {
+            root.innerHTML = "";
         }
 
-        movement.type =
-            "expense";
+        this.editingId = null;
+        this.saving = false;
 
-        movement.kind =
-            "debt_payment";
-
-        movement.fromAccountId =
-            fromId;
-
-        movement.toAccountId =
-            toId;
-
-        movement.category =
-            this.readValue(
-                "movement-category"
-            );
-
-        from.balance =
-            this.number(from.balance) -
-            movement.amount;
-
-        debt.balance =
-            Math.max(
-                0,
-                Math.abs(
-                    this.number(
-                        debt.balance
-                    )
-                ) -
-                movement.amount
-            );
-
-        return true;
     },
 
     bindEvents() {
+
         document.addEventListener(
             "click",
             event => {
@@ -1161,13 +1457,39 @@ const AtlasMovements = {
                     );
 
                 if (typeButton) {
+
                     this.renderForm(
-                        typeButton
-                            .dataset
+                        typeButton.dataset
                             .movementType
                     );
 
                     return;
+
+                }
+
+                const movementRow =
+                    event.target.closest(
+                        "[data-movement-id]"
+                    );
+
+                if (movementRow) {
+
+                    this.open(
+                        AtlasApp.data,
+                        updatedData => {
+
+                            AtlasApp.data =
+                                updatedData;
+
+                            AtlasApp.render();
+
+                        },
+                        movementRow.dataset
+                            .movementId
+                    );
+
+                    return;
+
                 }
 
                 const actionButton =
@@ -1180,49 +1502,50 @@ const AtlasMovements = {
                 }
 
                 const action =
-                    actionButton
-                        .dataset
+                    actionButton.dataset
                         .movementAction;
 
-                if (
-                    action ===
-                    "close-background" &&
-                    event.target !==
-                    actionButton
-                ) {
-                    return;
+                if (action === "close") {
+                    this.close();
                 }
 
-                switch (action) {
+                if (action === "types") {
+                    this.renderTypeSelector();
+                }
 
-                    case "close":
-                    case "close-background":
-                        this.close();
-                        break;
-
-                    case "back":
-                        this.renderTypeSelector();
-                        break;
-
-                    case "save":
-                        this.saveMovement();
-                        break;
-
+                if (action === "delete") {
+                    this.deleteMovement();
                 }
 
             }
         );
-    },
 
-    init() {
-        this.bindEvents();
+        document.addEventListener(
+            "submit",
+            event => {
+
+                const form =
+                    event.target.closest(
+                        "[data-movement-form]"
+                    );
+
+                if (!form) {
+                    return;
+                }
+
+                event.preventDefault();
+
+                this.saveMovement(
+                    form,
+                    form.dataset
+                        .movementForm
+                );
+
+            }
+        );
+
     }
 
 };
 
-document.addEventListener(
-    "DOMContentLoaded",
-    () => {
-        AtlasMovements.init();
-    }
-);
+AtlasMovements.bindEvents();
