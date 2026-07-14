@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    app.js
-   Sprint 7.2 — Estado de búsqueda y filtros de movimientos
+   Sprint 7.3 — Filtros avanzados de movimientos
 ========================================================== */
 
 const AtlasApp = {
@@ -27,6 +27,14 @@ const AtlasApp = {
     movementTypeFilter: "all",
 
     movementAccountFilter: "all",
+
+    movementMinimumAmount: "",
+
+    movementMaximumAmount: "",
+
+    movementDateFrom: "",
+
+    movementDateTo: "",
 
     modalObserver: null,
 
@@ -56,14 +64,7 @@ const AtlasApp = {
         this.trendMetric =
             "savings";
 
-        this.movementSearch =
-            "";
-
-        this.movementTypeFilter =
-            "all";
-
-        this.movementAccountFilter =
-            "all";
+        this.resetMovementFiltersState();
 
         this.bindEvents();
 
@@ -190,14 +191,53 @@ const AtlasApp = {
 
     },
 
+    resetMovementFiltersState() {
+
+        this.movementSearch =
+            "";
+
+        this.movementTypeFilter =
+            "all";
+
+        this.movementAccountFilter =
+            "all";
+
+        this.movementMinimumAmount =
+            "";
+
+        this.movementMaximumAmount =
+            "";
+
+        this.movementDateFrom =
+            "";
+
+        this.movementDateTo =
+            "";
+
+    },
+
     hasMovementFilters() {
 
         return Boolean(
+
             this.movementSearch ||
+
             this.movementTypeFilter !==
                 "all" ||
+
             this.movementAccountFilter !==
-                "all"
+                "all" ||
+
+            this.movementMinimumAmount !==
+                "" ||
+
+            this.movementMaximumAmount !==
+                "" ||
+
+            this.movementDateFrom ||
+
+            this.movementDateTo
+
         );
 
     },
@@ -272,6 +312,132 @@ const AtlasApp = {
 
     },
 
+    normalizeMovementAmount(value) {
+
+        const stringValue =
+            String(
+                value ?? ""
+            )
+                .replace(
+                    ",",
+                    "."
+                )
+                .trim();
+
+        if (!stringValue) {
+
+            return "";
+
+        }
+
+        const amount =
+            Number(
+                stringValue
+            );
+
+        if (
+            !Number.isFinite(
+                amount
+            ) ||
+            amount < 0
+        ) {
+
+            return "";
+
+        }
+
+        return String(
+            amount
+        );
+
+    },
+
+    normalizeMovementDate(value) {
+
+        const date =
+            String(
+                value || ""
+            ).trim();
+
+        if (!date) {
+
+            return "";
+
+        }
+
+        return /^\d{4}-\d{2}-\d{2}$/.test(
+            date
+        )
+            ? date
+            : "";
+
+    },
+
+    normalizeMovementDateRange() {
+
+        if (
+            this.movementDateFrom &&
+            this.movementDateTo &&
+            this.movementDateFrom >
+                this.movementDateTo
+        ) {
+
+            const previousFrom =
+                this.movementDateFrom;
+
+            this.movementDateFrom =
+                this.movementDateTo;
+
+            this.movementDateTo =
+                previousFrom;
+
+        }
+
+    },
+
+    normalizeMovementAmountRange() {
+
+        if (
+            this.movementMinimumAmount ===
+                "" ||
+            this.movementMaximumAmount ===
+                ""
+        ) {
+
+            return;
+
+        }
+
+        const minimum =
+            Number(
+                this.movementMinimumAmount
+            );
+
+        const maximum =
+            Number(
+                this.movementMaximumAmount
+            );
+
+        if (
+            minimum <= maximum
+        ) {
+
+            return;
+
+        }
+
+        this.movementMinimumAmount =
+            String(
+                maximum
+            );
+
+        this.movementMaximumAmount =
+            String(
+                minimum
+            );
+
+    },
+
     readMovementFilters(form) {
 
         if (!form) {
@@ -312,6 +478,38 @@ const AtlasApp = {
                 )
             );
 
+        this.movementMinimumAmount =
+            this.normalizeMovementAmount(
+                values.get(
+                    "movementMinimumAmount"
+                )
+            );
+
+        this.movementMaximumAmount =
+            this.normalizeMovementAmount(
+                values.get(
+                    "movementMaximumAmount"
+                )
+            );
+
+        this.movementDateFrom =
+            this.normalizeMovementDate(
+                values.get(
+                    "movementDateFrom"
+                )
+            );
+
+        this.movementDateTo =
+            this.normalizeMovementDate(
+                values.get(
+                    "movementDateTo"
+                )
+            );
+
+        this.normalizeMovementAmountRange();
+
+        this.normalizeMovementDateRange();
+
     },
 
     applyMovementFilters(form) {
@@ -329,14 +527,7 @@ const AtlasApp = {
 
     clearMovementFilters() {
 
-        this.movementSearch =
-            "";
-
-        this.movementTypeFilter =
-            "all";
-
-        this.movementAccountFilter =
-            "all";
+        this.resetMovementFiltersState();
 
         this.route =
             "movements";
@@ -614,6 +805,26 @@ const AtlasApp = {
                         "movements";
 
                     this.render();
+
+                    return;
+
+                }
+
+                const advancedFilter =
+                    event.target.closest(
+                        "[data-movement-advanced-filter]"
+                    );
+
+                if (advancedFilter) {
+
+                    const form =
+                        advancedFilter.closest(
+                            "[data-movement-filters-form]"
+                        );
+
+                    this.applyMovementFilters(
+                        form
+                    );
 
                 }
 
@@ -1201,6 +1412,18 @@ const AtlasApp = {
                 movementAccountFilter:
                     this.movementAccountFilter,
 
+                movementMinimumAmount:
+                    this.movementMinimumAmount,
+
+                movementMaximumAmount:
+                    this.movementMaximumAmount,
+
+                movementDateFrom:
+                    this.movementDateFrom,
+
+                movementDateTo:
+                    this.movementDateTo,
+
                 movementFilters: {
 
                     search:
@@ -1211,6 +1434,18 @@ const AtlasApp = {
 
                     accountId:
                         this.movementAccountFilter,
+
+                    minimumAmount:
+                        this.movementMinimumAmount,
+
+                    maximumAmount:
+                        this.movementMaximumAmount,
+
+                    dateFrom:
+                        this.movementDateFrom,
+
+                    dateTo:
+                        this.movementDateTo,
 
                     active:
                         this.hasMovementFilters()
@@ -1291,14 +1526,7 @@ const AtlasApp = {
         this.trendMetric =
             "savings";
 
-        this.movementSearch =
-            "";
-
-        this.movementTypeFilter =
-            "all";
-
-        this.movementAccountFilter =
-            "all";
+        this.resetMovementFiltersState();
 
         this.render();
 
