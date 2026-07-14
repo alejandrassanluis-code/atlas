@@ -232,6 +232,33 @@
                 ) !important;
         }
 
+        #app > .app.atlas-overview-dashboard-expanded {
+            height: auto !important;
+
+            min-height:
+                calc(
+                    100dvh -
+                    68px -
+                    env(
+                        safe-area-inset-bottom
+                    )
+                ) !important;
+
+            justify-content:
+                flex-start !important;
+
+            overflow-x: hidden !important;
+            overflow-y: auto !important;
+
+            padding-bottom:
+                calc(
+                    102px +
+                    env(
+                        safe-area-inset-bottom
+                    )
+                ) !important;
+        }
+
 
         /* ==================================================
            CABECERA
@@ -329,6 +356,21 @@
             line-height: 1 !important;
         }
 
+        #app
+        > .app:has(> .grid)
+        > .grid
+        .atlas-overview-card-expanded {
+            grid-column:
+                1 / -1 !important;
+
+            min-height:
+                142px !important;
+
+            padding:
+                13px
+                14px !important;
+        }
+
 
         /* ==================================================
            RESUMEN DEL MES
@@ -385,6 +427,17 @@
 
                 padding:
                     10px
+                    12px !important;
+            }
+
+            #app
+            > .app:has(> .grid)
+            > .grid
+            .atlas-overview-card-expanded {
+                min-height:
+                    132px !important;
+
+                padding:
                     12px !important;
             }
 
@@ -534,6 +587,8 @@
     <script src="js/budgets.js"></script>
 
     <script src="js/analysis.js"></script>
+
+    <script src="js/movement-filters.js"></script>
 
     <script src="js/setup.js"></script>
 
