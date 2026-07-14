@@ -1,544 +1,1330 @@
-<!DOCTYPE html>
-<html lang="es">
+/* ==========================================================
+   ATLAS
+   overview.js
+   Sprint 5.4 — Tarjetas globales interactivas
+========================================================== */
 
-<head>
+const AtlasOverviewCards = {
 
-    <meta charset="UTF-8">
+    expandedCard: null,
 
-    <meta
-        name="viewport"
-        content="
-            width=device-width,
-            initial-scale=1,
-            maximum-scale=1,
-            viewport-fit=cover
-        "
-    >
+    data: null,
 
-    <meta
-        name="theme-color"
-        content="#0b1020"
-    >
+    number(value) {
 
-    <meta
-        name="apple-mobile-web-app-capable"
-        content="yes"
-    >
+        const result =
+            Number(value);
 
-    <meta
-        name="apple-mobile-web-app-status-bar-style"
-        content="black-translucent"
-    >
+        return Number.isFinite(result)
+            ? result
+            : 0;
 
-    <meta
-        name="apple-mobile-web-app-title"
-        content="Atlas"
-    >
+    },
 
-    <meta
-        name="description"
-        content="Atlas — Control financiero personal"
-    >
+    escape(value) {
 
-    <title>Atlas</title>
+        return AtlasUI.escapeHtml(
+            value
+        );
 
-    <link
-        rel="manifest"
-        href="manifest.json"
-    >
+    },
 
-    <link
-        rel="apple-touch-icon"
-        href="icons/icon-192.png"
-    >
+    currency(value) {
 
-    <link
-        rel="stylesheet"
-        href="css/variables.css"
-    >
+        return AtlasUI.formatCurrency(
+            value
+        );
 
-    <link
-        rel="stylesheet"
-        href="css/layout.css"
-    >
+    },
 
-    <link
-        rel="stylesheet"
-        href="css/components.css"
-    >
+    accountsByGroup(
+        data,
+        group
+    ) {
 
-    <link
-        rel="stylesheet"
-        href="css/pages.css"
-    >
+        return (
+            data?.accounts || []
+        )
+            .filter(
+                account =>
+                    account.group === group &&
+                    account.active !== false
+            )
+            .sort(
+                (a, b) => {
 
-    <style>
+                    const balanceDifference =
+                        Math.abs(
+                            this.number(
+                                b.balance
+                            )
+                        ) -
+                        Math.abs(
+                            this.number(
+                                a.balance
+                            )
+                        );
 
-        /* ==================================================
-           MENÚ INFERIOR COMPACTO
-        ================================================== */
+                    if (
+                        balanceDifference !== 0
+                    ) {
 
-        .tabbar {
-            min-height: 68px !important;
+                        return balanceDifference;
 
-            height:
-                calc(
-                    68px +
-                    env(
-                        safe-area-inset-bottom
-                    )
-                ) !important;
+                    }
 
-            display: grid !important;
+                    return (
+                        this.number(
+                            a.order
+                        ) -
+                        this.number(
+                            b.order
+                        )
+                    );
 
-            grid-template-columns:
-                repeat(
-                    2,
-                    minmax(
+                }
+            );
+
+    },
+
+    visibleAccounts(accounts) {
+
+        const accountsWithBalance =
+            accounts.filter(
+                account =>
+                    Math.abs(
+                        this.number(
+                            account.balance
+                        )
+                    ) > 0
+            );
+
+        const source =
+            accountsWithBalance.length > 0
+                ? accountsWithBalance
+                : accounts;
+
+        return source.slice(
+            0,
+            3
+        );
+
+    },
+
+    liquidityDetails(data) {
+
+        const accounts =
+            this.accountsByGroup(
+                data,
+                "liquidity"
+            );
+
+        const visible =
+            this.visibleAccounts(
+                accounts
+            );
+
+        const hiddenCount =
+            Math.max(
+                0,
+                accounts.filter(
+                    account =>
+                        Math.abs(
+                            this.number(
+                                account.balance
+                            )
+                        ) > 0
+                ).length -
+                visible.length
+            );
+
+        return {
+
+            accounts:
+                visible.map(
+                    account => ({
+
+                        name:
+                            account.name,
+
+                        value:
+                            this.number(
+                                account.balance
+                            )
+
+                    })
+                ),
+
+            hiddenCount,
+
+            footer:
+                ""
+
+        };
+
+    },
+
+    investmentDetails(data) {
+
+        const accounts =
+            this.accountsByGroup(
+                data,
+                "investment"
+            );
+
+        const visible =
+            this.visibleAccounts(
+                accounts
+            );
+
+        const relevantAccounts =
+            accounts.filter(
+                account =>
+                    Math.abs(
+                        this.number(
+                            account.balance
+                        )
+                    ) > 0 ||
+                    Math.abs(
+                        this.number(
+                            account.invested
+                        )
+                    ) > 0
+            );
+
+        const totalInvested =
+            relevantAccounts.reduce(
+                (total, account) =>
+                    total +
+                    this.number(
+                        account.invested
+                    ),
+                0
+            );
+
+        const currentValue =
+            relevantAccounts.reduce(
+                (total, account) =>
+                    total +
+                    this.number(
+                        account.balance
+                    ),
+                0
+            );
+
+        const gain =
+            currentValue -
+            totalInvested;
+
+        const hiddenCount =
+            Math.max(
+                0,
+                relevantAccounts.length -
+                visible.length
+            );
+
+        return {
+
+            accounts:
+                visible.map(
+                    account => ({
+
+                        name:
+                            account.name,
+
+                        value:
+                            this.number(
+                                account.balance
+                            ),
+
+                        secondary:
+                            `Aportado ${this.currency(
+                                account.invested
+                            )}`
+
+                    })
+                ),
+
+            hiddenCount,
+
+            footer:
+                totalInvested > 0 ||
+                currentValue > 0
+                    ? `Aportado ${this.currency(
+                        totalInvested
+                    )} · ${
+                        gain >= 0
+                            ? "Ganancia"
+                            : "Pérdida"
+                    } ${this.currency(
+                        Math.abs(gain)
+                    )}`
+                    : ""
+
+        };
+
+    },
+
+    debtDetails(data) {
+
+        const accounts =
+            this.accountsByGroup(
+                data,
+                "debt"
+            );
+
+        const relevantAccounts =
+            accounts.filter(
+                account =>
+                    Math.max(
                         0,
-                        1fr
-                    )
-                )
-                64px
-                repeat(
-                    3,
-                    minmax(
-                        0,
-                        1fr
-                    )
-                ) !important;
+                        this.number(
+                            account.balance
+                        )
+                    ) > 0
+            );
 
-            padding:
-                5px
-                8px
-                env(
-                    safe-area-inset-bottom
-                ) !important;
+        const source =
+            relevantAccounts.length > 0
+                ? relevantAccounts
+                : accounts;
 
-            align-items: center !important;
+        const visible =
+            source.slice(
+                0,
+                3
+            );
+
+        const hiddenCount =
+            Math.max(
+                0,
+                relevantAccounts.length -
+                visible.length
+            );
+
+        return {
+
+            accounts:
+                visible.map(
+                    account => ({
+
+                        name:
+                            account.name,
+
+                        value:
+                            Math.max(
+                                0,
+                                this.number(
+                                    account.balance
+                                )
+                            ),
+
+                        secondary:
+                            account.type ===
+                            "credit_card"
+                                ? "Tarjeta"
+                                : account.type ===
+                                    "loan"
+                                    ? "Préstamo"
+                                    : "Deuda"
+
+                    })
+                ),
+
+            hiddenCount,
+
+            footer:
+                ""
+
+        };
+
+    },
+
+    detailsFor(
+        type,
+        data
+    ) {
+
+        switch (type) {
+
+            case "liquidity":
+
+                return this.liquidityDetails(
+                    data
+                );
+
+            case "investments":
+
+                return this.investmentDetails(
+                    data
+                );
+
+            case "debt":
+
+                return this.debtDetails(
+                    data
+                );
+
+            default:
+
+                return {
+
+                    accounts: [],
+                    hiddenCount: 0,
+                    footer: ""
+
+                };
+
         }
 
-        .tabbar button:not(.fab) {
-            min-width: 0 !important;
+    },
 
-            min-height: 54px !important;
+    detailRows(details) {
 
-            padding:
-                5px
-                1px !important;
-
-            gap: 2px !important;
-        }
-
-        .tabbar button:not(.fab) span {
-            display: block;
-
-            margin:
-                0
-                0
-                3px;
-
-            font-family:
-                -apple-system,
-                BlinkMacSystemFont,
-                "Segoe UI",
-                sans-serif;
-
-            font-size: 24px;
-            line-height: 1;
-        }
-
-        .tabbar button:not(.fab) small {
-            display: block;
-
-            max-width: 100%;
-
-            overflow: hidden;
-
-            font-size: 9px !important;
-            line-height: 1.1;
-
-            white-space: nowrap;
-            text-overflow: ellipsis;
-        }
-
-        .tabbar .fab {
-            width: 56px !important;
-            height: 56px !important;
-
-            min-width: 56px !important;
-            min-height: 56px !important;
-
-            display: flex !important;
-
-            align-items: center !important;
-            justify-content: center !important;
-
-            justify-self: center;
-
-            padding:
-                0
-                0
-                4px !important;
-
-            border-radius: 19px !important;
-
-            font-size: 38px !important;
-            font-weight: 300 !important;
-            line-height: 1 !important;
-
-            transform:
-                translateY(-7px);
-        }
-
-
-        /* ==================================================
-           INICIO
-        ================================================== */
-
-        #app > .app:has(> .grid) {
-            height:
-                calc(
-                    100dvh -
-                    68px -
-                    env(
-                        safe-area-inset-bottom
-                    )
-                ) !important;
-
-            min-height: 0 !important;
-
-            display: flex !important;
-            flex-direction: column !important;
-
-            justify-content:
-                space-between !important;
-
-            gap:
-                clamp(
-                    11px,
-                    1.65vh,
-                    18px
-                ) !important;
-
-            overflow: hidden !important;
-
-            padding-bottom:
-                calc(
-                    78px +
-                    env(
-                        safe-area-inset-bottom
-                    )
-                ) !important;
-        }
-
-
-        /* ==================================================
-           CABECERA
-        ================================================== */
-
-        #app > .app:has(> .grid) > .header {
-            flex: 0 0 auto;
-
-            margin: 0 !important;
-        }
-
-
-        /* ==================================================
-           PATRIMONIO NETO
-        ================================================== */
-
-        #app > .app:has(> .grid) > .hero {
-            flex: 0 0 auto;
-
-            min-height: 0 !important;
-
-            margin: 0 !important;
-
-            padding:
-                18px
-                20px !important;
-        }
-
-        #app > .app:has(> .grid) > .hero .eyebrow {
-            font-size: 12px !important;
-        }
-
-        #app > .app:has(> .grid) > .hero .value {
-            margin-top: 7px !important;
-
-            font-size: 38px !important;
-            line-height: 1 !important;
-        }
-
-        #app > .app:has(> .grid) > .hero .trend {
-            display: none !important;
-        }
-
-
-        /* ==================================================
-           TARJETAS GLOBALES
-        ================================================== */
-
-        #app > .app:has(> .grid) > .grid {
-            flex: 0 0 auto;
-
-            display: grid !important;
-
-            grid-template-columns:
-                repeat(
-                    2,
-                    minmax(
-                        0,
-                        1fr
-                    )
-                ) !important;
-
-            gap:
-                clamp(
-                    10px,
-                    1.35vh,
-                    14px
-                ) !important;
-
-            margin: 0 !important;
-        }
-
-        #app > .app:has(> .grid) > .grid .card {
-            min-height:
-                clamp(
-                    84px,
-                    10.5vh,
-                    102px
-                ) !important;
-
-            padding:
-                14px
-                15px !important;
-        }
-
-        #app > .app:has(> .grid) > .grid .label {
-            font-size: 11px !important;
-            line-height: 1.25 !important;
-        }
-
-        #app > .app:has(> .grid) > .grid .num {
-            margin-top: 9px !important;
-
-            font-size: 23px !important;
-            line-height: 1 !important;
-        }
-
-
-        /* ==================================================
-           RESUMEN DEL MES
-        ================================================== */
-
-        #app > .app:has(> .grid) > button.panel {
-            flex: 0 0 auto;
-
-            width: 100% !important;
-
-            min-height:
-                clamp(
-                    112px,
-                    14vh,
-                    132px
-                ) !important;
-
-            margin: 0 !important;
-
-            padding:
-                15px
-                17px !important;
-        }
-
-
-        /* ==================================================
-           IPHONES MÁS BAJOS
-        ================================================== */
-
-        @media (
-            max-height: 720px
+        if (
+            details.accounts.length === 0
         ) {
 
-            #app > .app:has(> .grid) {
-                gap: 8px !important;
-            }
+            return `
 
-            #app > .app:has(> .grid) > .hero {
-                padding:
-                    13px
-                    17px !important;
-            }
+                <div
+                    style="
+                        padding:10px 0 4px;
+                        color:
+                            var(
+                                --color-text-muted
+                            );
+                        font-size:12px;
+                    "
+                >
+                    No hay cuentas configuradas.
+                </div>
 
-            #app > .app:has(> .grid) > .hero .value {
-                font-size: 32px !important;
-            }
-
-            #app > .app:has(> .grid) > .grid {
-                gap: 8px !important;
-            }
-
-            #app > .app:has(> .grid) > .grid .card {
-                min-height: 74px !important;
-
-                padding:
-                    10px
-                    12px !important;
-            }
-
-            #app > .app:has(> .grid) > .grid .num {
-                margin-top: 6px !important;
-
-                font-size: 20px !important;
-            }
-
-            #app > .app:has(> .grid) > button.panel {
-                min-height: 96px !important;
-
-                padding:
-                    10px
-                    13px !important;
-            }
+            `;
 
         }
 
-    </style>
+        return `
 
-</head>
+            <div
+                style="
+                    display:flex;
+                    flex-direction:column;
+                    gap:7px;
+                    margin-top:10px;
+                    padding-top:9px;
+                    border-top:
+                        1px solid
+                        rgba(
+                            145,
+                            164,
+                            202,
+                            0.12
+                        );
+                "
+            >
 
-<body>
+                ${details.accounts
+                    .map(
+                        account => `
 
-    <main id="app"></main>
+                            <div
+                                style="
+                                    display:flex;
+                                    align-items:flex-start;
+                                    justify-content:
+                                        space-between;
+                                    gap:12px;
+                                "
+                            >
 
-    <nav
-        class="tabbar"
-        aria-label="Navegación principal"
-    >
+                                <div
+                                    style="
+                                        min-width:0;
+                                    "
+                                >
 
-        <button
-            class="active"
-            type="button"
-            data-route="home"
-            aria-label="Inicio"
-        >
+                                    <strong
+                                        style="
+                                            display:block;
+                                            overflow:hidden;
+                                            color:#f7f8fc;
+                                            font-size:12px;
+                                            line-height:1.25;
+                                            text-overflow:
+                                                ellipsis;
+                                            white-space:
+                                                nowrap;
+                                        "
+                                    >
+                                        ${this.escape(
+                                            account.name
+                                        )}
+                                    </strong>
 
-            <span aria-hidden="true">
-                ⌂
-            </span>
+                                    ${
+                                        account.secondary
+                                            ? `
 
-            <small>
-                Inicio
-            </small>
+                                                <small
+                                                    class="note"
+                                                    style="
+                                                        display:block;
+                                                        margin-top:2px;
+                                                        font-size:9px;
+                                                    "
+                                                >
+                                                    ${this.escape(
+                                                        account.secondary
+                                                    )}
+                                                </small>
 
-        </button>
+                                            `
+                                            : ""
+                                    }
 
-        <button
-            type="button"
-            data-route="movements"
-            aria-label="Movimientos"
-        >
+                                </div>
 
-            <span aria-hidden="true">
-                ☷
-            </span>
+                                <strong
+                                    style="
+                                        flex:0 0 auto;
+                                        color:#f7f8fc;
+                                        font-size:12px;
+                                        white-space:
+                                            nowrap;
+                                    "
+                                >
+                                    ${this.currency(
+                                        account.value
+                                    )}
+                                </strong>
 
-            <small>
-                Movimientos
-            </small>
+                            </div>
 
-        </button>
+                        `
+                    )
+                    .join("")}
 
-        <button
-            class="fab"
-            type="button"
-            data-action="newMovement"
-            aria-label="Nuevo movimiento"
-        >
-            +
-        </button>
+                ${
+                    details.hiddenCount > 0
+                        ? `
 
-        <button
-            type="button"
-            data-route="budgets"
-            aria-label="Presupuestos"
-        >
+                            <small
+                                class="note"
+                                style="
+                                    display:block;
+                                    margin-top:1px;
+                                    font-size:10px;
+                                "
+                            >
+                                +${details.hiddenCount}
+                                ${
+                                    details.hiddenCount === 1
+                                        ? "cuenta más"
+                                        : "cuentas más"
+                                }
+                            </small>
 
-            <span aria-hidden="true">
-                ◎
-            </span>
+                        `
+                        : ""
+                }
 
-            <small>
-                Presup.
-            </small>
+                ${
+                    details.footer
+                        ? `
 
-        </button>
+                            <small
+                                class="note"
+                                style="
+                                    display:block;
+                                    margin-top:2px;
+                                    padding-top:7px;
+                                    border-top:
+                                        1px solid
+                                        rgba(
+                                            145,
+                                            164,
+                                            202,
+                                            0.1
+                                        );
+                                    font-size:10px;
+                                "
+                            >
+                                ${this.escape(
+                                    details.footer
+                                )}
+                            </small>
 
-        <button
-            type="button"
-            data-route="analysis"
-            aria-label="Análisis"
-        >
+                        `
+                        : ""
+                }
 
-            <span aria-hidden="true">
-                ◫
-            </span>
+            </div>
 
-            <small>
-                Análisis
-            </small>
+        `;
 
-        </button>
+    },
 
-        <button
-            type="button"
-            data-route="ai"
-            aria-label="Atlas IA"
-        >
+    interactiveCard({
+        type,
+        icon,
+        label,
+        value,
+        data
+    }) {
 
-            <span aria-hidden="true">
-                ✦
-            </span>
+        const expanded =
+            this.expandedCard === type;
 
-            <small>
-                IA
-            </small>
+        const details =
+            this.detailsFor(
+                type,
+                data
+            );
 
-        </button>
+        return `
 
-    </nav>
+            <button
+                class="card"
+                type="button"
+                data-overview-card="${type}"
+                aria-expanded="${
+                    expanded
+                        ? "true"
+                        : "false"
+                }"
+                style="
+                    min-width:0;
+                    min-height:${
+                        expanded
+                            ? "132px"
+                            : "78px"
+                    };
+                    grid-column:${
+                        expanded
+                            ? "1 / -1"
+                            : "auto"
+                    };
+                    padding:${
+                        expanded
+                            ? "13px 14px"
+                            : "11px 12px"
+                    };
+                    color:inherit;
+                    text-align:left;
+                    transition:
+                        min-height
+                        0.2s ease,
+                        padding
+                        0.2s ease,
+                        transform
+                        0.16s ease;
+                "
+            >
 
-    <div
-        id="modal-root"
-        aria-live="polite"
-    ></div>
+                <div
+                    style="
+                        display:flex;
+                        align-items:flex-start;
+                        justify-content:
+                            space-between;
+                        gap:10px;
+                    "
+                >
 
-    <div
-        id="toast-root"
-        aria-live="polite"
-    ></div>
+                    <div
+                        style="
+                            min-width:0;
+                        "
+                    >
 
-    <script src="js/catalog.js"></script>
+                        <div
+                            class="label"
+                            style="
+                                font-size:11px;
+                                white-space:nowrap;
+                            "
+                        >
+                            ${icon}
+                            ${label}
+                        </div>
 
-    <script src="js/data.js"></script>
+                        <div
+                            class="num"
+                            style="
+                                margin-top:6px;
+                                font-size:${
+                                    expanded
+                                        ? "22px"
+                                        : "20px"
+                                };
+                                line-height:1.05;
+                            "
+                        >
+                            ${this.currency(
+                                value
+                            )}
+                        </div>
 
-    <script src="js/storage.js"></script>
+                    </div>
 
-    <script src="js/calculations.js"></script>
+                    <span
+                        aria-hidden="true"
+                        style="
+                            flex:0 0 auto;
+                            color:
+                                var(
+                                    --color-text-muted
+                                );
+                            font-size:17px;
+                            line-height:1;
+                            transform:
+                                rotate(
+                                    ${
+                                        expanded
+                                            ? "180deg"
+                                            : "0deg"
+                                    }
+                                );
+                            transition:
+                                transform
+                                0.2s ease;
+                        "
+                    >
+                        ⌄
+                    </span>
 
-    <script src="js/ui.js"></script>
+                </div>
 
-    <script src="js/budgets.js"></script>
+                ${
+                    expanded
+                        ? this.detailRows(
+                            details
+                        )
+                        : ""
+                }
 
-    <script src="js/setup.js"></script>
+            </button>
 
-    <script src="js/movements.js"></script>
+        `;
 
-    <script src="js/settings.js"></script>
+    },
 
-    <script src="js/app.js"></script>
+    dashboard(data) {
 
-</body>
+        this.data =
+            data;
 
-</html>
+        const summary =
+            AtlasCalculations
+                .financialSummary(
+                    data
+                );
+
+        const cumulativeSavings =
+            AtlasUI.cumulativeSavings(
+                data
+            );
+
+        const income =
+            this.number(
+                summary.income
+            );
+
+        const expenses =
+            this.number(
+                summary.expenses
+            );
+
+        const invested =
+            this.number(
+                summary.invested
+            );
+
+        const monthlySavings =
+            this.number(
+                summary.monthlySavings
+            );
+
+        const monthlySavingRate =
+            income > 0
+                ? (
+                    monthlySavings /
+                    income
+                ) * 100
+                : 0;
+
+        const monthlySavingColor =
+            monthlySavings >= 0
+                ? "var(--color-success)"
+                : "var(--color-danger)";
+
+        return `
+
+            <div
+                class="app"
+                style="
+                    min-height:auto;
+                    padding-bottom:
+                        calc(
+                            78px +
+                            env(
+                                safe-area-inset-bottom
+                            )
+                        );
+                "
+            >
+
+                <header
+                    class="header"
+                    style="
+                        margin-bottom:10px;
+                    "
+                >
+
+                    <div class="brand">
+
+                        <div
+                            class="logo"
+                            style="
+                                width:40px;
+                                height:40px;
+                            "
+                        >
+                            A
+                        </div>
+
+                        <div>
+
+                            <b>
+                                ATLAS
+                            </b>
+
+                            <small>
+                                ${AtlasUI.shortDate()}
+                            </small>
+
+                        </div>
+
+                    </div>
+
+                    <button
+                        class="iconbtn"
+                        type="button"
+                        data-action="openSettings"
+                        aria-label="Abrir ajustes"
+                        style="
+                            width:40px;
+                            height:40px;
+                            font-size:20px;
+                        "
+                    >
+                        ⚙︎
+                    </button>
+
+                </header>
+
+                <section
+                    class="hero"
+                    style="
+                        min-height:0;
+                        padding:14px 18px;
+                        margin-bottom:10px;
+                    "
+                >
+
+                    <div
+                        class="eyebrow"
+                        style="
+                            font-size:11px;
+                        "
+                    >
+                        Patrimonio neto
+                    </div>
+
+                    <div
+                        class="value"
+                        style="
+                            margin-top:4px;
+                            font-size:34px;
+                            line-height:1.05;
+                        "
+                    >
+                        ${this.currency(
+                            summary.netWorth
+                        )}
+                    </div>
+
+                    <div
+                        class="trend"
+                        style="
+                            margin-top:5px;
+                            font-size:11px;
+                        "
+                    >
+                        Liquidez + inversiones − deuda
+                    </div>
+
+                </section>
+
+                <div
+                    class="grid"
+                    style="
+                        display:grid;
+                        grid-template-columns:
+                            repeat(
+                                2,
+                                minmax(0,1fr)
+                            );
+                        gap:8px;
+                        margin:0 0 9px;
+                    "
+                >
+
+                    ${this.interactiveCard({
+
+                        type:
+                            "liquidity",
+
+                        icon:
+                            "💵",
+
+                        label:
+                            "Liquidez",
+
+                        value:
+                            summary.liquidity,
+
+                        data
+
+                    })}
+
+                    ${this.interactiveCard({
+
+                        type:
+                            "investments",
+
+                        icon:
+                            "📈",
+
+                        label:
+                            "Inversiones",
+
+                        value:
+                            summary.investments,
+
+                        data
+
+                    })}
+
+                    ${this.interactiveCard({
+
+                        type:
+                            "debt",
+
+                        icon:
+                            "💳",
+
+                        label:
+                            "Deuda",
+
+                        value:
+                            summary.debt,
+
+                        data
+
+                    })}
+
+                    <button
+                        class="card"
+                        type="button"
+                        data-route="analysis"
+                        style="
+                            min-width:0;
+                            min-height:78px;
+                            padding:11px 12px;
+                            color:inherit;
+                            text-align:left;
+                        "
+                    >
+
+                        <div
+                            class="label"
+                            style="
+                                font-size:11px;
+                                white-space:nowrap;
+                            "
+                        >
+                            🐷 Ahorro acumulado
+                        </div>
+
+                        <div
+                            class="num"
+                            style="
+                                margin-top:6px;
+                                color:${
+                                    cumulativeSavings >= 0
+                                        ? "var(--color-success)"
+                                        : "var(--color-danger)"
+                                };
+                                font-size:20px;
+                                line-height:1.05;
+                            "
+                        >
+                            ${this.currency(
+                                cumulativeSavings
+                            )}
+                        </div>
+
+                    </button>
+
+                </div>
+
+                <button
+                    class="panel"
+                    type="button"
+                    data-route="analysis"
+                    style="
+                        display:block;
+                        width:100%;
+                        margin:0;
+                        padding:11px 13px;
+                        color:inherit;
+                        text-align:left;
+                    "
+                >
+
+                    <div
+                        style="
+                            display:flex;
+                            align-items:center;
+                            justify-content:
+                                space-between;
+                            gap:10px;
+                            margin-bottom:8px;
+                        "
+                    >
+
+                        <div>
+
+                            <div
+                                class="label"
+                                style="
+                                    font-size:10px;
+                                "
+                            >
+                                Este mes
+                            </div>
+
+                            <strong
+                                style="
+                                    display:block;
+                                    margin-top:1px;
+                                    font-size:13px;
+                                "
+                            >
+                                ${AtlasUI.currentMonth()}
+                            </strong>
+
+                        </div>
+
+                        <div
+                            style="
+                                text-align:right;
+                            "
+                        >
+
+                            <strong
+                                style="
+                                    display:block;
+                                    color:
+                                        ${monthlySavingColor};
+                                    font-size:16px;
+                                "
+                            >
+                                ${this.currency(
+                                    monthlySavings
+                                )}
+                            </strong>
+
+                            <small
+                                class="note"
+                                style="
+                                    display:block;
+                                    margin-top:1px;
+                                    font-size:9px;
+                                "
+                            >
+                                ${
+                                    income > 0
+                                        ? `${AtlasUI.formatPercent(
+                                            monthlySavingRate
+                                        )} de ahorro`
+                                        : "Ahorro mensual"
+                                }
+                            </small>
+
+                        </div>
+
+                    </div>
+
+                    <div
+                        style="
+                            display:grid;
+                            grid-template-columns:
+                                repeat(
+                                    3,
+                                    minmax(0,1fr)
+                                );
+                            gap:7px;
+                        "
+                    >
+
+                        <div
+                            style="
+                                min-width:0;
+                            "
+                        >
+
+                            <small
+                                class="note"
+                                style="
+                                    display:block;
+                                    font-size:9px;
+                                "
+                            >
+                                Ingresos
+                            </small>
+
+                            <strong
+                                style="
+                                    display:block;
+                                    margin-top:2px;
+                                    overflow:hidden;
+                                    color:
+                                        var(
+                                            --color-success
+                                        );
+                                    font-size:13px;
+                                    text-overflow:
+                                        ellipsis;
+                                    white-space:nowrap;
+                                "
+                            >
+                                ${this.currency(
+                                    income
+                                )}
+                            </strong>
+
+                        </div>
+
+                        <div
+                            style="
+                                min-width:0;
+                            "
+                        >
+
+                            <small
+                                class="note"
+                                style="
+                                    display:block;
+                                    font-size:9px;
+                                "
+                            >
+                                Gastos
+                            </small>
+
+                            <strong
+                                style="
+                                    display:block;
+                                    margin-top:2px;
+                                    overflow:hidden;
+                                    color:
+                                        var(
+                                            --color-danger
+                                        );
+                                    font-size:13px;
+                                    text-overflow:
+                                        ellipsis;
+                                    white-space:nowrap;
+                                "
+                            >
+                                ${this.currency(
+                                    expenses
+                                )}
+                            </strong>
+
+                        </div>
+
+                        <div
+                            style="
+                                min-width:0;
+                            "
+                        >
+
+                            <small
+                                class="note"
+                                style="
+                                    display:block;
+                                    font-size:9px;
+                                "
+                            >
+                                Invertido
+                            </small>
+
+                            <strong
+                                style="
+                                    display:block;
+                                    margin-top:2px;
+                                    overflow:hidden;
+                                    color:
+                                        var(
+                                            --color-primary
+                                        );
+                                    font-size:13px;
+                                    text-overflow:
+                                        ellipsis;
+                                    white-space:nowrap;
+                                "
+                            >
+                                ${this.currency(
+                                    invested
+                                )}
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+                </button>
+
+            </div>
+
+        `;
+
+    },
+
+    renderDashboard() {
+
+        if (!this.data) {
+
+            return;
+
+        }
+
+        const app =
+            document.getElementById(
+                "app"
+            );
+
+        if (!app) {
+
+            return;
+
+        }
+
+        app.innerHTML =
+            AtlasUI.dashboard(
+                this.data
+            );
+
+        document
+            .querySelectorAll(
+                ".tabbar button[data-route]"
+            )
+            .forEach(
+                button => {
+
+                    button.classList.toggle(
+                        "active",
+                        button.dataset.route ===
+                            "home"
+                    );
+
+                }
+            );
+
+        AtlasUI.bindDynamicControls();
+
+    },
+
+    bindCards() {
+
+        document
+            .querySelectorAll(
+                "[data-overview-card]"
+            )
+            .forEach(
+                card => {
+
+                    if (
+                        card.dataset
+                            .overviewBound ===
+                        "true"
+                    ) {
+
+                        return;
+
+                    }
+
+                    card.dataset
+                        .overviewBound =
+                        "true";
+
+                    card.addEventListener(
+                        "click",
+                        () => {
+
+                            const type =
+                                card.dataset
+                                    .overviewCard;
+
+                            this.expandedCard =
+                                this.expandedCard ===
+                                type
+                                    ? null
+                                    : type;
+
+                            this.renderDashboard();
+
+                        }
+                    );
+
+                }
+            );
+
+    }
+
+};
+
+
+/* ==========================================================
+   INTEGRACIÓN CON AtlasUI
+========================================================== */
+
+AtlasOverviewCards.originalDashboard =
+    AtlasUI.dashboard.bind(
+        AtlasUI
+    );
+
+AtlasOverviewCards.originalBindDynamicControls =
+    AtlasUI.bindDynamicControls.bind(
+        AtlasUI
+    );
+
+AtlasUI.dashboard = function(data) {
+
+    return AtlasOverviewCards.dashboard(
+        data
+    );
+
+};
+
+AtlasUI.bindDynamicControls = function() {
+
+    AtlasOverviewCards
+        .originalBindDynamicControls();
+
+    AtlasOverviewCards.bindCards();
+
+};
