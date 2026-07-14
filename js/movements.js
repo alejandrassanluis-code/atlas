@@ -1,58 +1,43 @@
 /* ==========================================================
    ATLAS
    movements.js
-   Sprint 2.3 — Crear, editar y eliminar movimientos
+   Sprint 4.0 — Categorías y subcategorías
 ========================================================== */
 
 const AtlasMovements = {
 
     data: null,
+
     onComplete: null,
+
     editingId: null,
+
     saving: false,
 
-    categories: {
+    open(
+        data,
+        onComplete,
+        movementId = null
+    ) {
 
-        income: [
-            "Nómina",
-            "Intereses",
-            "Reembolso",
-            "Venta",
-            "Otros ingresos"
-        ],
+        this.data =
+            data;
 
-        expense: [
-            "Vivienda",
-            "Alimentación",
-            "Transporte",
-            "Salud",
-            "Ocio",
-            "Compras",
-            "Suscripciones",
-            "Viajes",
-            "Impuestos",
-            "Otros gastos"
-        ],
+        this.onComplete =
+            onComplete;
 
-        investment: [
-            "Aportación periódica",
-            "Aportación extraordinaria",
-            "Otros"
-        ]
+        this.editingId =
+            movementId;
 
-    },
-
-    open(data, onComplete, movementId = null) {
-
-        this.data = data;
-        this.onComplete = onComplete;
-        this.editingId = movementId;
-        this.saving = false;
+        this.saving =
+            false;
 
         if (movementId) {
 
             const movement =
-                this.findMovement(movementId);
+                this.findMovement(
+                    movementId
+                );
 
             if (!movement) {
 
@@ -65,7 +50,9 @@ const AtlasMovements = {
             }
 
             this.renderForm(
-                this.getMovementKind(movement),
+                this.getMovementKind(
+                    movement
+                ),
                 movement
             );
 
@@ -85,6 +72,78 @@ const AtlasMovements = {
 
     },
 
+    cloneData() {
+
+        return JSON.parse(
+            JSON.stringify(
+                this.data
+            )
+        );
+
+    },
+
+    generateId() {
+
+        return [
+            "mov",
+            Date.now(),
+            Math.random()
+                .toString(36)
+                .slice(2, 9)
+        ].join("_");
+
+    },
+
+    today() {
+
+        const now =
+            new Date();
+
+        const year =
+            now.getFullYear();
+
+        const month =
+            String(
+                now.getMonth() + 1
+            ).padStart(
+                2,
+                "0"
+            );
+
+        const day =
+            String(
+                now.getDate()
+            ).padStart(
+                2,
+                "0"
+            );
+
+        return `${year}-${month}-${day}`;
+
+    },
+
+    escape(value) {
+
+        return String(value ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+
+    },
+
+    number(value) {
+
+        const result =
+            Number(value);
+
+        return Number.isFinite(result)
+            ? result
+            : 0;
+
+    },
+
     findMovement(id) {
 
         return this.data.movements.find(
@@ -94,7 +153,10 @@ const AtlasMovements = {
 
     },
 
-    findAccount(id, data = this.data) {
+    findAccount(
+        id,
+        data = this.data
+    ) {
 
         return data.accounts.find(
             account =>
@@ -116,161 +178,498 @@ const AtlasMovements = {
 
     },
 
-    cloneData() {
+    catalogCategories(type) {
 
-        return JSON.parse(
-            JSON.stringify(this.data)
-        );
+        const categories =
+            this.data?.catalog
+                ?.categories?.[type];
 
-    },
+        if (
+            !Array.isArray(categories)
+        ) {
+            return [];
+        }
 
-    generateId() {
-
-        return (
-            "mov_" +
-            Date.now() +
-            "_" +
-            Math.random()
-                .toString(36)
-                .slice(2, 9)
-        );
-
-    },
-
-    today() {
-
-        const now =
-            new Date();
-
-        const year =
-            now.getFullYear();
-
-        const month =
-            String(
-                now.getMonth() + 1
-            ).padStart(2, "0");
-
-        const day =
-            String(
-                now.getDate()
-            ).padStart(2, "0");
-
-        return `${year}-${month}-${day}`;
+        return categories
+            .filter(
+                category =>
+                    category.active !== false
+            )
+            .sort(
+                (a, b) =>
+                    this.number(a.order) -
+                    this.number(b.order)
+            );
 
     },
 
-    escape(value) {
+    findCategory(
+        type,
+        categoryId
+    ) {
 
-        return String(value ?? "")
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
+        return this
+            .catalogCategories(type)
+            .find(
+                category =>
+                    category.id ===
+                    categoryId
+            ) || null;
 
     },
 
-    liquidityAccounts(data = this.data) {
+    findSubcategory(
+        type,
+        categoryId,
+        subcategoryId
+    ) {
 
-        return data.accounts.filter(
+        const category =
+            this.findCategory(
+                type,
+                categoryId
+            );
+
+        if (
+            !category ||
+            !Array.isArray(
+                category.subcategories
+            )
+        ) {
+            return null;
+        }
+
+        return category
+            .subcategories
+            .find(
+                subcategory =>
+                    subcategory.id ===
+                    subcategoryId
+            ) || null;
+
+    },
+
+    activeAccounts(
+        filter,
+        selectedId = null
+    ) {
+
+        return this.data.accounts
+            .filter(
+                account =>
+                    filter(account)
+            )
+            .filter(
+                account =>
+                    account.active !== false &&
+                    (
+                        account.archived !== true ||
+                        account.id === selectedId
+                    )
+            )
+            .sort(
+                (a, b) =>
+                    this.number(a.order) -
+                    this.number(b.order)
+            );
+
+    },
+
+    liquidityAccounts(
+        selectedId = null
+    ) {
+
+        return this.activeAccounts(
             account =>
                 account.group ===
-                "liquidity"
+                "liquidity",
+            selectedId
         );
 
     },
 
-    investmentAccounts(data = this.data) {
+    investmentAccounts(
+        selectedId = null
+    ) {
 
-        return data.accounts.filter(
+        return this.activeAccounts(
             account =>
                 account.group ===
-                "investment"
+                "investment",
+            selectedId
         );
 
     },
 
-    debtAccounts(data = this.data) {
+    debtAccounts(
+        selectedId = null
+    ) {
 
-        return data.accounts.filter(
+        return this.activeAccounts(
             account =>
                 account.group ===
-                "debt"
+                "debt",
+            selectedId
         );
 
     },
 
-    paymentAccounts(data = this.data) {
+    paymentAccounts(
+        selectedId = null
+    ) {
 
-        return data.accounts.filter(
+        return this.activeAccounts(
             account =>
                 account.group ===
                     "liquidity" ||
-                account.id ===
-                    "amex" ||
-                account.id ===
-                    "bbva_credit"
+                account.type ===
+                    "credit_card",
+            selectedId
         );
 
     },
 
-    transferAccounts(data = this.data) {
+    transferAccounts(
+        selectedId = null
+    ) {
 
-        return data.accounts.filter(
+        return this.activeAccounts(
             account =>
                 account.group ===
                     "liquidity" ||
                 account.group ===
-                    "debt"
+                    "debt",
+            selectedId
         );
 
     },
 
-    formatAccountOptions(
+    accountOptions(
         accounts,
         selectedId = ""
     ) {
 
         return accounts
-            .map(account => `
+            .map(
+                account => `
 
-                <option
-                    value="${this.escape(account.id)}"
-                    ${
-                        account.id === selectedId
-                            ? "selected"
-                            : ""
-                    }
-                >
-                    ${this.escape(account.name)}
-                </option>
+                    <option
+                        value="${this.escape(
+                            account.id
+                        )}"
+                        ${
+                            account.id ===
+                            selectedId
+                                ? "selected"
+                                : ""
+                        }
+                    >
+                        ${this.escape(
+                            account.name
+                        )}
+                    </option>
 
-            `)
+                `
+            )
             .join("");
 
     },
 
     categoryOptions(
         type,
-        selectedCategory = ""
+        selectedId = ""
     ) {
 
-        return this.categories[type]
-            .map(category => `
+        const categories =
+            this.catalogCategories(
+                type
+            );
 
-                <option
-                    value="${this.escape(category)}"
-                    ${
-                        category === selectedCategory
-                            ? "selected"
-                            : ""
-                    }
-                >
-                    ${this.escape(category)}
-                </option>
+        return categories
+            .map(
+                category => `
 
-            `)
+                    <option
+                        value="${this.escape(
+                            category.id
+                        )}"
+                        ${
+                            category.id ===
+                            selectedId
+                                ? "selected"
+                                : ""
+                        }
+                    >
+                        ${this.escape(
+                            category.icon
+                        )}
+                        ${this.escape(
+                            category.name
+                        )}
+                    </option>
+
+                `
+            )
             .join("");
+
+    },
+
+    subcategoryOptions(
+        type,
+        categoryId,
+        selectedId = ""
+    ) {
+
+        const category =
+            this.findCategory(
+                type,
+                categoryId
+            );
+
+        if (
+            !category ||
+            !Array.isArray(
+                category.subcategories
+            )
+        ) {
+            return "";
+        }
+
+        return category.subcategories
+            .filter(
+                subcategory =>
+                    subcategory.active !==
+                    false
+            )
+            .sort(
+                (a, b) =>
+                    this.number(a.order) -
+                    this.number(b.order)
+            )
+            .map(
+                subcategory => `
+
+                    <option
+                        value="${this.escape(
+                            subcategory.id
+                        )}"
+                        ${
+                            subcategory.id ===
+                            selectedId
+                                ? "selected"
+                                : ""
+                        }
+                    >
+                        ${this.escape(
+                            subcategory.icon
+                        )}
+                        ${this.escape(
+                            subcategory.name
+                        )}
+                    </option>
+
+                `
+            )
+            .join("");
+
+    },
+
+    resolveLegacyCategory(
+        type,
+        movement
+    ) {
+
+        if (movement?.categoryId) {
+
+            return {
+                categoryId:
+                    movement.categoryId,
+
+                subcategoryId:
+                    movement.subcategoryId ||
+                    ""
+            };
+
+        }
+
+        const oldName =
+            String(
+                movement?.category ||
+                ""
+            )
+                .trim()
+                .toLowerCase();
+
+        const mappings = {
+
+            income: {
+
+                "nómina": [
+                    "work",
+                    "work_salary"
+                ],
+
+                "nomina": [
+                    "work",
+                    "work_salary"
+                ],
+
+                "reembolso": [
+                    "refunds",
+                    "refunds_other"
+                ],
+
+                "venta": [
+                    "extra_income",
+                    "extra_income_second_hand"
+                ],
+
+                "otros ingresos": [
+                    "other_income",
+                    "other_income_unclassified"
+                ]
+
+            },
+
+            expense: {
+
+                "vivienda": [
+                    "housing",
+                    "housing_rent"
+                ],
+
+                "alimentación": [
+                    "food",
+                    "food_supermarket"
+                ],
+
+                "alimentacion": [
+                    "food",
+                    "food_supermarket"
+                ],
+
+                "transporte": [
+                    "transport",
+                    "transport_other"
+                ],
+
+                "salud": [
+                    "health",
+                    "health_other"
+                ],
+
+                "ocio": [
+                    "leisure",
+                    "leisure_other"
+                ],
+
+                "compras": [
+                    "shopping",
+                    "shopping_other"
+                ],
+
+                "suscripciones": [
+                    "subscriptions",
+                    "subscriptions_other"
+                ],
+
+                "viajes": [
+                    "travel",
+                    "travel_other"
+                ],
+
+                "impuestos": [
+                    "taxes",
+                    "taxes_other"
+                ],
+
+                "otros gastos": [
+                    "other_expense",
+                    "other_expense_unclassified"
+                ]
+
+            }
+
+        };
+
+        const match =
+            mappings[type]?.[oldName];
+
+        if (match) {
+
+            return {
+                categoryId:
+                    match[0],
+
+                subcategoryId:
+                    match[1]
+            };
+
+        }
+
+        const firstCategory =
+            this.catalogCategories(
+                type
+            )[0];
+
+        return {
+            categoryId:
+                firstCategory?.id ||
+                "",
+
+            subcategoryId:
+                firstCategory
+                    ?.subcategories?.[0]
+                    ?.id ||
+                ""
+        };
+
+    },
+
+    categoryDisplayName(
+        type,
+        categoryId,
+        subcategoryId
+    ) {
+
+        const category =
+            this.findCategory(
+                type,
+                categoryId
+            );
+
+        const subcategory =
+            this.findSubcategory(
+                type,
+                categoryId,
+                subcategoryId
+            );
+
+        if (
+            category &&
+            subcategory
+        ) {
+
+            return (
+                `${category.icon} ` +
+                `${category.name} · ` +
+                `${subcategory.name}`
+            );
+
+        }
+
+        if (category) {
+
+            return (
+                `${category.icon} ` +
+                category.name
+            );
+
+        }
+
+        return type === "income"
+            ? "Ingreso"
+            : "Gasto";
 
     },
 
@@ -284,52 +683,67 @@ const AtlasMovements = {
                     overflow: hidden;
                 }
 
-                .atlas-modal-backdrop {
+                .movement-backdrop {
                     position: fixed;
                     inset: 0;
-                    z-index: 3000;
-                    background: rgba(3, 7, 18, 0.76);
+                    z-index: 3200;
+                    background:
+                        rgba(
+                            3,
+                            7,
+                            18,
+                            0.78
+                        );
                     backdrop-filter: blur(8px);
-                    -webkit-backdrop-filter: blur(8px);
+                    -webkit-backdrop-filter:
+                        blur(8px);
                 }
 
-                .atlas-sheet {
+                .movement-sheet {
                     position: fixed;
                     left: 0;
                     right: 0;
                     bottom: 0;
-                    z-index: 3001;
-                    max-height: 92vh;
+                    z-index: 3201;
+                    max-height: 94vh;
                     overflow-y: auto;
                     padding:
                         12px
                         22px
                         calc(
-                            24px +
-                            env(safe-area-inset-bottom)
+                            25px +
+                            env(
+                                safe-area-inset-bottom
+                            )
                         );
                     border-radius:
                         30px
                         30px
                         0
                         0;
+                    border:
+                        1px solid
+                        rgba(
+                            145,
+                            164,
+                            202,
+                            0.24
+                        );
                     background: #11192e;
-                    border: 1px solid rgba(
-                        145,
-                        164,
-                        202,
-                        0.24
-                    );
                     box-shadow:
                         0 -20px 60px
-                        rgba(0, 0, 0, 0.45);
+                        rgba(
+                            0,
+                            0,
+                            0,
+                            0.45
+                        );
                     animation:
-                        atlasSheetUp
-                        0.24s
-                        ease;
+                        movementSheetUp
+                        0.24s ease;
                 }
 
-                @keyframes atlasSheetUp {
+                @keyframes movementSheetUp {
 
                     from {
                         opacity: 0;
@@ -345,13 +759,13 @@ const AtlasMovements = {
 
                 }
 
-                .atlas-sheet-handle {
+                .movement-handle {
                     width: 46px;
                     height: 5px;
                     margin:
                         0
                         auto
-                        24px;
+                        23px;
                     border-radius: 99px;
                     background:
                         rgba(
@@ -362,34 +776,30 @@ const AtlasMovements = {
                         );
                 }
 
-                .atlas-sheet-header {
+                .movement-header {
                     display: flex;
                     align-items: flex-start;
                     gap: 12px;
                     margin-bottom: 22px;
                 }
 
-                .atlas-sheet-header h2 {
+                .movement-header h2 {
                     margin: 0;
                     color: #f7f8fc;
-                    font-size: 28px;
+                    font-size: 27px;
                     line-height: 1.15;
-                    letter-spacing: -0.6px;
                 }
 
-                .atlas-sheet-header p {
-                    margin:
-                        8px
-                        0
-                        0;
+                .movement-header p {
+                    margin: 7px 0 0;
                     color: #98a2bb;
                     line-height: 1.45;
                 }
 
-                .atlas-sheet-back {
-                    width: 40px;
-                    height: 40px;
-                    flex: 0 0 40px;
+                .movement-back {
+                    width: 42px;
+                    height: 42px;
+                    flex: 0 0 42px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -404,27 +814,27 @@ const AtlasMovements = {
                             0.06
                         );
                     font-size: 34px;
-                    line-height: 1;
                 }
 
-                .atlas-movement-types {
+                .movement-types {
                     display: flex;
                     flex-direction: column;
-                    gap: 12px;
+                    gap: 11px;
                 }
 
-                .atlas-movement-type {
+                .movement-type {
                     width: 100%;
                     display: flex;
                     align-items: center;
-                    gap: 16px;
-                    padding: 16px;
-                    border: 1px solid
+                    gap: 15px;
+                    padding: 15px;
+                    border:
+                        1px solid
                         rgba(
                             145,
                             164,
                             202,
-                            0.2
+                            0.18
                         );
                     border-radius: 20px;
                     background: #19243a;
@@ -432,11 +842,11 @@ const AtlasMovements = {
                     text-align: left;
                 }
 
-                .atlas-movement-type:active {
+                .movement-type:active {
                     transform: scale(0.985);
                 }
 
-                .atlas-movement-icon {
+                .movement-type-icon {
                     width: 48px;
                     height: 48px;
                     flex: 0 0 48px;
@@ -454,43 +864,44 @@ const AtlasMovements = {
                     font-size: 23px;
                 }
 
-                .atlas-movement-type strong {
+                .movement-type strong {
                     display: block;
                     margin-bottom: 4px;
-                    font-size: 17px;
+                    font-size: 16px;
                 }
 
-                .atlas-movement-type small {
+                .movement-type small {
                     display: block;
                     color: #98a2bb;
-                    font-size: 14px;
-                    line-height: 1.35;
+                    font-size: 13px;
+                    line-height: 1.4;
                 }
 
-                .atlas-movement-form {
+                .movement-form {
                     display: flex;
                     flex-direction: column;
                     gap: 16px;
                 }
 
-                .atlas-field {
+                .movement-field {
                     display: flex;
                     flex-direction: column;
                     gap: 8px;
                 }
 
-                .atlas-field > span {
+                .movement-field > span {
                     color: #c8d0e3;
                     font-size: 13px;
                     font-weight: 700;
                 }
 
-                .atlas-field input,
-                .atlas-field select {
+                .movement-field input,
+                .movement-field select {
                     width: 100%;
                     min-height: 54px;
                     padding: 0 15px;
-                    border: 1px solid
+                    border:
+                        1px solid
                         rgba(
                             145,
                             164,
@@ -504,8 +915,8 @@ const AtlasMovements = {
                     font-size: 16px;
                 }
 
-                .atlas-field input:focus,
-                .atlas-field select:focus {
+                .movement-field input:focus,
+                .movement-field select:focus {
                     border-color: #4da3ff;
                     box-shadow:
                         0 0 0 3px
@@ -517,71 +928,72 @@ const AtlasMovements = {
                         );
                 }
 
-                .atlas-money-input {
+                .movement-amount {
                     position: relative;
                 }
 
-                .atlas-money-input input {
-                    padding-right: 48px;
+                .movement-amount input {
+                    padding-right: 44px;
+                    font-size: 23px;
+                    font-weight: 750;
                 }
 
-                .atlas-money-input b {
+                .movement-amount b {
                     position: absolute;
-                    right: 17px;
                     top: 50%;
+                    right: 16px;
                     transform:
                         translateY(-50%);
                     color: #98a2bb;
-                    pointer-events: none;
+                    font-size: 19px;
                 }
 
-                .atlas-sheet-primary,
-                .atlas-sheet-secondary,
-                .atlas-sheet-danger {
+                .movement-primary,
+                .movement-secondary,
+                .movement-danger {
                     width: 100%;
                     min-height: 56px;
                     border-radius: 17px;
-                    font-weight: 750;
                     font-size: 16px;
+                    font-weight: 750;
                 }
 
-                .atlas-sheet-primary {
-                    margin-top: 6px;
+                .movement-primary {
+                    margin-top: 3px;
+                    color: #ffffff;
                     background:
                         linear-gradient(
                             135deg,
                             #4da3ff,
                             #2879ed
                         );
-                    color: white;
                 }
 
-                .atlas-sheet-primary:disabled {
+                .movement-primary:disabled {
                     opacity: 0.55;
                 }
 
-                .atlas-sheet-secondary {
-                    margin-top: 12px;
+                .movement-secondary {
                     color: #98a2bb;
                     background: transparent;
                 }
 
-                .atlas-sheet-danger {
-                    margin-top: 12px;
-                    color: #ff6878;
+                .movement-danger {
+                    color: #ff7d8d;
+                    border:
+                        1px solid
+                        rgba(
+                            255,
+                            91,
+                            112,
+                            0.2
+                        );
                     background:
                         rgba(
                             255,
-                            104,
-                            120,
+                            91,
+                            112,
                             0.08
-                        );
-                    border: 1px solid
-                        rgba(
-                            255,
-                            104,
-                            120,
-                            0.18
                         );
                 }
 
@@ -609,18 +1021,18 @@ const AtlasMovements = {
             ${this.styles()}
 
             <div
-                class="atlas-modal-backdrop"
+                class="movement-backdrop"
                 data-movement-action="close"
             ></div>
 
             <section
-                class="atlas-sheet"
+                class="movement-sheet"
                 role="dialog"
                 aria-modal="true"
             >
 
                 <div
-                    class="atlas-sheet-handle"
+                    class="movement-handle"
                 ></div>
 
                 ${content}
@@ -641,13 +1053,13 @@ const AtlasMovements = {
         return `
 
             <button
-                class="atlas-movement-type"
+                class="movement-type"
                 type="button"
                 data-movement-type="${type}"
             >
 
                 <span
-                    class="atlas-movement-icon"
+                    class="movement-type-icon"
                 >
                     ${icon}
                 </span>
@@ -674,9 +1086,7 @@ const AtlasMovements = {
 
         this.renderSheet(`
 
-            <div
-                class="atlas-sheet-header"
-            >
+            <div class="movement-header">
 
                 <div>
 
@@ -692,51 +1102,50 @@ const AtlasMovements = {
 
             </div>
 
-            <div
-                class="atlas-movement-types"
-            >
+            <div class="movement-types">
 
                 ${this.typeButton(
                     "income",
                     "🟢",
                     "Ingreso",
-                    "Nómina, intereses u otros ingresos"
+                    "Nómina, Bizum, reembolso u otros ingresos."
                 )}
 
                 ${this.typeButton(
                     "expense",
                     "🔴",
                     "Gasto",
-                    "Compra o pago realizado"
+                    "Compra o pago realizado con cuenta o tarjeta."
                 )}
 
                 ${this.typeButton(
                     "transfer",
-                    "🔄",
+                    "🔁",
                     "Traspaso",
-                    "Mover dinero entre tus cuentas"
+                    "Mover dinero entre cuentas o pagar una tarjeta."
                 )}
 
                 ${this.typeButton(
                     "investment",
                     "📈",
                     "Inversión",
-                    "Aportación a ETFs o Revolut Bot"
+                    "Aportación a ETFs o Revolut Bot."
                 )}
 
                 ${this.typeButton(
                     "debt_payment",
-                    "💳",
+                    "🚗",
                     "Pago de deuda",
-                    "Pagar el préstamo y reducir deuda"
+                    "Pagar el préstamo y reducir la deuda."
                 )}
 
             </div>
 
             <button
-                class="atlas-sheet-secondary"
+                class="movement-secondary"
                 type="button"
                 data-movement-action="close"
+                style="margin-top:12px"
             >
                 Cancelar
             </button>
@@ -777,15 +1186,13 @@ const AtlasMovements = {
 
         return `
 
-            <label class="atlas-field">
+            <label class="movement-field">
 
                 <span>
                     Importe
                 </span>
 
-                <div
-                    class="atlas-money-input"
-                >
+                <div class="movement-amount">
 
                     <input
                         name="amount"
@@ -793,12 +1200,15 @@ const AtlasMovements = {
                         inputmode="decimal"
                         min="0.01"
                         step="0.01"
-                        value="${this.escape(amount)}"
-                        placeholder="0,00"
+                        value="${this.escape(
+                            amount
+                        )}"
                         required
                     >
 
-                    <b>€</b>
+                    <b>
+                        €
+                    </b>
 
                 </div>
 
@@ -812,7 +1222,7 @@ const AtlasMovements = {
 
         return `
 
-            <label class="atlas-field">
+            <label class="movement-field">
 
                 <span>
                     Fecha del movimiento
@@ -830,7 +1240,7 @@ const AtlasMovements = {
 
             </label>
 
-            <label class="atlas-field">
+            <label class="movement-field">
 
                 <span>
                     Nota opcional
@@ -839,12 +1249,12 @@ const AtlasMovements = {
                 <input
                     name="note"
                     type="text"
+                    maxlength="100"
                     value="${this.escape(
                         movement?.note ||
                         ""
                     )}"
-                    placeholder="Añadir una nota"
-                    maxlength="120"
+                    placeholder="Añade una referencia"
                 >
 
             </label>
@@ -853,13 +1263,76 @@ const AtlasMovements = {
 
     },
 
-    formFields(type, movement = null) {
+    categoryFields(
+        type,
+        movement
+    ) {
+
+        const selected =
+            this.resolveLegacyCategory(
+                type,
+                movement
+            );
+
+        return `
+
+            <label class="movement-field">
+
+                <span>
+                    Categoría
+                </span>
+
+                <select
+                    name="categoryId"
+                    data-movement-category
+                    data-category-type="${type}"
+                    required
+                >
+                    ${this.categoryOptions(
+                        type,
+                        selected.categoryId
+                    )}
+                </select>
+
+            </label>
+
+            <label class="movement-field">
+
+                <span>
+                    Subcategoría
+                </span>
+
+                <select
+                    name="subcategoryId"
+                    data-movement-subcategory
+                    required
+                >
+                    ${this.subcategoryOptions(
+                        type,
+                        selected.categoryId,
+                        selected.subcategoryId
+                    )}
+                </select>
+
+            </label>
+
+        `;
+
+    },
+
+    formFields(
+        type,
+        movement = null
+    ) {
 
         const amount =
-            movement?.amount || "";
+            movement?.amount ||
+            "";
 
         const common =
-            this.commonFields(movement);
+            this.commonFields(
+                movement
+            );
 
         if (type === "income") {
 
@@ -867,25 +1340,12 @@ const AtlasMovements = {
 
                 ${this.amountField(amount)}
 
-                <label class="atlas-field">
+                ${this.categoryFields(
+                    "income",
+                    movement
+                )}
 
-                    <span>
-                        Categoría
-                    </span>
-
-                    <select
-                        name="category"
-                        required
-                    >
-                        ${this.categoryOptions(
-                            "income",
-                            movement?.category
-                        )}
-                    </select>
-
-                </label>
-
-                <label class="atlas-field">
+                <label class="movement-field">
 
                     <span>
                         Cuenta de destino
@@ -895,8 +1355,10 @@ const AtlasMovements = {
                         name="accountId"
                         required
                     >
-                        ${this.formatAccountOptions(
-                            this.liquidityAccounts(),
+                        ${this.accountOptions(
+                            this.liquidityAccounts(
+                                movement?.accountId
+                            ),
                             movement?.accountId
                         )}
                     </select>
@@ -915,25 +1377,12 @@ const AtlasMovements = {
 
                 ${this.amountField(amount)}
 
-                <label class="atlas-field">
+                ${this.categoryFields(
+                    "expense",
+                    movement
+                )}
 
-                    <span>
-                        Categoría
-                    </span>
-
-                    <select
-                        name="category"
-                        required
-                    >
-                        ${this.categoryOptions(
-                            "expense",
-                            movement?.category
-                        )}
-                    </select>
-
-                </label>
-
-                <label class="atlas-field">
+                <label class="movement-field">
 
                     <span>
                         Cuenta o tarjeta
@@ -943,8 +1392,10 @@ const AtlasMovements = {
                         name="accountId"
                         required
                     >
-                        ${this.formatAccountOptions(
-                            this.paymentAccounts(),
+                        ${this.accountOptions(
+                            this.paymentAccounts(
+                                movement?.accountId
+                            ),
                             movement?.accountId
                         )}
                     </select>
@@ -963,7 +1414,7 @@ const AtlasMovements = {
 
                 ${this.amountField(amount)}
 
-                <label class="atlas-field">
+                <label class="movement-field">
 
                     <span>
                         Cuenta de origen
@@ -973,15 +1424,17 @@ const AtlasMovements = {
                         name="fromAccountId"
                         required
                     >
-                        ${this.formatAccountOptions(
-                            this.transferAccounts(),
+                        ${this.accountOptions(
+                            this.transferAccounts(
+                                movement?.fromAccountId
+                            ),
                             movement?.fromAccountId
                         )}
                     </select>
 
                 </label>
 
-                <label class="atlas-field">
+                <label class="movement-field">
 
                     <span>
                         Cuenta de destino
@@ -991,8 +1444,10 @@ const AtlasMovements = {
                         name="toAccountId"
                         required
                     >
-                        ${this.formatAccountOptions(
-                            this.transferAccounts(),
+                        ${this.accountOptions(
+                            this.transferAccounts(
+                                movement?.toAccountId
+                            ),
                             movement?.toAccountId
                         )}
                     </select>
@@ -1011,25 +1466,57 @@ const AtlasMovements = {
 
                 ${this.amountField(amount)}
 
-                <label class="atlas-field">
+                <label class="movement-field">
 
                     <span>
-                        Categoría
+                        Tipo de aportación
                     </span>
 
                     <select
-                        name="category"
-                        required
+                        name="investmentCategory"
                     >
-                        ${this.categoryOptions(
-                            "investment",
-                            movement?.category
-                        )}
+
+                        <option
+                            value="Aportación periódica"
+                            ${
+                                movement?.category ===
+                                "Aportación periódica"
+                                    ? "selected"
+                                    : ""
+                            }
+                        >
+                            Aportación periódica
+                        </option>
+
+                        <option
+                            value="Aportación extraordinaria"
+                            ${
+                                movement?.category ===
+                                "Aportación extraordinaria"
+                                    ? "selected"
+                                    : ""
+                            }
+                        >
+                            Aportación extraordinaria
+                        </option>
+
+                        <option
+                            value="Otros"
+                            ${
+                                movement?.category ===
+                                "Otros"
+                                    ? "selected"
+                                    : ""
+                            }
+                        >
+                            Otros
+                        </option>
+
                     </select>
 
                 </label>
 
-                <label class="atlas-field">
+                <label class="movement-field">
 
                     <span>
                         Cuenta de origen
@@ -1039,15 +1526,17 @@ const AtlasMovements = {
                         name="fromAccountId"
                         required
                     >
-                        ${this.formatAccountOptions(
-                            this.liquidityAccounts(),
+                        ${this.accountOptions(
+                            this.liquidityAccounts(
+                                movement?.fromAccountId
+                            ),
                             movement?.fromAccountId
                         )}
                     </select>
 
                 </label>
 
-                <label class="atlas-field">
+                <label class="movement-field">
 
                     <span>
                         Inversión de destino
@@ -1057,8 +1546,10 @@ const AtlasMovements = {
                         name="toAccountId"
                         required
                     >
-                        ${this.formatAccountOptions(
-                            this.investmentAccounts(),
+                        ${this.accountOptions(
+                            this.investmentAccounts(
+                                movement?.toAccountId
+                            ),
                             movement?.toAccountId
                         )}
                     </select>
@@ -1075,7 +1566,7 @@ const AtlasMovements = {
 
             ${this.amountField(amount)}
 
-            <label class="atlas-field">
+            <label class="movement-field">
 
                 <span>
                     Cuenta de origen
@@ -1085,15 +1576,17 @@ const AtlasMovements = {
                     name="fromAccountId"
                     required
                 >
-                    ${this.formatAccountOptions(
-                        this.liquidityAccounts(),
+                    ${this.accountOptions(
+                        this.liquidityAccounts(
+                            movement?.fromAccountId
+                        ),
                         movement?.fromAccountId
                     )}
                 </select>
 
             </label>
 
-            <label class="atlas-field">
+            <label class="movement-field">
 
                 <span>
                     Deuda que reduces
@@ -1103,8 +1596,10 @@ const AtlasMovements = {
                     name="toAccountId"
                     required
                 >
-                    ${this.formatAccountOptions(
-                        this.debtAccounts(),
+                    ${this.accountOptions(
+                        this.debtAccounts(
+                            movement?.toAccountId
+                        ),
                         movement?.toAccountId
                     )}
                 </select>
@@ -1117,25 +1612,22 @@ const AtlasMovements = {
 
     },
 
-    renderForm(type, movement = null) {
+    renderForm(
+        type,
+        movement = null
+    ) {
 
         const isEditing =
             Boolean(movement);
 
         this.renderSheet(`
 
-            <div
-                class="atlas-sheet-header"
-            >
+            <div class="movement-header">
 
                 <button
-                    class="atlas-sheet-back"
+                    class="movement-back"
                     type="button"
-                    data-movement-action="${
-                        isEditing
-                            ? "close"
-                            : "types"
-                    }"
+                    data-movement-action="types"
                     aria-label="Volver"
                 >
                     ‹
@@ -1147,7 +1639,9 @@ const AtlasMovements = {
                         ${
                             isEditing
                                 ? "Editar movimiento"
-                                : this.formTitle(type)
+                                : this.formTitle(
+                                    type
+                                )
                         }
                     </h2>
 
@@ -1155,7 +1649,7 @@ const AtlasMovements = {
                         ${
                             isEditing
                                 ? "Modifica los datos o elimina el movimiento."
-                                : "Introduce los datos del movimiento."
+                                : "Introduce los datos reales de la operación."
                         }
                     </p>
 
@@ -1164,7 +1658,7 @@ const AtlasMovements = {
             </div>
 
             <form
-                class="atlas-movement-form"
+                class="movement-form"
                 data-movement-form="${type}"
             >
 
@@ -1174,7 +1668,7 @@ const AtlasMovements = {
                 )}
 
                 <button
-                    class="atlas-sheet-primary"
+                    class="movement-primary"
                     type="submit"
                     data-movement-save
                 >
@@ -1190,7 +1684,7 @@ const AtlasMovements = {
                         ? `
 
                             <button
-                                class="atlas-sheet-danger"
+                                class="movement-danger"
                                 type="button"
                                 data-movement-action="delete"
                             >
@@ -1202,7 +1696,7 @@ const AtlasMovements = {
                 }
 
                 <button
-                    class="atlas-sheet-secondary"
+                    class="movement-secondary"
                     type="button"
                     data-movement-action="close"
                 >
@@ -1215,7 +1709,44 @@ const AtlasMovements = {
 
     },
 
-    readForm(form, type) {
+    updateSubcategorySelect(
+        categorySelect
+    ) {
+
+        const form =
+            categorySelect.closest(
+                "[data-movement-form]"
+            );
+
+        if (!form) {
+            return;
+        }
+
+        const subcategorySelect =
+            form.querySelector(
+                "[data-movement-subcategory]"
+            );
+
+        if (!subcategorySelect) {
+            return;
+        }
+
+        const type =
+            categorySelect.dataset
+                .categoryType;
+
+        subcategorySelect.innerHTML =
+            this.subcategoryOptions(
+                type,
+                categorySelect.value
+            );
+
+    },
+
+    readForm(
+        form,
+        type
+    ) {
 
         const values =
             new FormData(form);
@@ -1234,38 +1765,57 @@ const AtlasMovements = {
                 this.generateId(),
 
             type:
-                type === "debt_payment"
+                type ===
+                "debt_payment"
                     ? "expense"
                     : type,
 
             kind:
-                type === "debt_payment"
+                type ===
+                "debt_payment"
                     ? "debt_payment"
                     : type,
 
             amount:
                 Number(
-                    values.get("amount")
+                    values.get(
+                        "amount"
+                    )
                 ),
 
             date:
                 String(
-                    values.get("date") ||
-                    ""
+                    values.get(
+                        "date"
+                    ) || ""
                 ),
 
             note:
                 String(
-                    values.get("note") ||
-                    ""
+                    values.get(
+                        "note"
+                    ) || ""
                 ).trim(),
 
+            recurringRuleId:
+                oldMovement
+                    ?.recurringRuleId ||
+                null,
+
+            recurringOccurrenceId:
+                oldMovement
+                    ?.recurringOccurrenceId ||
+                null,
+
             createdAt:
-                oldMovement?.createdAt ||
-                new Date().toISOString(),
+                oldMovement
+                    ?.createdAt ||
+                new Date()
+                    .toISOString(),
 
             updatedAt:
-                new Date().toISOString()
+                new Date()
+                    .toISOString()
 
         };
 
@@ -1276,14 +1826,30 @@ const AtlasMovements = {
 
             movement.accountId =
                 String(
-                    values.get("accountId") ||
-                    ""
+                    values.get(
+                        "accountId"
+                    ) || ""
+                );
+
+            movement.categoryId =
+                String(
+                    values.get(
+                        "categoryId"
+                    ) || ""
+                );
+
+            movement.subcategoryId =
+                String(
+                    values.get(
+                        "subcategoryId"
+                    ) || ""
                 );
 
             movement.category =
-                String(
-                    values.get("category") ||
-                    ""
+                this.categoryDisplayName(
+                    type,
+                    movement.categoryId,
+                    movement.subcategoryId
                 );
 
         }
@@ -1314,9 +1880,17 @@ const AtlasMovements = {
 
             movement.category =
                 String(
-                    values.get("category") ||
-                    "Aportación"
+                    values.get(
+                        "investmentCategory"
+                    ) ||
+                    "Aportación periódica"
                 );
+
+            movement.categoryId =
+                null;
+
+            movement.subcategoryId =
+                null;
 
         }
 
@@ -1325,12 +1899,48 @@ const AtlasMovements = {
             movement.category =
                 "Traspaso";
 
+            movement.categoryId =
+                null;
+
+            movement.subcategoryId =
+                null;
+
         }
 
         if (type === "debt_payment") {
 
             movement.category =
                 "Pago de deuda";
+
+            movement.categoryId =
+                null;
+
+            movement.subcategoryId =
+                null;
+
+        }
+
+        if (type === "income") {
+
+            const subcategory =
+                this.findSubcategory(
+                    "income",
+                    movement.categoryId,
+                    movement.subcategoryId
+                );
+
+            const category =
+                this.findCategory(
+                    "income",
+                    movement.categoryId
+                );
+
+            movement.incomeBehavior =
+                subcategory
+                    ?.incomeBehavior ||
+                category
+                    ?.incomeBehavior ||
+                "income";
 
         }
 
@@ -1358,6 +1968,23 @@ const AtlasMovements = {
         }
 
         if (
+            (
+                movement.type ===
+                    "income" ||
+                movement.type ===
+                    "expense"
+            ) &&
+            (
+                !movement.categoryId ||
+                !movement.subcategoryId
+            )
+        ) {
+
+            return "Selecciona una categoría y subcategoría.";
+
+        }
+
+        if (
             movement.fromAccountId &&
             movement.toAccountId &&
             movement.fromAccountId ===
@@ -1371,7 +1998,9 @@ const AtlasMovements = {
         const accountIds = [
 
             movement.accountId,
+
             movement.fromAccountId,
+
             movement.toAccountId
 
         ].filter(Boolean);
@@ -1392,31 +2021,45 @@ const AtlasMovements = {
 
     },
 
-    changeBalance(account, amount) {
+    changeBalance(
+        account,
+        amount
+    ) {
 
         if (!account) {
             return;
         }
 
         account.balance =
-            Number(
-                account.balance || 0
+            this.number(
+                account.balance
             ) +
-            Number(amount || 0);
+            this.number(amount);
+
+        account.updatedAt =
+            new Date()
+                .toISOString();
 
     },
 
-    changeInvested(account, amount) {
+    changeInvested(
+        account,
+        amount
+    ) {
 
         if (!account) {
             return;
         }
 
         account.invested =
-            Number(
-                account.invested || 0
+            this.number(
+                account.invested
             ) +
-            Number(amount || 0);
+            this.number(amount);
+
+        account.updatedAt =
+            new Date()
+                .toISOString();
 
     },
 
@@ -1427,7 +2070,9 @@ const AtlasMovements = {
     ) {
 
         const amount =
-            Number(movement.amount) *
+            this.number(
+                movement.amount
+            ) *
             direction;
 
         const kind =
@@ -1460,7 +2105,14 @@ const AtlasMovements = {
                     data
                 );
 
-            if (account.group === "debt") {
+            if (!account) {
+                return;
+            }
+
+            if (
+                account.group ===
+                "debt"
+            ) {
 
                 this.changeBalance(
                     account,
@@ -1495,7 +2147,7 @@ const AtlasMovements = {
                 );
 
             if (
-                fromAccount.group ===
+                fromAccount?.group ===
                 "debt"
             ) {
 
@@ -1514,7 +2166,7 @@ const AtlasMovements = {
             }
 
             if (
-                toAccount.group ===
+                toAccount?.group ===
                 "debt"
             ) {
 
@@ -1597,7 +2249,10 @@ const AtlasMovements = {
 
     },
 
-    saveMovement(form, type) {
+    saveMovement(
+        form,
+        type
+    ) {
 
         if (this.saving) {
             return;
@@ -1622,7 +2277,8 @@ const AtlasMovements = {
 
         }
 
-        this.saving = true;
+        this.saving =
+            true;
 
         const saveButton =
             form.querySelector(
@@ -1654,7 +2310,8 @@ const AtlasMovements = {
 
             if (oldIndex === -1) {
 
-                this.saving = false;
+                this.saving =
+                    false;
 
                 AtlasUI.toast(
                     "No se pudo editar el movimiento."
@@ -1706,7 +2363,8 @@ const AtlasMovements = {
 
         if (!saved) {
 
-            this.saving = false;
+            this.saving =
+                false;
 
             if (saveButton) {
 
@@ -1783,7 +2441,8 @@ const AtlasMovements = {
             return;
         }
 
-        this.saving = true;
+        this.saving =
+            true;
 
         const updatedData =
             this.cloneData();
@@ -1798,7 +2457,8 @@ const AtlasMovements = {
 
         if (index === -1) {
 
-            this.saving = false;
+            this.saving =
+                false;
 
             AtlasUI.toast(
                 "No se pudo eliminar el movimiento."
@@ -1809,7 +2469,9 @@ const AtlasMovements = {
         }
 
         const movementToDelete =
-            updatedData.movements[index];
+            updatedData.movements[
+                index
+            ];
 
         this.applyMovement(
             updatedData,
@@ -1829,7 +2491,8 @@ const AtlasMovements = {
 
         if (!saved) {
 
-            this.saving = false;
+            this.saving =
+                false;
 
             AtlasUI.toast(
                 "No se pudo eliminar el movimiento."
@@ -1871,17 +2534,18 @@ const AtlasMovements = {
             this.root();
 
         if (root) {
-
             root.innerHTML = "";
-
         }
 
         document.body.classList.remove(
             "atlas-modal-open"
         );
 
-        this.editingId = null;
-        this.saving = false;
+        this.editingId =
+            null;
+
+        this.saving =
+            false;
 
     },
 
@@ -1955,7 +2619,15 @@ const AtlasMovements = {
 
                 if (action === "types") {
 
-                    this.renderTypeSelector();
+                    if (this.editingId) {
+
+                        this.close();
+
+                    } else {
+
+                        this.renderTypeSelector();
+
+                    }
 
                     return;
 
@@ -1966,6 +2638,26 @@ const AtlasMovements = {
                     this.deleteMovement();
 
                 }
+
+            }
+        );
+
+        document.addEventListener(
+            "change",
+            event => {
+
+                const categorySelect =
+                    event.target.closest(
+                        "[data-movement-category]"
+                    );
+
+                if (!categorySelect) {
+                    return;
+                }
+
+                this.updateSubcategorySelect(
+                    categorySelect
+                );
 
             }
         );
