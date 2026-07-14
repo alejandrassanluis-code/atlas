@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    ui.js
-   Sprint 2.2 — Estado neutral del ahorro
+   Sprint 2.3 — Historial editable de movimientos
 ========================================================== */
 
 const AtlasUI = {
@@ -9,36 +9,102 @@ const AtlasUI = {
     _toastTimer: null,
 
     formatCurrency(value) {
-        return new Intl.NumberFormat("es-ES", {
-            style: "currency",
-            currency: "EUR",
-            maximumFractionDigits: 0
-        }).format(Number(value) || 0);
+
+        return new Intl.NumberFormat(
+            "es-ES",
+            {
+                style: "currency",
+                currency: "EUR",
+                maximumFractionDigits: 0
+            }
+        ).format(
+            Number(value) || 0
+        );
+
     },
 
     formatPercent(value) {
-        return `${(Number(value) || 0).toFixed(1)}%`;
+
+        return `${(
+            Number(value) || 0
+        ).toFixed(1)}%`;
+
+    },
+
+    escapeHtml(value) {
+
+        return String(value ?? "")
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#039;");
+
     },
 
     shortDate() {
-        return new Intl.DateTimeFormat("es-ES", {
-            day: "numeric",
-            month: "short"
-        })
+
+        return new Intl.DateTimeFormat(
+            "es-ES",
+            {
+                day: "numeric",
+                month: "short"
+            }
+        )
             .format(new Date())
             .replace(".", "");
+
     },
 
     currentMonth() {
-        return new Intl.DateTimeFormat("es-ES", {
-            month: "long"
-        })
+
+        return new Intl.DateTimeFormat(
+            "es-ES",
+            {
+                month: "long"
+            }
+        )
             .format(new Date())
             .toUpperCase();
+
+    },
+
+    formatMovementDate(dateString) {
+
+        if (!dateString) {
+            return "";
+        }
+
+        const date =
+            new Date(
+                `${dateString}T12:00:00`
+            );
+
+        if (
+            Number.isNaN(
+                date.getTime()
+            )
+        ) {
+            return dateString;
+        }
+
+        return new Intl.DateTimeFormat(
+            "es-ES",
+            {
+                day: "numeric",
+                month: "short",
+                year: "numeric"
+            }
+        )
+            .format(date)
+            .replace(".", "");
+
     },
 
     header() {
+
         return `
+
             <header class="header">
 
                 <div class="brand">
@@ -48,8 +114,15 @@ const AtlasUI = {
                     </div>
 
                     <div>
-                        <b>ATLAS</b>
-                        <small>${this.shortDate()}</small>
+
+                        <b>
+                            ATLAS
+                        </b>
+
+                        <small>
+                            ${this.shortDate()}
+                        </small>
+
                     </div>
 
                 </div>
@@ -64,78 +137,110 @@ const AtlasUI = {
                 </button>
 
             </header>
+
         `;
+
     },
 
     investmentProfitability(summary) {
 
         const invested =
-            Number(summary.investedCapital) || 0;
+            Number(
+                summary.investedCapital
+            ) || 0;
 
         const gain =
-            Number(summary.investmentGain) || 0;
+            Number(
+                summary.investmentGain
+            ) || 0;
 
         if (invested <= 0) {
             return 0;
         }
 
-        return (gain / invested) * 100;
+        return (
+            gain /
+            invested
+        ) * 100;
+
     },
 
     savingsStatus(data, summary) {
 
         const calendarConfigured =
-            data.settings?.financialCalendarConfigured === true;
+            data.settings
+                ?.financialCalendarConfigured ===
+            true;
 
         if (!calendarConfigured) {
+
             return {
-                label: "Mes en curso",
-                icon: "",
-                color: "var(--color-text-muted)",
-                objectiveProgress: null
+                label:
+                    "Mes en curso",
+                icon:
+                    "",
+                color:
+                    "var(--color-text-muted)",
+                objectiveProgress:
+                    null
             };
+
         }
 
         const income =
-            Number(summary.monthlyIncome) || 0;
-
-        const expenses =
-            Number(summary.monthlyExpenses) || 0;
-
-        const invested =
-            Number(summary.monthlyInvested) || 0;
+            Number(
+                summary.monthlyIncome
+            ) || 0;
 
         const savings =
-            Number(summary.monthlySavings) || 0;
+            Number(
+                summary.monthlySavings
+            ) || 0;
 
         const goalPercent =
-            Number(data.settings.monthlySavingGoal) || 0;
+            Number(
+                data.settings
+                    .monthlySavingGoal
+            ) || 0;
 
         if (income <= 0) {
+
             return {
-                label: "Sin ingresos registrados",
-                icon: "⚪",
-                color: "var(--color-text-muted)",
-                objectiveProgress: 0
+                label:
+                    "Sin ingresos registrados",
+                icon:
+                    "⚪",
+                color:
+                    "var(--color-text-muted)",
+                objectiveProgress:
+                    0
             };
+
         }
 
         const targetSavings =
-            income * (goalPercent / 100);
+            income *
+            (
+                goalPercent /
+                100
+            );
 
         const plannedIncomeToDate =
             Number(
-                data.settings?.plannedIncomeToDate
+                data.settings
+                    ?.plannedIncomeToDate
             ) || income;
 
         const plannedExpensesToDate =
             Number(
-                data.settings?.plannedExpensesToDate
+                data.settings
+                    ?.plannedExpensesToDate
             ) || 0;
 
         const plannedInvestmentToDate =
             Number(
-                data.settings?.plannedInvestmentToDate
+                data.settings
+                    ?.plannedInvestmentToDate
             ) || 0;
 
         const expectedSavingsToday =
@@ -145,63 +250,98 @@ const AtlasUI = {
 
         const objectiveProgress =
             targetSavings > 0
-                ? (savings / targetSavings) * 100
+                ? (
+                    savings /
+                    targetSavings
+                ) * 100
                 : 0;
 
-        if (expectedSavingsToday <= 0) {
+        if (
+            expectedSavingsToday <= 0
+        ) {
+
             return {
-                label: "En línea",
-                icon: "🟢",
-                color: "var(--color-success)",
+                label:
+                    "En línea",
+                icon:
+                    "🟢",
+                color:
+                    "var(--color-success)",
                 objectiveProgress
             };
+
         }
 
         const pace =
-            savings / expectedSavingsToday;
+            savings /
+            expectedSavingsToday;
 
         if (pace >= 1.1) {
+
             return {
-                label: "Vas por delante",
-                icon: "🟢",
-                color: "var(--color-success)",
+                label:
+                    "Vas por delante",
+                icon:
+                    "🟢",
+                color:
+                    "var(--color-success)",
                 objectiveProgress
             };
+
         }
 
         if (pace >= 0.9) {
+
             return {
-                label: "En línea",
-                icon: "🟢",
-                color: "var(--color-success)",
+                label:
+                    "En línea",
+                icon:
+                    "🟢",
+                color:
+                    "var(--color-success)",
                 objectiveProgress
             };
+
         }
 
         if (pace >= 0.75) {
+
             return {
-                label: "Vigila el gasto",
-                icon: "🟡",
-                color: "var(--color-warning)",
+                label:
+                    "Vigila el gasto",
+                icon:
+                    "🟡",
+                color:
+                    "var(--color-warning)",
                 objectiveProgress
             };
+
         }
 
         if (pace >= 0.5) {
+
             return {
-                label: "Ritmo insuficiente",
-                icon: "🟠",
-                color: "var(--color-warning)",
+                label:
+                    "Ritmo insuficiente",
+                icon:
+                    "🟠",
+                color:
+                    "var(--color-warning)",
                 objectiveProgress
             };
+
         }
 
         return {
-            label: "Requiere atención",
-            icon: "🔴",
-            color: "var(--color-danger)",
+            label:
+                "Requiere atención",
+            icon:
+                "🔴",
+            color:
+                "var(--color-danger)",
             objectiveProgress
         };
+
     },
 
     atlasMessage(data, summary) {
@@ -215,7 +355,10 @@ const AtlasUI = {
         }
 
         const status =
-            this.savingsStatus(data, summary);
+            this.savingsStatus(
+                data,
+                summary
+            );
 
         const messages = {
 
@@ -243,46 +386,70 @@ const AtlasUI = {
         };
 
         return (
-            messages[status.label] ||
+            messages[
+                status.label
+            ] ||
             "Atlas está analizando tu situación financiera."
         );
+
     },
 
     dashboard(data) {
 
         const summary =
-            AtlasCalculations.financialSummary(data);
+            AtlasCalculations
+                .financialSummary(
+                    data
+                );
 
         const profitability =
-            this.investmentProfitability(summary);
+            this.investmentProfitability(
+                summary
+            );
 
         const savingsStatus =
-            this.savingsStatus(data, summary);
+            this.savingsStatus(
+                data,
+                summary
+            );
 
         const investmentNote =
             summary.investedCapital > 0
-                ? `${profitability >= 0 ? "+" : ""}${this.formatPercent(
+                ? `${
+                    profitability >= 0
+                        ? "+"
+                        : ""
+                }${this.formatPercent(
                     profitability
                 )}`
                 : "Sin aportaciones";
 
         const savingsDetail =
-            savingsStatus.objectiveProgress === null
+            savingsStatus
+                .objectiveProgress ===
+            null
                 ? savingsStatus.label
                 : `
+
                     ${savingsStatus.icon}
+
                     ${savingsStatus.label}
+
                     <br>
+
                     ${Math.max(
                         0,
                         Math.min(
                             999,
-                            savingsStatus.objectiveProgress
+                            savingsStatus
+                                .objectiveProgress
                         )
                     ).toFixed(0)}% objetivo
+
                 `;
 
         return `
+
             <div class="app">
 
                 ${this.header()}
@@ -306,12 +473,16 @@ const AtlasUI = {
                             font-size:42px;
                         "
                     >
-                        ${this.formatCurrency(summary.netWorth)}
+                        ${this.formatCurrency(
+                            summary.netWorth
+                        )}
                     </div>
 
                     <div
                         class="trend"
-                        style="margin-top:8px"
+                        style="
+                            margin-top:8px;
+                        "
                     >
                         ${
                             summary.netWorth === 0
@@ -326,7 +497,11 @@ const AtlasUI = {
                     class="grid"
                     style="
                         display:grid;
-                        grid-template-columns:repeat(2,minmax(0,1fr));
+                        grid-template-columns:
+                            repeat(
+                                2,
+                                minmax(0,1fr)
+                            );
                         gap:12px;
                         margin-top:18px;
                         margin-bottom:14px;
@@ -350,7 +525,9 @@ const AtlasUI = {
                         </div>
 
                         <div class="num">
-                            ${this.formatCurrency(summary.liquidity)}
+                            ${this.formatCurrency(
+                                summary.liquidity
+                            )}
                         </div>
 
                         <div class="note">
@@ -376,7 +553,9 @@ const AtlasUI = {
                         </div>
 
                         <div class="num">
-                            ${this.formatCurrency(summary.investments)}
+                            ${this.formatCurrency(
+                                summary.investments
+                            )}
                         </div>
 
                         <div class="note">
@@ -402,7 +581,9 @@ const AtlasUI = {
                         </div>
 
                         <div class="num">
-                            ${this.formatCurrency(summary.debt)}
+                            ${this.formatCurrency(
+                                summary.debt
+                            )}
                         </div>
 
                         <div
@@ -437,7 +618,8 @@ const AtlasUI = {
                     >
 
                         <div class="label">
-                            🐷 Ahorro ${this.currentMonth()}
+                            🐷 Ahorro
+                            ${this.currentMonth()}
                         </div>
 
                         <div class="num">
@@ -449,7 +631,8 @@ const AtlasUI = {
                         <div
                             class="note"
                             style="
-                                color:${savingsStatus.color};
+                                color:
+                                    ${savingsStatus.color};
                             "
                         >
                             ${savingsDetail}
@@ -481,7 +664,9 @@ const AtlasUI = {
 
                             <p
                                 class="note"
-                                style="margin-top:5px"
+                                style="
+                                    margin-top:5px;
+                                "
                             >
                                 ${this.atlasMessage(
                                     data,
@@ -496,7 +681,9 @@ const AtlasUI = {
                 </section>
 
             </div>
+
         `;
+
     },
 
     settings(data) {
@@ -504,57 +691,71 @@ const AtlasUI = {
         const liquidity =
             data.accounts.filter(
                 account =>
-                    account.group === "liquidity"
+                    account.group ===
+                    "liquidity"
             );
 
         const investments =
             data.accounts.filter(
                 account =>
-                    account.group === "investment"
+                    account.group ===
+                    "investment"
             );
 
         const debts =
             data.accounts.filter(
                 account =>
-                    account.group === "debt"
+                    account.group ===
+                    "debt"
             );
 
         const renderGroup =
-            (title, accounts) => `
+            (
+                title,
+                accounts
+            ) => `
 
                 <div class="group-title">
                     ${title}
                 </div>
 
-                ${accounts.map(account => `
+                ${accounts
+                    .map(
+                        account => `
 
-                    <div class="account">
+                            <div class="account">
 
-                        <div class="accounttop">
+                                <div class="accounttop">
 
-                            <div>
+                                    <div>
 
-                                <strong>
-                                    ${account.name}
-                                </strong>
+                                        <strong>
+                                            ${this.escapeHtml(
+                                                account.name
+                                            )}
+                                        </strong>
 
-                                <div class="note">
-                                    ${account.type}
+                                        <div class="note">
+                                            ${this.escapeHtml(
+                                                account.type
+                                            )}
+                                        </div>
+
+                                    </div>
+
+                                    <div class="balance">
+                                        ${this.formatCurrency(
+                                            account.balance
+                                        )}
+                                    </div>
+
                                 </div>
 
                             </div>
 
-                            <div class="balance">
-                                ${this.formatCurrency(
-                                    account.balance
-                                )}
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                `).join("")}
+                        `
+                    )
+                    .join("")}
 
             `;
 
@@ -590,9 +791,11 @@ const AtlasUI = {
                 <section class="panel">
 
                     <div class="panelhead">
+
                         <h2>
                             Objetivo de ahorro
                         </h2>
+
                     </div>
 
                     <div class="goal">
@@ -604,7 +807,10 @@ const AtlasUI = {
                             </span>
 
                             <strong>
-                                ${data.settings.monthlySavingGoal}%
+                                ${
+                                    data.settings
+                                        .monthlySavingGoal
+                                }%
                             </strong>
 
                         </div>
@@ -613,10 +819,13 @@ const AtlasUI = {
 
                             <i
                                 style="
-                                    width:${Math.min(
-                                        100,
-                                        data.settings.monthlySavingGoal
-                                    )}%;
+                                    width:${
+                                        Math.min(
+                                            100,
+                                            data.settings
+                                                .monthlySavingGoal
+                                        )
+                                    }%;
                                 "
                             ></i>
 
@@ -635,7 +844,9 @@ const AtlasUI = {
                 </button>
 
             </div>
+
         `;
+
     },
 
     movements(data) {
@@ -643,11 +854,32 @@ const AtlasUI = {
         const list =
             [...data.movements]
                 .sort(
-                    (a, b) =>
-                        String(b.date)
-                            .localeCompare(
-                                String(a.date)
+                    (a, b) => {
+
+                        const dateComparison =
+                            String(
+                                b.date || ""
+                            ).localeCompare(
+                                String(
+                                    a.date || ""
+                                )
+                            );
+
+                        if (
+                            dateComparison !== 0
+                        ) {
+                            return dateComparison;
+                        }
+
+                        return String(
+                            b.createdAt || ""
+                        ).localeCompare(
+                            String(
+                                a.createdAt || ""
                             )
+                        );
+
+                    }
                 );
 
         const movementLabel =
@@ -661,16 +893,23 @@ const AtlasUI = {
                 }
 
                 const labels = {
-                    income: "Ingreso",
-                    expense: "Gasto",
-                    transfer: "Traspaso",
-                    investment: "Inversión"
+                    income:
+                        "Ingreso",
+                    expense:
+                        "Gasto",
+                    transfer:
+                        "Traspaso",
+                    investment:
+                        "Inversión"
                 };
 
                 return (
-                    labels[movement.type] ||
+                    labels[
+                        movement.type
+                    ] ||
                     "Movimiento"
                 );
+
             };
 
         const movementAmount =
@@ -680,23 +919,49 @@ const AtlasUI = {
                     movement.type ===
                     "income"
                 ) {
+
                     return `+${this.formatCurrency(
                         movement.amount
                     )}`;
+
                 }
 
                 if (
                     movement.type ===
                     "transfer"
                 ) {
+
                     return this.formatCurrency(
                         movement.amount
                     );
+
                 }
 
                 return `−${this.formatCurrency(
                     movement.amount
                 )}`;
+
+            };
+
+        const movementColor =
+            movement => {
+
+                if (
+                    movement.type ===
+                    "income"
+                ) {
+                    return "var(--color-success)";
+                }
+
+                if (
+                    movement.type ===
+                    "transfer"
+                ) {
+                    return "var(--color-primary)";
+                }
+
+                return "var(--color-danger)";
+
             };
 
         return `
@@ -710,7 +975,7 @@ const AtlasUI = {
                 </h1>
 
                 <p class="subtitle">
-                    Registra y consulta tu actividad financiera.
+                    Toca un movimiento para editarlo o eliminarlo.
                 </p>
 
                 <section class="panel">
@@ -718,6 +983,7 @@ const AtlasUI = {
                     ${
                         list.length === 0
                             ? `
+
                                 <div class="list">
 
                                     <div class="row">
@@ -739,58 +1005,106 @@ const AtlasUI = {
                                     </div>
 
                                 </div>
+
                             `
                             : `
+
                                 <div class="list">
 
-                                    ${list.map(movement => `
+                                    ${list
+                                        .map(
+                                            movement => `
 
-                                        <div class="row">
+                                                <button
+                                                    class="row"
+                                                    type="button"
+                                                    data-movement-id="${
+                                                        movement.id
+                                                    }"
+                                                    style="
+                                                        width:100%;
+                                                        border:0;
+                                                        background:
+                                                            transparent;
+                                                        color:inherit;
+                                                        text-align:left;
+                                                        cursor:pointer;
+                                                    "
+                                                >
 
-                                            <div>
+                                                    <div>
 
-                                                <b>
-                                                    ${
-                                                        movement.category ||
-                                                        movementLabel(
-                                                            movement
-                                                        )
-                                                    }
-                                                </b>
+                                                        <b>
+                                                            ${
+                                                                this.escapeHtml(
+                                                                    movement
+                                                                        .category ||
+                                                                    movementLabel(
+                                                                        movement
+                                                                    )
+                                                                )
+                                                            }
+                                                        </b>
 
-                                                <small>
-                                                    ${movement.date}
-                                                    ·
-                                                    ${movementLabel(
-                                                        movement
-                                                    )}
-                                                </small>
+                                                        <small>
+                                                            ${
+                                                                this.formatMovementDate(
+                                                                    movement.date
+                                                                )
+                                                            }
+                                                            ·
+                                                            ${
+                                                                movementLabel(
+                                                                    movement
+                                                                )
+                                                            }
+                                                        </small>
 
-                                            </div>
+                                                        ${
+                                                            movement.note
+                                                                ? `
 
-                                            <strong
-                                                style="
-                                                    color:${
-                                                        movement.type ===
-                                                        "income"
-                                                            ? "var(--color-success)"
-                                                            : movement.type ===
-                                                              "transfer"
-                                                                ? "var(--color-primary)"
-                                                                : "var(--color-danger)"
-                                                    };
-                                                "
-                                            >
-                                                ${movementAmount(
-                                                    movement
-                                                )}
-                                            </strong>
+                                                                    <small>
+                                                                        ${
+                                                                            this.escapeHtml(
+                                                                                movement.note
+                                                                            )
+                                                                        }
+                                                                    </small>
 
-                                        </div>
+                                                                `
+                                                                : ""
+                                                        }
 
-                                    `).join("")}
+                                                    </div>
+
+                                                    <strong
+                                                        style="
+                                                            color:
+                                                                ${
+                                                                    movementColor(
+                                                                        movement
+                                                                    )
+                                                                };
+                                                            white-space:
+                                                                nowrap;
+                                                        "
+                                                    >
+                                                        ${
+                                                            movementAmount(
+                                                                movement
+                                                            )
+                                                        }
+                                                    </strong>
+
+                                                </button>
+
+                                            `
+                                        )
+                                        .join("")}
 
                                 </div>
+
                             `
                     }
 
@@ -805,13 +1119,18 @@ const AtlasUI = {
                 </button>
 
             </div>
+
         `;
+
     },
 
     analysis(data) {
 
         const summary =
-            AtlasCalculations.financialSummary(data);
+            AtlasCalculations
+                .financialSummary(
+                    data
+                );
 
         return `
 
@@ -830,7 +1149,11 @@ const AtlasUI = {
                 <div
                     class="grid"
                     style="
-                        grid-template-columns:repeat(2,minmax(0,1fr));
+                        grid-template-columns:
+                            repeat(
+                                2,
+                                minmax(0,1fr)
+                            );
                         gap:12px;
                     "
                 >
@@ -896,9 +1219,11 @@ const AtlasUI = {
                 <section class="panel">
 
                     <div class="panelhead">
+
                         <h2>
                             Evolución
                         </h2>
+
                     </div>
 
                     <div class="chart">
@@ -907,32 +1232,44 @@ const AtlasUI = {
 
                             <div
                                 class="bar"
-                                style="height:45%"
+                                style="
+                                    height:45%;
+                                "
                             ></div>
 
                             <div
                                 class="bar"
-                                style="height:58%"
+                                style="
+                                    height:58%;
+                                "
                             ></div>
 
                             <div
                                 class="bar"
-                                style="height:52%"
+                                style="
+                                    height:52%;
+                                "
                             ></div>
 
                             <div
                                 class="bar"
-                                style="height:72%"
+                                style="
+                                    height:72%;
+                                "
                             ></div>
 
                             <div
                                 class="bar"
-                                style="height:64%"
+                                style="
+                                    height:64%;
+                                "
                             ></div>
 
                             <div
                                 class="bar"
-                                style="height:82%"
+                                style="
+                                    height:82%;
+                                "
                             ></div>
 
                         </div>
@@ -946,13 +1283,17 @@ const AtlasUI = {
                 </section>
 
             </div>
+
         `;
+
     },
 
     render(route, data) {
 
         const app =
-            document.getElementById("app");
+            document.getElementById(
+                "app"
+            );
 
         if (!app) {
             return;
@@ -992,30 +1333,37 @@ const AtlasUI = {
             .querySelectorAll(
                 ".tabbar button[data-route]"
             )
-            .forEach(button => {
+            .forEach(
+                button => {
 
-                button.classList.toggle(
-                    "active",
-                    button.dataset.route === route
-                );
+                    button.classList.toggle(
+                        "active",
+                        button.dataset.route ===
+                            route
+                    );
 
-            });
+                }
+            );
 
     },
 
     toast(message) {
 
         const root =
-            document.getElementById("toast-root");
+            document.getElementById(
+                "toast-root"
+            );
 
         if (!root) {
             return;
         }
 
         root.innerHTML = `
+
             <div class="toast">
-                ${message}
+                ${this.escapeHtml(message)}
             </div>
+
         `;
 
         clearTimeout(
@@ -1025,7 +1373,10 @@ const AtlasUI = {
         this._toastTimer =
             setTimeout(
                 () => {
-                    root.innerHTML = "";
+
+                    root.innerHTML =
+                        "";
+
                 },
                 2500
             );
@@ -1043,14 +1394,18 @@ const AtlasUI = {
     loading(show = true) {
 
         const app =
-            document.getElementById("app");
+            document.getElementById(
+                "app"
+            );
 
         if (!app) {
             return;
         }
 
         app.style.opacity =
-            show ? "0.55" : "1";
+            show
+                ? "0.55"
+                : "1";
 
     }
 
