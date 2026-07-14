@@ -1,118 +1,629 @@
 /* ==========================================================
    ATLAS
    data.js
+   Sprint 4.0 — Estructura principal con catálogo
 ========================================================== */
 
 const AtlasData = {
 
-    version: "1.0",
+    version: 3,
 
-    initialized: false,
+    clone(value) {
 
-    settings: {
-
-        currency: "EUR",
-
-        locale: "es-ES",
-
-        monthlySavingGoal: 25
+        return JSON.parse(
+            JSON.stringify(value)
+        );
 
     },
 
-    accounts: [
+    now() {
 
-        // ----------- LIQUIDEZ -----------
+        return new Date()
+            .toISOString();
 
-        {
-            id: "bbva_nomina",
-            name: "BBVA Cuenta Nómina",
-            group: "liquidity",
-            type: "bank",
-            balance: 0
-        },
+    },
 
-        {
-            id: "bbva_secundaria",
-            name: "BBVA Cuenta Secundaria",
-            group: "liquidity",
-            type: "bank",
-            balance: 0
-        },
+    defaultSettings() {
 
-        {
-            id: "trade_cash",
-            name: "Trade Republic Efectivo",
-            group: "liquidity",
-            type: "broker_cash",
-            balance: 0
-        },
+        return {
 
-        // ----------- INVERSIONES -----------
+            currency:
+                "EUR",
 
-        {
-            id: "trade_etfs",
-            name: "Trade Republic ETFs",
-            group: "investment",
-            type: "etf",
-            invested: 0,
-            balance: 0
-        },
+            locale:
+                "es-ES",
 
-        {
-            id: "revolut_bot",
-            name: "Revolut Bot",
-            group: "investment",
-            type: "roboadvisor",
-            invested: 0,
-            balance: 0
-        },
+            monthlySavingGoal:
+                20,
 
-        // ----------- DEUDAS -----------
+            financialCalendarConfigured:
+                false,
 
-        {
-            id: "loan_car",
+            createdAt:
+                this.now(),
 
-            name: "Préstamo coche",
+            updatedAt:
+                this.now()
 
-            group: "debt",
+        };
 
-            type: "loan",
+    },
 
-            balance: 0
-        },
+    defaultAccounts() {
 
-        {
-            id: "amex",
+        return [
 
-            name: "American Express",
+            {
+                id:
+                    "bbva_main",
 
-            group: "debt",
+                name:
+                    "BBVA Cuenta Nómina",
 
-            type: "credit",
+                type:
+                    "bank",
 
-            balance: 0
-        },
+                group:
+                    "liquidity",
 
-        {
-            id: "bbva_credit",
+                balance:
+                    0,
 
-            name: "Tarjeta Crédito BBVA",
+                active:
+                    true,
 
-            group: "debt",
+                archived:
+                    false,
 
-            type: "credit",
+                order:
+                    10,
 
-            balance: 0
+                createdAt:
+                    this.now(),
+
+                updatedAt:
+                    this.now()
+            },
+
+            {
+                id:
+                    "bbva_secondary",
+
+                name:
+                    "BBVA Cuenta Secundaria",
+
+                type:
+                    "bank",
+
+                group:
+                    "liquidity",
+
+                balance:
+                    0,
+
+                active:
+                    true,
+
+                archived:
+                    false,
+
+                order:
+                    20,
+
+                createdAt:
+                    this.now(),
+
+                updatedAt:
+                    this.now()
+            },
+
+            {
+                id:
+                    "trade_cash",
+
+                name:
+                    "Trade Republic Efectivo",
+
+                type:
+                    "cash",
+
+                group:
+                    "liquidity",
+
+                balance:
+                    0,
+
+                active:
+                    true,
+
+                archived:
+                    false,
+
+                order:
+                    30,
+
+                createdAt:
+                    this.now(),
+
+                updatedAt:
+                    this.now()
+            },
+
+            {
+                id:
+                    "trade_etfs",
+
+                name:
+                    "Trade Republic ETFs",
+
+                type:
+                    "investment",
+
+                group:
+                    "investment",
+
+                balance:
+                    0,
+
+                invested:
+                    0,
+
+                active:
+                    true,
+
+                archived:
+                    false,
+
+                order:
+                    40,
+
+                valueUpdatedAt:
+                    null,
+
+                createdAt:
+                    this.now(),
+
+                updatedAt:
+                    this.now()
+            },
+
+            {
+                id:
+                    "revolut_bot",
+
+                name:
+                    "Revolut Bot",
+
+                type:
+                    "investment",
+
+                group:
+                    "investment",
+
+                balance:
+                    0,
+
+                invested:
+                    0,
+
+                active:
+                    true,
+
+                archived:
+                    false,
+
+                order:
+                    50,
+
+                valueUpdatedAt:
+                    null,
+
+                createdAt:
+                    this.now(),
+
+                updatedAt:
+                    this.now()
+            },
+
+            {
+                id:
+                    "loan_car",
+
+                name:
+                    "Préstamo coche",
+
+                type:
+                    "loan",
+
+                group:
+                    "debt",
+
+                balance:
+                    0,
+
+                active:
+                    true,
+
+                archived:
+                    false,
+
+                order:
+                    60,
+
+                createdAt:
+                    this.now(),
+
+                updatedAt:
+                    this.now()
+            },
+
+            {
+                id:
+                    "amex",
+
+                name:
+                    "American Express",
+
+                type:
+                    "credit_card",
+
+                group:
+                    "debt",
+
+                balance:
+                    0,
+
+                active:
+                    true,
+
+                archived:
+                    false,
+
+                order:
+                    70,
+
+                createdAt:
+                    this.now(),
+
+                updatedAt:
+                    this.now()
+            },
+
+            {
+                id:
+                    "bbva_credit",
+
+                name:
+                    "Tarjeta Crédito BBVA",
+
+                type:
+                    "credit_card",
+
+                group:
+                    "debt",
+
+                balance:
+                    0,
+
+                active:
+                    true,
+
+                archived:
+                    false,
+
+                order:
+                    80,
+
+                createdAt:
+                    this.now(),
+
+                updatedAt:
+                    this.now()
+            }
+
+        ];
+
+    },
+
+    create() {
+
+        const createdAt =
+            this.now();
+
+        return {
+
+            version:
+                this.version,
+
+            initialized:
+                false,
+
+            settings:
+                this.defaultSettings(),
+
+            accounts:
+                this.defaultAccounts(),
+
+            movements:
+                [],
+
+            budgets:
+                [],
+
+            goals:
+                [],
+
+            snapshots:
+                [],
+
+            recurringOccurrences:
+                [],
+
+            catalog:
+                AtlasCatalog
+                    .defaultCatalog(),
+
+            createdAt,
+
+            updatedAt:
+                createdAt
+
+        };
+
+    },
+
+    ensureSettings(data) {
+
+        const defaults =
+            this.defaultSettings();
+
+        data.settings = {
+
+            ...defaults,
+
+            ...(
+                data.settings ||
+                {}
+            )
+
+        };
+
+        return data;
+
+    },
+
+    ensureCollections(data) {
+
+        const collections = [
+
+            "accounts",
+
+            "movements",
+
+            "budgets",
+
+            "goals",
+
+            "snapshots",
+
+            "recurringOccurrences"
+
+        ];
+
+        collections.forEach(
+            key => {
+
+                if (
+                    !Array.isArray(
+                        data[key]
+                    )
+                ) {
+
+                    data[key] = [];
+
+                }
+
+            }
+        );
+
+        return data;
+
+    },
+
+    ensureAccounts(data) {
+
+        if (
+            data.accounts.length === 0
+        ) {
+
+            data.accounts =
+                this.defaultAccounts();
+
+            return data;
+
         }
 
-    ],
+        data.accounts =
+            data.accounts.map(
+                (
+                    account,
+                    index
+                ) => {
 
-    movements: [],
+                    const group =
+                        account.group ||
+                        "liquidity";
 
-    budgets: [],
+                    return {
 
-    goals: [],
+                        active:
+                            true,
 
-    snapshots: []
+                        archived:
+                            false,
+
+                        order:
+                            (
+                                index +
+                                1
+                            ) * 10,
+
+                        balance:
+                            0,
+
+                        invested:
+                            group ===
+                            "investment"
+                                ? 0
+                                : undefined,
+
+                        ...account,
+
+                        group,
+
+                        updatedAt:
+                            account.updatedAt ||
+                            account.createdAt ||
+                            this.now(),
+
+                        createdAt:
+                            account.createdAt ||
+                            this.now()
+
+                    };
+
+                }
+            );
+
+        return data;
+
+    },
+
+    ensureMovements(data) {
+
+        data.movements =
+            data.movements.map(
+                movement => ({
+
+                    categoryId:
+                        movement.categoryId ||
+                        null,
+
+                    subcategoryId:
+                        movement.subcategoryId ||
+                        null,
+
+                    recurringRuleId:
+                        movement.recurringRuleId ||
+                        null,
+
+                    recurringOccurrenceId:
+                        movement
+                            .recurringOccurrenceId ||
+                        null,
+
+                    ...movement
+
+                })
+            );
+
+        return data;
+
+    },
+
+    ensureSnapshots(data) {
+
+        data.snapshots =
+            data.snapshots.map(
+                snapshot => ({
+
+                    type:
+                        snapshot.type ||
+                        "calendar_month",
+
+                    ...snapshot
+
+                })
+            );
+
+        return data;
+
+    },
+
+    ensureCatalog(data) {
+
+        const updated =
+            AtlasCatalog.ensure(data);
+
+        data.catalog =
+            updated.catalog;
+
+        return data;
+
+    },
+
+    ensure(data) {
+
+        if (
+            !data ||
+            typeof data !==
+            "object"
+        ) {
+
+            return this.create();
+
+        }
+
+        const updatedData =
+            this.clone(data);
+
+        updatedData.version =
+            this.version;
+
+        if (
+            typeof updatedData
+                .initialized !==
+            "boolean"
+        ) {
+
+            updatedData.initialized =
+                false;
+
+        }
+
+        this.ensureSettings(
+            updatedData
+        );
+
+        this.ensureCollections(
+            updatedData
+        );
+
+        this.ensureAccounts(
+            updatedData
+        );
+
+        this.ensureMovements(
+            updatedData
+        );
+
+        this.ensureSnapshots(
+            updatedData
+        );
+
+        this.ensureCatalog(
+            updatedData
+        );
+
+        updatedData.createdAt =
+            updatedData.createdAt ||
+            this.now();
+
+        updatedData.updatedAt =
+            this.now();
+
+        return updatedData;
+
+    }
 
 };
