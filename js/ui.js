@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    ui.js
-   Sprint 3.3 — Análisis mensual y tendencias
+   Sprint 3.4 — Ajustes, tendencias y snapshots
 ========================================================== */
 
 const AtlasUI = {
@@ -83,13 +83,6 @@ const AtlasUI = {
             return "";
         }
 
-        const date =
-            new Date(
-                year,
-                month - 1,
-                1
-            );
-
         const label =
             new Intl.DateTimeFormat(
                 "es-ES",
@@ -97,7 +90,13 @@ const AtlasUI = {
                     month: "long",
                     year: "numeric"
                 }
-            ).format(date);
+            ).format(
+                new Date(
+                    year,
+                    month - 1,
+                    1
+                )
+            );
 
         return (
             label.charAt(0).toUpperCase() +
@@ -198,8 +197,13 @@ const AtlasUI = {
                 <button
                     class="iconbtn"
                     type="button"
-                    data-route="settings"
+                    data-action="openSettings"
                     aria-label="Abrir ajustes"
+                    style="
+                        width:46px;
+                        height:46px;
+                        font-size:23px;
+                    "
                 >
                     ⚙︎
                 </button>
@@ -233,9 +237,9 @@ const AtlasUI = {
                     style="
                         display:grid;
                         grid-template-columns:
-                            44px
+                            46px
                             minmax(0,1fr)
-                            44px;
+                            46px;
                         align-items:center;
                         gap:10px;
                     "
@@ -247,8 +251,9 @@ const AtlasUI = {
                         data-action="${previousAction}"
                         aria-label="Mes anterior"
                         style="
-                            width:44px;
-                            height:44px;
+                            width:46px;
+                            height:46px;
+                            font-size:28px;
                         "
                     >
                         ‹
@@ -289,8 +294,9 @@ const AtlasUI = {
                                 : ""
                         }
                         style="
-                            width:44px;
-                            height:44px;
+                            width:46px;
+                            height:46px;
+                            font-size:28px;
                             opacity:${
                                 isCurrentMonth
                                     ? "0.35"
@@ -737,199 +743,6 @@ const AtlasUI = {
                     </div>
 
                 </section>
-
-            </div>
-
-        `;
-
-    },
-
-    settings(data) {
-
-        const liquidity =
-            data.accounts.filter(
-                account =>
-                    account.group ===
-                    "liquidity"
-            );
-
-        const investments =
-            data.accounts.filter(
-                account =>
-                    account.group ===
-                    "investment"
-            );
-
-        const debts =
-            data.accounts.filter(
-                account =>
-                    account.group ===
-                    "debt"
-            );
-
-        const renderGroup =
-            (
-                title,
-                accounts
-            ) => `
-
-                <div class="group-title">
-                    ${title}
-                </div>
-
-                ${accounts
-                    .map(
-                        account => `
-
-                            <div class="account">
-
-                                <div class="accounttop">
-
-                                    <div>
-
-                                        <strong>
-                                            ${this.escapeHtml(
-                                                account.name
-                                            )}
-                                        </strong>
-
-                                        <div class="note">
-                                            ${this.escapeHtml(
-                                                account.type
-                                            )}
-                                        </div>
-
-                                    </div>
-
-                                    <div class="balance">
-                                        ${this.formatCurrency(
-                                            account.balance
-                                        )}
-                                    </div>
-
-                                </div>
-
-                            </div>
-
-                        `
-                    )
-                    .join("")}
-
-            `;
-
-        const hasMovements =
-            Array.isArray(
-                data.movements
-            ) &&
-            data.movements.length > 0;
-
-        return `
-
-            <div class="app">
-
-                ${this.header()}
-
-                <h1 class="page-title">
-                    Ajustes
-                </h1>
-
-                <p class="subtitle">
-                    Consulta tus cuentas y objetivo de ahorro.
-                </p>
-
-                ${renderGroup(
-                    "💵 Liquidez",
-                    liquidity
-                )}
-
-                ${renderGroup(
-                    "📈 Inversiones",
-                    investments
-                )}
-
-                ${renderGroup(
-                    "💳 Deudas",
-                    debts
-                )}
-
-                <section class="panel">
-
-                    <div class="panelhead">
-
-                        <h2>
-                            Objetivo de ahorro
-                        </h2>
-
-                    </div>
-
-                    <div class="goal">
-
-                        <div class="goalrow">
-
-                            <span>
-                                Objetivo mensual
-                            </span>
-
-                            <strong>
-                                ${
-                                    data.settings
-                                        .monthlySavingGoal
-                                }%
-                            </strong>
-
-                        </div>
-
-                        <div class="progress">
-
-                            <i
-                                style="
-                                    width:${
-                                        Math.min(
-                                            100,
-                                            Number(
-                                                data.settings
-                                                    .monthlySavingGoal
-                                            ) || 0
-                                        )
-                                    }%;
-                                "
-                            ></i>
-
-                        </div>
-
-                    </div>
-
-                </section>
-
-                <button
-                    class="primary"
-                    type="button"
-                    data-action="editAccounts"
-                >
-                    ${
-                        hasMovements
-                            ? "Saldos calculados por Atlas"
-                            : "Editar saldos iniciales"
-                    }
-                </button>
-
-                ${
-                    hasMovements
-                        ? `
-
-                            <p
-                                class="note"
-                                style="
-                                    text-align:center;
-                                    margin-top:12px;
-                                "
-                            >
-                                Los saldos se actualizan mediante movimientos.
-                            </p>
-
-                        `
-                        : ""
-                }
 
             </div>
 
@@ -1823,49 +1636,6 @@ const AtlasUI = {
 
             </section>
 
-            ${
-                monthMovements.length === 0
-                    ? `
-
-                        <section
-                            class="panel"
-                            style="
-                                text-align:center;
-                                padding:24px 18px;
-                            "
-                        >
-
-                            <div
-                                style="
-                                    font-size:30px;
-                                    margin-bottom:10px;
-                                "
-                            >
-                                🗓️
-                            </div>
-
-                            <strong>
-                                Sin actividad registrada
-                            </strong>
-
-                            <p
-                                class="note"
-                                style="
-                                    margin-top:8px;
-                                "
-                            >
-                                No hay datos financieros en
-                                ${this.formatMonthKey(
-                                    analysisMonth
-                                )}.
-                            </p>
-
-                        </section>
-
-                    `
-                    : ""
-            }
-
         `;
 
     },
@@ -1883,7 +1653,7 @@ const AtlasUI = {
                             minmax(0,1fr)
                         );
                     gap:8px;
-                    margin-bottom:18px;
+                    margin-bottom:14px;
                 "
             >
 
@@ -1931,134 +1701,312 @@ const AtlasUI = {
 
     },
 
-    trendMetricRows(trend) {
+    trendMetricDefinitions() {
+
+        return {
+
+            savings: {
+                label: "Ahorro",
+                property: "savings",
+                source: "movements",
+                positiveNegative: true
+            },
+
+            income: {
+                label: "Ingresos",
+                property: "income",
+                source: "movements"
+            },
+
+            expenses: {
+                label: "Gastos",
+                property: "expenses",
+                source: "movements"
+            },
+
+            invested: {
+                label: "Aportaciones",
+                property: "invested",
+                source: "movements"
+            },
+
+            cashOutflow: {
+                label: "Salidas de caja",
+                property: "cashOutflow",
+                source: "movements"
+            },
+
+            liquidity: {
+                label: "Liquidez",
+                property: "liquidity",
+                source: "snapshots",
+                positiveNegative: true
+            },
+
+            investments: {
+                label: "Valor inversiones",
+                property: "investments",
+                source: "snapshots",
+                positiveNegative: true
+            },
+
+            debt: {
+                label: "Deuda",
+                property: "debt",
+                source: "snapshots"
+            },
+
+            netWorth: {
+                label: "Patrimonio neto",
+                property: "netWorth",
+                source: "snapshots",
+                positiveNegative: true
+            }
+
+        };
+
+    },
+
+    trendMetricSelector(activeMetric) {
+
+        const definitions =
+            this.trendMetricDefinitions();
 
         return `
 
-            <div class="list">
+            <label
+                style="
+                    display:flex;
+                    flex-direction:column;
+                    gap:8px;
+                    margin-bottom:18px;
+                "
+            >
 
-                <div class="row">
+                <span
+                    class="label"
+                    style="
+                        padding-left:3px;
+                    "
+                >
+                    Variable
+                </span>
 
-                    <div>
+                <select
+                    id="trend-metric-selector"
+                    style="
+                        width:100%;
+                        min-height:52px;
+                        padding:0 15px;
+                        border-radius:16px;
+                        border:
+                            1px solid
+                            rgba(
+                                145,
+                                164,
+                                202,
+                                0.2
+                            );
+                        background:#19243a;
+                        color:#f7f8fc;
+                        font-size:16px;
+                    "
+                >
 
-                        <b>
-                            Ingresos medios
-                        </b>
+                    ${Object.entries(
+                        definitions
+                    )
+                        .map(
+                            ([
+                                key,
+                                definition
+                            ]) => `
 
-                        <small>
-                            Promedio mensual
-                        </small>
+                                <option
+                                    value="${key}"
+                                    ${
+                                        key === activeMetric
+                                            ? "selected"
+                                            : ""
+                                    }
+                                >
+                                    ${definition.label}
+                                </option>
 
-                    </div>
+                            `
+                        )
+                        .join("")}
 
-                    <strong>
-                        ${this.formatCurrency(
-                            trend.averages.income
-                        )}
-                    </strong>
+                </select>
 
-                </div>
-
-                <div class="row">
-
-                    <div>
-
-                        <b>
-                            Gastos medios
-                        </b>
-
-                        <small>
-                            Promedio mensual
-                        </small>
-
-                    </div>
-
-                    <strong>
-                        ${this.formatCurrency(
-                            trend.averages.expenses
-                        )}
-                    </strong>
-
-                </div>
-
-                <div class="row">
-
-                    <div>
-
-                        <b>
-                            Ahorro medio
-                        </b>
-
-                        <small>
-                            Promedio mensual
-                        </small>
-
-                    </div>
-
-                    <strong
-                        style="
-                            color:${
-                                trend.averages.savings >= 0
-                                    ? "var(--color-success)"
-                                    : "var(--color-danger)"
-                            };
-                        "
-                    >
-                        ${this.formatCurrency(
-                            trend.averages.savings
-                        )}
-                    </strong>
-
-                </div>
-
-                <div class="row">
-
-                    <div>
-
-                        <b>
-                            Tasa media de ahorro
-                        </b>
-
-                        <small>
-                            Sobre los ingresos
-                        </small>
-
-                    </div>
-
-                    <strong>
-                        ${this.formatPercent(
-                            trend.averages.savingRate
-                        )}
-                    </strong>
-
-                </div>
-
-            </div>
+            </label>
 
         `;
 
     },
 
-    trendBars(
-        months,
-        property,
-        positiveNegative = false
+    snapshotForMonth(
+        data,
+        monthKey
     ) {
 
-        const values =
-            months.map(
-                month =>
-                    Number(
-                        month[property]
-                    ) || 0
+        if (
+            !Array.isArray(
+                data.snapshots
+            )
+        ) {
+            return null;
+        }
+
+        return (
+            data.snapshots.find(
+                snapshot =>
+                    snapshot.monthKey ===
+                    monthKey
+            ) ||
+            null
+        );
+
+    },
+
+    trendSeries(
+        data,
+        trend,
+        metric
+    ) {
+
+        const definitions =
+            this.trendMetricDefinitions();
+
+        const definition =
+            definitions[metric] ||
+            definitions.savings;
+
+        return trend.months.map(
+            month => {
+
+                if (
+                    definition.source ===
+                    "snapshots"
+                ) {
+
+                    const snapshot =
+                        this.snapshotForMonth(
+                            data,
+                            month.monthKey
+                        );
+
+                    return {
+                        monthKey:
+                            month.monthKey,
+
+                        value:
+                            snapshot
+                                ? Number(
+                                    snapshot[
+                                        definition.property
+                                    ]
+                                ) || 0
+                                : null
+                    };
+
+                }
+
+                return {
+                    monthKey:
+                        month.monthKey,
+
+                    value:
+                        Number(
+                            month[
+                                definition.property
+                            ]
+                        ) || 0
+                };
+
+            }
+        );
+
+    },
+
+    trendChart(
+        data,
+        trend,
+        metric
+    ) {
+
+        const definitions =
+            this.trendMetricDefinitions();
+
+        const definition =
+            definitions[metric] ||
+            definitions.savings;
+
+        const series =
+            this.trendSeries(
+                data,
+                trend,
+                metric
             );
+
+        const available =
+            series.filter(
+                item =>
+                    item.value !== null
+            );
+
+        if (
+            available.length === 0
+        ) {
+
+            return `
+
+                <div
+                    style="
+                        text-align:center;
+                        padding:34px 12px 24px;
+                    "
+                >
+
+                    <div
+                        style="
+                            font-size:32px;
+                            margin-bottom:10px;
+                        "
+                    >
+                        📸
+                    </div>
+
+                    <strong>
+                        Sin cierres mensuales
+                    </strong>
+
+                    <p
+                        class="note"
+                        style="
+                            margin-top:8px;
+                            line-height:1.5;
+                        "
+                    >
+                        Guarda un cierre mensual desde Ajustes
+                        para ver la evolución de
+                        ${definition.label.toLowerCase()}.
+                    </p>
+
+                </div>
+
+            `;
+
+        }
 
         const maximum =
             Math.max(
                 1,
-                ...values.map(
-                    value =>
-                        Math.abs(value)
+                ...available.map(
+                    item =>
+                        Math.abs(
+                            item.value
+                        )
                 )
             );
 
@@ -2071,42 +2019,94 @@ const AtlasUI = {
                         repeat(
                             ${Math.max(
                                 1,
-                                months.length
+                                series.length
                             )},
-                            minmax(26px,1fr)
+                            minmax(34px,1fr)
                         );
                     align-items:end;
                     gap:8px;
-                    min-height:190px;
-                    padding-top:14px;
+                    min-height:220px;
+                    padding-top:18px;
                     overflow-x:auto;
                 "
             >
 
-                ${months
+                ${series
                     .map(
-                        month => {
+                        item => {
 
-                            const value =
-                                Number(
-                                    month[property]
-                                ) || 0;
+                            if (
+                                item.value === null
+                            ) {
+
+                                return `
+
+                                    <div
+                                        style="
+                                            min-width:34px;
+                                            display:flex;
+                                            flex-direction:column;
+                                            align-items:center;
+                                            justify-content:flex-end;
+                                            gap:8px;
+                                        "
+                                    >
+
+                                        <small class="note">
+                                            —
+                                        </small>
+
+                                        <div
+                                            style="
+                                                width:100%;
+                                                max-width:34px;
+                                                height:5px;
+                                                border-radius:99px;
+                                                background:
+                                                    rgba(
+                                                        145,
+                                                        164,
+                                                        202,
+                                                        0.18
+                                                    );
+                                            "
+                                        ></div>
+
+                                        <small
+                                            class="note"
+                                            style="
+                                                font-size:10px;
+                                            "
+                                        >
+                                            ${this.formatShortMonth(
+                                                item.monthKey
+                                            )}
+                                        </small>
+
+                                    </div>
+
+                                `;
+
+                            }
 
                             const height =
                                 Math.max(
-                                    value === 0
-                                        ? 4
-                                        : 14,
+                                    item.value === 0
+                                        ? 5
+                                        : 16,
                                     (
-                                        Math.abs(value) /
+                                        Math.abs(
+                                            item.value
+                                        ) /
                                         maximum
-                                    ) * 120
+                                    ) * 132
                                 );
 
                             const barColor =
-                                positiveNegative
+                                definition
+                                    .positiveNegative
                                     ? (
-                                        value >= 0
+                                        item.value >= 0
                                             ? "var(--color-success)"
                                             : "var(--color-danger)"
                                     )
@@ -2116,25 +2116,24 @@ const AtlasUI = {
 
                                 <div
                                     style="
-                                        min-width:30px;
+                                        min-width:34px;
                                         display:flex;
                                         flex-direction:column;
                                         align-items:center;
                                         justify-content:flex-end;
-                                        gap:7px;
+                                        gap:8px;
                                     "
                                 >
 
                                     <small
                                         style="
-                                            color:
-                                                ${barColor};
+                                            color:${barColor};
                                             font-size:10px;
                                             white-space:nowrap;
                                         "
                                     >
                                         ${this.formatCurrency(
-                                            value
+                                            item.value
                                         )}
                                     </small>
 
@@ -2145,10 +2144,9 @@ const AtlasUI = {
                                             height:${height}px;
                                             border-radius:
                                                 10px 10px 4px 4px;
-                                            background:
-                                                ${barColor};
+                                            background:${barColor};
                                             opacity:${
-                                                value === 0
+                                                item.value === 0
                                                     ? "0.25"
                                                     : "0.85"
                                             };
@@ -2162,7 +2160,7 @@ const AtlasUI = {
                                         "
                                     >
                                         ${this.formatShortMonth(
-                                            month.monthKey
+                                            item.monthKey
                                         )}
                                     </small>
 
@@ -2180,16 +2178,103 @@ const AtlasUI = {
 
     },
 
-    trendHighlights(trend) {
+    trendAverage(
+        data,
+        trend,
+        metric
+    ) {
 
-        const best =
-            trend.bestSavingsMonth;
+        const values =
+            this.trendSeries(
+                data,
+                trend,
+                metric
+            )
+                .filter(
+                    item =>
+                        item.value !== null
+                )
+                .map(
+                    item =>
+                        item.value
+                );
 
-        const worst =
-            trend.worstSavingsMonth;
+        if (
+            values.length === 0
+        ) {
+            return null;
+        }
 
-        const highestExpenses =
-            trend.highestExpenseMonth;
+        return (
+            values.reduce(
+                (total, value) =>
+                    total + value,
+                0
+            ) /
+            values.length
+        );
+
+    },
+
+    trendSummaryRows(
+        data,
+        trend,
+        metric
+    ) {
+
+        const definition =
+            this.trendMetricDefinitions()[
+                metric
+            ] ||
+            this.trendMetricDefinitions()
+                .savings;
+
+        const series =
+            this.trendSeries(
+                data,
+                trend,
+                metric
+            )
+                .filter(
+                    item =>
+                        item.value !== null
+                );
+
+        const average =
+            this.trendAverage(
+                data,
+                trend,
+                metric
+            );
+
+        const latest =
+            series.length > 0
+                ? series[
+                    series.length - 1
+                ]
+                : null;
+
+        const highest =
+            series.length > 0
+                ? series.reduce(
+                    (best, item) =>
+                        item.value >
+                        best.value
+                            ? item
+                            : best
+                )
+                : null;
+
+        const lowest =
+            series.length > 0
+                ? series.reduce(
+                    (worst, item) =>
+                        item.value <
+                        worst.value
+                            ? item
+                            : worst
+                )
+                : null;
 
         return `
 
@@ -2200,33 +2285,22 @@ const AtlasUI = {
                     <div>
 
                         <b>
-                            Mejor mes de ahorro
+                            Media del periodo
                         </b>
 
                         <small>
-                            ${
-                                best
-                                    ? this.formatMonthKey(
-                                        best.monthKey
-                                    )
-                                    : "Sin datos"
-                            }
+                            ${definition.label}
                         </small>
 
                     </div>
 
-                    <strong
-                        style="
-                            color:
-                                var(--color-success);
-                        "
-                    >
+                    <strong>
                         ${
-                            best
-                                ? this.formatCurrency(
-                                    best.savings
+                            average === null
+                                ? "—"
+                                : this.formatCurrency(
+                                    average
                                 )
-                                : "—"
                         }
                     </strong>
 
@@ -2237,51 +2311,14 @@ const AtlasUI = {
                     <div>
 
                         <b>
-                            Peor mes de ahorro
+                            Último dato
                         </b>
 
                         <small>
                             ${
-                                worst
+                                latest
                                     ? this.formatMonthKey(
-                                        worst.monthKey
-                                    )
-                                    : "Sin datos"
-                            }
-                        </small>
-
-                    </div>
-
-                    <strong
-                        style="
-                            color:
-                                var(--color-danger);
-                        "
-                    >
-                        ${
-                            worst
-                                ? this.formatCurrency(
-                                    worst.savings
-                                )
-                                : "—"
-                        }
-                    </strong>
-
-                </div>
-
-                <div class="row">
-
-                    <div>
-
-                        <b>
-                            Mes con más gastos
-                        </b>
-
-                        <small>
-                            ${
-                                highestExpenses
-                                    ? this.formatMonthKey(
-                                        highestExpenses.monthKey
+                                        latest.monthKey
                                     )
                                     : "Sin datos"
                             }
@@ -2291,9 +2328,73 @@ const AtlasUI = {
 
                     <strong>
                         ${
-                            highestExpenses
+                            latest
                                 ? this.formatCurrency(
-                                    highestExpenses.expenses
+                                    latest.value
+                                )
+                                : "—"
+                        }
+                    </strong>
+
+                </div>
+
+                <div class="row">
+
+                    <div>
+
+                        <b>
+                            Máximo
+                        </b>
+
+                        <small>
+                            ${
+                                highest
+                                    ? this.formatMonthKey(
+                                        highest.monthKey
+                                    )
+                                    : "Sin datos"
+                            }
+                        </small>
+
+                    </div>
+
+                    <strong>
+                        ${
+                            highest
+                                ? this.formatCurrency(
+                                    highest.value
+                                )
+                                : "—"
+                        }
+                    </strong>
+
+                </div>
+
+                <div class="row">
+
+                    <div>
+
+                        <b>
+                            Mínimo
+                        </b>
+
+                        <small>
+                            ${
+                                lowest
+                                    ? this.formatMonthKey(
+                                        lowest.monthKey
+                                    )
+                                    : "Sin datos"
+                            }
+                        </small>
+
+                    </div>
+
+                    <strong>
+                        ${
+                            lowest
+                                ? this.formatCurrency(
+                                    lowest.value
                                 )
                                 : "—"
                         }
@@ -2317,6 +2418,10 @@ const AtlasUI = {
                 options.trendsPeriod
             ) || 6;
 
+        const trendMetric =
+            options.trendMetric ||
+            "savings";
+
         const currentMonth =
             options.currentMonth ||
             AtlasCalculations.monthKey();
@@ -2329,11 +2434,12 @@ const AtlasUI = {
                     currentMonth
                 );
 
-        const hasActivity =
-            trend.months.some(
-                month =>
-                    month.movements > 0
-            );
+        const definition =
+            this.trendMetricDefinitions()[
+                trendMetric
+            ] ||
+            this.trendMetricDefinitions()
+                .savings;
 
         return `
 
@@ -2341,19 +2447,19 @@ const AtlasUI = {
                 trendsPeriod
             )}
 
-            <section
-                class="panel"
-                style="
-                    margin-bottom:18px;
-                "
-            >
+            ${this.trendMetricSelector(
+                trendMetric
+            )}
+
+            <section class="panel">
 
                 <div class="panelhead">
 
                     <div>
 
                         <h2>
-                            Resumen del periodo
+                            Evolución de
+                            ${definition.label.toLowerCase()}
                         </h2>
 
                         <p
@@ -2379,99 +2485,10 @@ const AtlasUI = {
 
                 </div>
 
-                ${this.trendMetricRows(
-                    trend
-                )}
-
-            </section>
-
-            <section class="panel">
-
-                <div class="panelhead">
-
-                    <div>
-
-                        <h2>
-                            Evolución del ahorro
-                        </h2>
-
-                        <p
-                            class="note"
-                            style="
-                                margin-top:5px;
-                            "
-                        >
-                            Resultado mensual
-                        </p>
-
-                    </div>
-
-                </div>
-
-                ${this.trendBars(
-                    trend.months,
-                    "savings",
-                    true
-                )}
-
-            </section>
-
-            <section class="panel">
-
-                <div class="panelhead">
-
-                    <div>
-
-                        <h2>
-                            Evolución de gastos
-                        </h2>
-
-                        <p
-                            class="note"
-                            style="
-                                margin-top:5px;
-                            "
-                        >
-                            Consumo real por mes
-                        </p>
-
-                    </div>
-
-                </div>
-
-                ${this.trendBars(
-                    trend.months,
-                    "expenses"
-                )}
-
-            </section>
-
-            <section class="panel">
-
-                <div class="panelhead">
-
-                    <div>
-
-                        <h2>
-                            Evolución de ingresos
-                        </h2>
-
-                        <p
-                            class="note"
-                            style="
-                                margin-top:5px;
-                            "
-                        >
-                            Ingresos registrados por mes
-                        </p>
-
-                    </div>
-
-                </div>
-
-                ${this.trendBars(
-                    trend.months,
-                    "income"
+                ${this.trendChart(
+                    data,
+                    trend,
+                    trendMetric
                 )}
 
             </section>
@@ -2481,13 +2498,15 @@ const AtlasUI = {
                 <div class="panelhead">
 
                     <h2>
-                        Meses destacados
+                        Resumen de la variable
                     </h2>
 
                 </div>
 
-                ${this.trendHighlights(
-                    trend
+                ${this.trendSummaryRows(
+                    data,
+                    trend,
+                    trendMetric
                 )}
 
             </section>
@@ -2518,78 +2537,6 @@ const AtlasUI = {
                 ${this.categoryRows(
                     trend.categories
                 )}
-
-            </section>
-
-            ${
-                !hasActivity
-                    ? `
-
-                        <section
-                            class="panel"
-                            style="
-                                text-align:center;
-                                padding:26px 18px;
-                            "
-                        >
-
-                            <div
-                                style="
-                                    font-size:30px;
-                                    margin-bottom:10px;
-                                "
-                            >
-                                📊
-                            </div>
-
-                            <strong>
-                                Todavía no hay histórico
-                            </strong>
-
-                            <p
-                                class="note"
-                                style="
-                                    margin-top:8px;
-                                "
-                            >
-                                Las tendencias aparecerán cuando
-                                existan movimientos en varios meses.
-                            </p>
-
-                        </section>
-
-                    `
-                    : ""
-            }
-
-            <section class="panel">
-
-                <div class="panelhead">
-
-                    <div>
-
-                        <h2>
-                            Patrimonio histórico
-                        </h2>
-
-                        <p
-                            class="note"
-                            style="
-                                margin-top:5px;
-                            "
-                        >
-                            Pendiente de snapshots mensuales
-                        </p>
-
-                    </div>
-
-                </div>
-
-                <p class="note">
-                    La evolución histórica de liquidez, inversiones,
-                    deuda y patrimonio se añadirá cuando Atlas guarde
-                    una fotografía de los saldos al cierre de cada mes.
-                </p>
 
             </section>
 
@@ -2642,6 +2589,146 @@ const AtlasUI = {
 
     },
 
+    ai(data) {
+
+        const summary =
+            AtlasCalculations
+                .financialSummary(
+                    data
+                );
+
+        return `
+
+            <div class="app">
+
+                ${this.header()}
+
+                <h1 class="page-title">
+                    Atlas IA
+                </h1>
+
+                <p class="subtitle">
+                    Interpretación, predicciones y recomendaciones financieras.
+                </p>
+
+                <section
+                    class="hero"
+                    style="
+                        padding:22px;
+                        margin-bottom:18px;
+                    "
+                >
+
+                    <div
+                        style="
+                            font-size:30px;
+                            margin-bottom:12px;
+                        "
+                    >
+                        ✦
+                    </div>
+
+                    <div class="eyebrow">
+                        Primer análisis
+                    </div>
+
+                    <div
+                        style="
+                            margin-top:10px;
+                            font-size:18px;
+                            line-height:1.5;
+                        "
+                    >
+                        ${this.atlasMessage(
+                            data,
+                            summary
+                        )}
+                    </div>
+
+                </section>
+
+                <section class="panel">
+
+                    <div class="panelhead">
+
+                        <h2>
+                            Próximamente
+                        </h2>
+
+                    </div>
+
+                    <div class="list">
+
+                        <div class="row">
+
+                            <div>
+
+                                <b>
+                                    Resumen inteligente
+                                </b>
+
+                                <small>
+                                    Qué ha ocurrido y por qué
+                                </small>
+
+                            </div>
+
+                            <span>
+                                ✨
+                            </span>
+
+                        </div>
+
+                        <div class="row">
+
+                            <div>
+
+                                <b>
+                                    Predicción de cierre
+                                </b>
+
+                                <small>
+                                    Ahorro estimado al final del mes
+                                </small>
+
+                            </div>
+
+                            <span>
+                                🔮
+                            </span>
+
+                        </div>
+
+                        <div class="row">
+
+                            <div>
+
+                                <b>
+                                    Preguntas financieras
+                                </b>
+
+                                <small>
+                                    Consulta tus datos con lenguaje natural
+                                </small>
+
+                            </div>
+
+                            <span>
+                                💬
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </section>
+
+            </div>
+
+        `;
+
+    },
+
     render(
         route,
         data,
@@ -2658,13 +2745,6 @@ const AtlasUI = {
         }
 
         switch (route) {
-
-            case "settings":
-
-                app.innerHTML =
-                    this.settings(data);
-
-                break;
 
             case "movements":
 
@@ -2683,6 +2763,13 @@ const AtlasUI = {
                         data,
                         options
                     );
+
+                break;
+
+            case "ai":
+
+                app.innerHTML =
+                    this.ai(data);
 
                 break;
 
@@ -2708,6 +2795,53 @@ const AtlasUI = {
 
                 }
             );
+
+        this.bindDynamicControls();
+
+    },
+
+    bindDynamicControls() {
+
+        const trendSelector =
+            document.getElementById(
+                "trend-metric-selector"
+            );
+
+        if (trendSelector) {
+
+            trendSelector.addEventListener(
+                "change",
+                event => {
+
+                    const metric =
+                        event.target.value;
+
+                    const virtualButton =
+                        document.createElement(
+                            "button"
+                        );
+
+                    virtualButton.dataset.action =
+                        "setTrendMetric";
+
+                    virtualButton.dataset.metric =
+                        metric;
+
+                    virtualButton.style.display =
+                        "none";
+
+                    document.body.appendChild(
+                        virtualButton
+                    );
+
+                    virtualButton.click();
+
+                    virtualButton.remove();
+
+                }
+            );
+
+        }
 
     },
 
