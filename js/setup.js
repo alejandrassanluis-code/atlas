@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    setup.js
-   Sprint 4.0 — Configuración inicial estable
+   Sprint 4.0 — Bienvenida y saldos iniciales reutilizables
 ========================================================== */
 
 const AtlasSetup = {
@@ -12,15 +12,25 @@ const AtlasSetup = {
 
     onComplete: null,
 
-    currentStep: 0,
+    currentStep: -1,
 
     saving: false,
 
-    steps: [
+    mode: "onboarding",
+
+    activeSteps: [],
+
+    defaultSteps: [
         "liquidity",
         "investments",
         "debts",
         "goal"
+    ],
+
+    balanceSteps: [
+        "liquidity",
+        "investments",
+        "debts"
     ],
 
     shouldOpen(data) {
@@ -34,27 +44,65 @@ const AtlasSetup = {
 
     open(
         data,
-        onComplete
+        onComplete,
+        options = {}
     ) {
 
         this.data =
             data;
 
         this.workingData =
-            this.clone(
-                data
-            );
+            this.clone(data);
 
         this.onComplete =
             onComplete;
 
-        this.currentStep =
-            0;
-
         this.saving =
             false;
 
+        this.mode =
+            options.mode ||
+            "onboarding";
+
+        this.activeSteps =
+            this.mode ===
+            "initial_balances"
+                ? [
+                    ...this.balanceSteps
+                ]
+                : [
+                    ...this.defaultSteps
+                ];
+
+        const showWelcome =
+            options.showWelcome !==
+            false;
+
+        this.currentStep =
+            showWelcome
+                ? -1
+                : 0;
+
         this.render();
+
+    },
+
+    openInitialBalances(
+        data,
+        onComplete
+    ) {
+
+        this.open(
+            data,
+            onComplete,
+            {
+                mode:
+                    "initial_balances",
+
+                showWelcome:
+                    false
+            }
+        );
 
     },
 
@@ -101,7 +149,8 @@ const AtlasSetup = {
         return this.workingData.accounts
             .filter(
                 account =>
-                    account.group === group
+                    account.group ===
+                    group
             )
             .sort(
                 (a, b) =>
@@ -115,13 +164,42 @@ const AtlasSetup = {
 
     },
 
+    isWelcome() {
+
+        return (
+            this.currentStep < 0
+        );
+
+    },
+
+    isLastStep() {
+
+        return (
+            this.currentStep ===
+            this.activeSteps.length - 1
+        );
+
+    },
+
+    currentStepKey() {
+
+        return this.activeSteps[
+            this.currentStep
+        ];
+
+    },
+
     progressPercent() {
+
+        if (this.isWelcome()) {
+            return 0;
+        }
 
         return (
             (
                 this.currentStep + 1
             ) /
-            this.steps.length
+            this.activeSteps.length
         ) * 100;
 
     },
@@ -145,7 +223,7 @@ const AtlasSetup = {
                             3,
                             7,
                             18,
-                            0.82
+                            0.84
                         );
                     backdrop-filter:
                         blur(10px);
@@ -193,6 +271,26 @@ const AtlasSetup = {
                             0,
                             0.5
                         );
+                    animation:
+                        atlasSetupUp
+                        0.24s
+                        ease;
+                }
+
+                @keyframes atlasSetupUp {
+
+                    from {
+                        opacity: 0;
+                        transform:
+                            translateY(30px);
+                    }
+
+                    to {
+                        opacity: 1;
+                        transform:
+                            translateY(0);
+                    }
+
                 }
 
                 .atlas-setup-handle {
@@ -270,6 +368,85 @@ const AtlasSetup = {
                     color: #98a2bb;
                     font-size: 17px;
                     line-height: 1.5;
+                }
+
+                .atlas-setup-welcome-icon {
+                    width: 74px;
+                    height: 74px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin-bottom: 20px;
+                    border-radius: 24px;
+                    background:
+                        linear-gradient(
+                            135deg,
+                            rgba(
+                                85,
+                                182,
+                                255,
+                                0.22
+                            ),
+                            rgba(
+                                40,
+                                121,
+                                237,
+                                0.1
+                            )
+                        );
+                    border:
+                        1px solid
+                        rgba(
+                            85,
+                            182,
+                            255,
+                            0.24
+                        );
+                    font-size: 34px;
+                }
+
+                .atlas-setup-benefits {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 11px;
+                    margin:
+                        22px
+                        0
+                        26px;
+                }
+
+                .atlas-setup-benefit {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 13px 14px;
+                    border-radius: 17px;
+                    background:
+                        rgba(
+                            255,
+                            255,
+                            255,
+                            0.035
+                        );
+                    color: #cbd3e6;
+                    line-height: 1.4;
+                }
+
+                .atlas-setup-benefit b {
+                    width: 34px;
+                    height: 34px;
+                    flex: 0 0 34px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 12px;
+                    background:
+                        rgba(
+                            77,
+                            163,
+                            255,
+                            0.12
+                        );
                 }
 
                 .atlas-setup-form {
@@ -386,8 +563,15 @@ const AtlasSetup = {
                     margin-top: 26px;
                 }
 
+                .atlas-setup-actions-single {
+                    display: grid;
+                    gap: 10px;
+                    margin-top: 26px;
+                }
+
                 .atlas-setup-back,
-                .atlas-setup-next {
+                .atlas-setup-next,
+                .atlas-setup-cancel {
                     min-height: 58px;
                     border-radius: 18px;
                     font-size: 17px;
@@ -433,6 +617,11 @@ const AtlasSetup = {
 
                 .atlas-setup-next:disabled {
                     opacity: 0.55;
+                }
+
+                .atlas-setup-cancel {
+                    color: #98a2bb;
+                    background: transparent;
                 }
 
                 .atlas-setup-note {
@@ -499,9 +688,7 @@ const AtlasSetup = {
         };
 
         return information[
-            this.steps[
-                this.currentStep
-            ]
+            this.currentStepKey()
         ];
 
     },
@@ -668,9 +855,7 @@ const AtlasSetup = {
     currentFields() {
 
         const step =
-            this.steps[
-                this.currentStep
-            ];
+            this.currentStepKey();
 
         switch (step) {
 
@@ -693,7 +878,116 @@ const AtlasSetup = {
 
     },
 
-    render() {
+    renderWelcome() {
+
+        const root =
+            this.root();
+
+        if (!root) {
+            return;
+        }
+
+        document.body.classList.add(
+            "atlas-setup-open"
+        );
+
+        root.innerHTML = `
+
+            ${this.styles()}
+
+            <div
+                class="atlas-setup-backdrop"
+            ></div>
+
+            <section
+                class="atlas-setup-sheet"
+                role="dialog"
+                aria-modal="true"
+            >
+
+                <div
+                    class="atlas-setup-handle"
+                ></div>
+
+                <div
+                    class="atlas-setup-welcome-icon"
+                >
+                    🧭
+                </div>
+
+                <div class="atlas-setup-step">
+                    Bienvenido a Atlas
+                </div>
+
+                <h2 class="atlas-setup-title">
+                    Configurar Atlas
+                </h2>
+
+                <p class="atlas-setup-description">
+                    Añade tu situación financiera actual para que Atlas
+                    pueda calcular correctamente tu liquidez, inversiones,
+                    deuda y patrimonio.
+                </p>
+
+                <div class="atlas-setup-benefits">
+
+                    <div class="atlas-setup-benefit">
+
+                        <b>
+                            💵
+                        </b>
+
+                        <span>
+                            Introduce el dinero disponible en tus cuentas.
+                        </span>
+
+                    </div>
+
+                    <div class="atlas-setup-benefit">
+
+                        <b>
+                            📈
+                        </b>
+
+                        <span>
+                            Añade el capital aportado y el valor de tus inversiones.
+                        </span>
+
+                    </div>
+
+                    <div class="atlas-setup-benefit">
+
+                        <b>
+                            💳
+                        </b>
+
+                        <span>
+                            Registra la deuda pendiente de préstamos y tarjetas.
+                        </span>
+
+                    </div>
+
+                </div>
+
+                <div class="atlas-setup-actions-single">
+
+                    <button
+                        class="atlas-setup-next"
+                        type="button"
+                        data-setup-action="start"
+                    >
+                        Configurar Atlas
+                    </button>
+
+                </div>
+
+            </section>
+
+        `;
+
+    },
+
+    renderStep() {
 
         const root =
             this.root();
@@ -704,10 +998,6 @@ const AtlasSetup = {
 
         const information =
             this.stepInformation();
-
-        const isLastStep =
-            this.currentStep ===
-            this.steps.length - 1;
 
         document.body.classList.add(
             "atlas-setup-open"
@@ -746,7 +1036,7 @@ const AtlasSetup = {
                     Paso
                     ${this.currentStep + 1}
                     de
-                    ${this.steps.length}
+                    ${this.activeSteps.length}
                 </div>
 
                 <h2 class="atlas-setup-title">
@@ -781,13 +1071,35 @@ const AtlasSetup = {
                             data-setup-action="next"
                         >
                             ${
-                                isLastStep
-                                    ? "Terminar"
+                                this.isLastStep()
+                                    ? (
+                                        this.mode ===
+                                        "initial_balances"
+                                            ? "Guardar saldos"
+                                            : "Terminar"
+                                    )
                                     : "Siguiente"
                             }
                         </button>
 
                     </div>
+
+                    ${
+                        this.mode ===
+                        "initial_balances"
+                            ? `
+
+                                <button
+                                    class="atlas-setup-cancel"
+                                    type="button"
+                                    data-setup-action="close"
+                                >
+                                    Cancelar
+                                </button>
+
+                            `
+                            : ""
+                    }
 
                 </form>
 
@@ -797,15 +1109,27 @@ const AtlasSetup = {
 
     },
 
+    render() {
+
+        if (this.isWelcome()) {
+
+            this.renderWelcome();
+
+            return;
+
+        }
+
+        this.renderStep();
+
+    },
+
     saveCurrentStep(form) {
 
         const values =
             new FormData(form);
 
         const step =
-            this.steps[
-                this.currentStep
-            ];
+            this.currentStepKey();
 
         if (
             step === "liquidity" ||
@@ -919,6 +1243,15 @@ const AtlasSetup = {
 
     },
 
+    start() {
+
+        this.currentStep =
+            0;
+
+        this.render();
+
+    },
+
     next(form) {
 
         if (this.saving) {
@@ -934,11 +1267,7 @@ const AtlasSetup = {
             return;
         }
 
-        const isLastStep =
-            this.currentStep ===
-            this.steps.length - 1;
-
-        if (!isLastStep) {
+        if (!this.isLastStep()) {
 
             this.currentStep += 1;
 
@@ -958,9 +1287,14 @@ const AtlasSetup = {
             return;
         }
 
-        this.saveCurrentStep(
-            form
-        );
+        const valid =
+            this.saveCurrentStep(
+                form
+            );
+
+        if (!valid) {
+            return;
+        }
 
         if (
             this.currentStep > 0
@@ -974,9 +1308,21 @@ const AtlasSetup = {
 
         }
 
-        AtlasUI.toast(
-            "Completa la configuración inicial para empezar."
-        );
+        if (
+            this.mode ===
+            "onboarding"
+        ) {
+
+            this.currentStep =
+                -1;
+
+            this.render();
+
+            return;
+
+        }
+
+        this.close();
 
     },
 
@@ -1000,8 +1346,15 @@ const AtlasSetup = {
 
         }
 
-        this.workingData.initialized =
-            true;
+        if (
+            this.mode ===
+            "onboarding"
+        ) {
+
+            this.workingData.initialized =
+                true;
+
+        }
 
         this.workingData.updatedAt =
             new Date()
@@ -1023,7 +1376,10 @@ const AtlasSetup = {
                     false;
 
                 button.textContent =
-                    "Terminar";
+                    this.mode ===
+                    "initial_balances"
+                        ? "Guardar saldos"
+                        : "Terminar";
 
             }
 
@@ -1041,6 +1397,9 @@ const AtlasSetup = {
         const callback =
             this.onComplete;
 
+        const completedMode =
+            this.mode;
+
         this.close();
 
         if (
@@ -1053,6 +1412,13 @@ const AtlasSetup = {
             );
 
         }
+
+        AtlasUI.toast(
+            completedMode ===
+            "initial_balances"
+                ? "Saldos iniciales actualizados."
+                : "Atlas ya está configurado."
+        );
 
     },
 
@@ -1071,6 +1437,9 @@ const AtlasSetup = {
 
         this.saving =
             false;
+
+        this.currentStep =
+            -1;
 
     },
 
@@ -1102,10 +1471,44 @@ const AtlasSetup = {
 
                 const button =
                     event.target.closest(
-                        "[data-setup-action='back']"
+                        "[data-setup-action]"
                     );
 
                 if (!button) {
+                    return;
+                }
+
+                const action =
+                    button.dataset
+                        .setupAction;
+
+                if (
+                    action === "start"
+                ) {
+
+                    event.preventDefault();
+
+                    this.start();
+
+                    return;
+
+                }
+
+                if (
+                    action === "close"
+                ) {
+
+                    event.preventDefault();
+
+                    this.close();
+
+                    return;
+
+                }
+
+                if (
+                    action !== "back"
+                ) {
                     return;
                 }
 
