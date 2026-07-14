@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    calculations.js
-   Sprint 2.4 — Cálculos financieros correctos
+   Sprint 2.5 — Gastos y salidas de caja
 ========================================================== */
 
 const AtlasCalculations = {
@@ -14,6 +14,15 @@ const AtlasCalculations = {
         return Number.isFinite(result)
             ? result
             : 0;
+
+    },
+
+    findAccount(data, accountId) {
+
+        return data.accounts.find(
+            account =>
+                account.id === accountId
+        );
 
     },
 
@@ -215,20 +224,17 @@ const AtlasCalculations = {
 
     },
 
-    expenseCountsForSavings(
-        movement
-    ) {
+    expenseCountsForSavings(movement) {
 
         /*
-           Una compra con Amex o tarjeta BBVA
-           ya cuenta como gasto cuando se registra.
+           Las compras con tarjeta cuentan
+           como gasto en la fecha de compra.
 
-           Pagar después la tarjeta es solo
-           liquidar una deuda y no debe contar
-           una segunda vez.
+           La liquidación posterior de Amex
+           o tarjeta BBVA no vuelve a contar.
 
-           La cuota del préstamo del coche sí
-           cuenta como gasto mensual.
+           La cuota del préstamo del coche
+           sí cuenta como gasto mensual.
         */
 
         if (
@@ -250,6 +256,123 @@ const AtlasCalculations = {
         return this.isNormalExpense(
             movement
         );
+
+    },
+
+    movementCashOutflow(
+        data,
+        movement
+    ) {
+
+        const amount =
+            this.number(
+                movement.amount
+            );
+
+        /*
+           Gasto pagado directamente
+           desde una cuenta de liquidez.
+        */
+
+        if (
+            this.isNormalExpense(
+                movement
+            )
+        ) {
+
+            const account =
+                this.findAccount(
+                    data,
+                    movement.accountId
+                );
+
+            if (
+                account?.group ===
+                "liquidity"
+            ) {
+                return amount;
+            }
+
+            /*
+               Una compra con tarjeta aumenta
+               deuda, pero todavía no provoca
+               salida de dinero del banco.
+            */
+
+            return 0;
+
+        }
+
+        /*
+           Toda inversión desde liquidez
+           representa una salida de caja,
+           aunque no sea un gasto.
+        */
+
+        if (
+            movement.type ===
+            "investment"
+        ) {
+            return amount;
+        }
+
+        /*
+           El pago de cualquier deuda desde
+           liquidez sí es salida de caja.
+
+           En tarjetas no vuelve a contar
+           como gasto.
+
+           En el préstamo del coche también
+           cuenta como gasto mensual.
+        */
+
+        if (
+            this.isDebtPayment(
+                movement
+            )
+        ) {
+            return amount;
+        }
+
+        /*
+           Un traspaso entre cuentas de
+           liquidez no cambia la caja total.
+
+           Un traspaso hacia una deuda sí
+           representa dinero que sale de
+           las cuentas disponibles.
+        */
+
+        if (
+            movement.type ===
+            "transfer"
+        ) {
+
+            const fromAccount =
+                this.findAccount(
+                    data,
+                    movement.fromAccountId
+                );
+
+            const toAccount =
+                this.findAccount(
+                    data,
+                    movement.toAccountId
+                );
+
+            if (
+                fromAccount?.group ===
+                    "liquidity" &&
+                toAccount?.group ===
+                    "debt"
+            ) {
+                return amount;
+            }
+
+        }
+
+        return 0;
 
     },
 
@@ -323,6 +446,27 @@ const AtlasCalculations = {
                     total +
                     this.number(
                         movement.amount
+                    ),
+                0
+            );
+
+    },
+
+    monthlyCashOutflow(
+        data,
+        monthKey = this.monthKey()
+    ) {
+
+        return this.movementsForMonth(
+            data,
+            monthKey
+        )
+            .reduce(
+                (total, movement) =>
+                    total +
+                    this.movementCashOutflow(
+                        data,
+                        movement
                     ),
                 0
             );
@@ -447,6 +591,12 @@ const AtlasCalculations = {
                 monthKey
             );
 
+        const monthlyCashOutflow =
+            this.monthlyCashOutflow(
+                data,
+                monthKey
+            );
+
         const monthlySavings =
             monthlyIncome -
             monthlyExpenses -
@@ -481,6 +631,7 @@ const AtlasCalculations = {
             monthlyIncome,
             monthlyExpenses,
             monthlyInvested,
+            monthlyCashOutflow,
             monthlySavings,
             monthlySavingRate,
 
