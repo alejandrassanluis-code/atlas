@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    app.js
-   Sprint 2.1 — Integración de configuración inicial
+   Sprint 2.2 — Integración de movimientos
 ========================================================== */
 
 const AtlasApp = {
@@ -64,9 +64,7 @@ const AtlasApp = {
                     event.preventDefault();
 
                     this.navigate(
-                        routeButton
-                            .dataset
-                            .route
+                        routeButton.dataset.route
                     );
 
                     return;
@@ -85,16 +83,29 @@ const AtlasApp = {
                 }
 
                 const action =
-                    actionButton
-                        .dataset
-                        .action;
+                    actionButton.dataset.action;
 
                 switch (action) {
 
                     case "newMovement":
 
-                        AtlasUI.toast(
-                            "El registro de movimientos llegará en el Sprint 2.2."
+                        AtlasMovements.open(
+                            this.data,
+                            updatedData => {
+
+                                this.data =
+                                    updatedData;
+
+                                this.route =
+                                    "home";
+
+                                this.render();
+
+                                AtlasUI.toast(
+                                    "Movimiento guardado."
+                                );
+
+                            }
                         );
 
                         break;
