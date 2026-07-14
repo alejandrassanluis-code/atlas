@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    ui.js
-   Sprint 3.2 — Comparativas mensuales y categorías
+   Sprint 3.2 — Movimientos mensuales y análisis comparativo
 ========================================================== */
 
 const AtlasUI = {
@@ -79,10 +79,7 @@ const AtlasUI = {
             .split("-")
             .map(Number);
 
-        if (
-            !year ||
-            !month
-        ) {
+        if (!year || !month) {
             return "";
         }
 
@@ -182,6 +179,125 @@ const AtlasUI = {
 
     },
 
+    monthSelector({
+        monthKey,
+        isCurrentMonth,
+        previousAction,
+        nextAction,
+        currentAction,
+        subtitle
+    }) {
+
+        return `
+
+            <section
+                class="panel"
+                style="
+                    padding:12px 14px;
+                    margin-bottom:18px;
+                "
+            >
+
+                <div
+                    style="
+                        display:grid;
+                        grid-template-columns:
+                            44px
+                            minmax(0,1fr)
+                            44px;
+                        align-items:center;
+                        gap:10px;
+                    "
+                >
+
+                    <button
+                        class="iconbtn"
+                        type="button"
+                        data-action="${previousAction}"
+                        aria-label="Mes anterior"
+                        style="
+                            width:44px;
+                            height:44px;
+                        "
+                    >
+                        ‹
+                    </button>
+
+                    <div
+                        style="
+                            text-align:center;
+                            min-width:0;
+                        "
+                    >
+
+                        <strong
+                            style="
+                                display:block;
+                                font-size:17px;
+                            "
+                        >
+                            ${this.formatMonthKey(
+                                monthKey
+                            )}
+                        </strong>
+
+                        <small class="note">
+                            ${subtitle}
+                        </small>
+
+                    </div>
+
+                    <button
+                        class="iconbtn"
+                        type="button"
+                        data-action="${nextAction}"
+                        aria-label="Mes siguiente"
+                        ${
+                            isCurrentMonth
+                                ? "disabled"
+                                : ""
+                        }
+                        style="
+                            width:44px;
+                            height:44px;
+                            opacity:${
+                                isCurrentMonth
+                                    ? "0.35"
+                                    : "1"
+                            };
+                        "
+                    >
+                        ›
+                    </button>
+
+                </div>
+
+                ${
+                    !isCurrentMonth
+                        ? `
+
+                            <button
+                                class="secondary"
+                                type="button"
+                                data-action="${currentAction}"
+                                style="
+                                    width:100%;
+                                    margin-top:10px;
+                                "
+                            >
+                                Volver al mes actual
+                            </button>
+
+                        `
+                        : ""
+                }
+
+            </section>
+
+        `;
+
+    },
+
     investmentProfitability(summary) {
 
         const invested =
@@ -215,7 +331,8 @@ const AtlasUI = {
         if (!calendarConfigured) {
 
             return {
-                label: "Mes en curso",
+                label:
+                    "Mes en curso",
                 color:
                     "var(--color-text-muted)"
             };
@@ -223,7 +340,8 @@ const AtlasUI = {
         }
 
         return {
-            label: "Calendario activo",
+            label:
+                "Calendario activo",
             color:
                 "var(--color-success)"
         };
@@ -704,10 +822,14 @@ const AtlasUI = {
         }
 
         const labels = {
-            income: "Ingreso",
-            expense: "Gasto",
-            transfer: "Traspaso",
-            investment: "Inversión"
+            income:
+                "Ingreso",
+            expense:
+                "Gasto",
+            transfer:
+                "Traspaso",
+            investment:
+                "Inversión"
         };
 
         return (
@@ -763,10 +885,32 @@ const AtlasUI = {
 
     },
 
-    movements(data) {
+    movements(
+        data,
+        options = {}
+    ) {
+
+        const movementsMonth =
+            options.movementsMonth ||
+            AtlasCalculations.monthKey();
+
+        const currentMonth =
+            options.currentMonth ||
+            AtlasCalculations.monthKey();
+
+        const isCurrentMonth =
+            movementsMonth ===
+            currentMonth;
 
         const list =
-            [...data.movements]
+            data.movements
+                .filter(
+                    movement =>
+                        String(
+                            movement.date || ""
+                        ).slice(0, 7) ===
+                        movementsMonth
+                )
                 .sort(
                     (a, b) => {
 
@@ -807,8 +951,31 @@ const AtlasUI = {
                 </h1>
 
                 <p class="subtitle">
-                    Toca un movimiento para editarlo o eliminarlo.
+                    Consulta y edita las operaciones de cada mes.
                 </p>
+
+                ${this.monthSelector({
+                    monthKey:
+                        movementsMonth,
+
+                    isCurrentMonth,
+
+                    previousAction:
+                        "previousMovementsMonth",
+
+                    nextAction:
+                        "nextMovementsMonth",
+
+                    currentAction:
+                        "currentMovementsMonth",
+
+                    subtitle:
+                        `${list.length} ${
+                            list.length === 1
+                                ? "movimiento"
+                                : "movimientos"
+                        }`
+                })}
 
                 <section class="panel">
 
@@ -816,23 +983,37 @@ const AtlasUI = {
                         list.length === 0
                             ? `
 
-                                <div class="list">
+                                <div
+                                    style="
+                                        text-align:center;
+                                        padding:28px 14px;
+                                    "
+                                >
 
-                                    <div class="row">
-
-                                        <div>
-
-                                            <b>
-                                                Todavía no hay movimientos
-                                            </b>
-
-                                            <small>
-                                                Aquí aparecerá tu actividad financiera.
-                                            </small>
-
-                                        </div>
-
+                                    <div
+                                        style="
+                                            font-size:30px;
+                                            margin-bottom:10px;
+                                        "
+                                    >
+                                        🗓️
                                     </div>
+
+                                    <strong>
+                                        Sin movimientos
+                                    </strong>
+
+                                    <p
+                                        class="note"
+                                        style="
+                                            margin-top:8px;
+                                        "
+                                    >
+                                        No hay actividad registrada en
+                                        ${this.formatMonthKey(
+                                            movementsMonth
+                                        )}.
+                                    </p>
 
                                 </div>
 
@@ -957,8 +1138,10 @@ const AtlasUI = {
         if (difference === 0) {
 
             return {
-                icon: "•",
-                text: "Sin cambios",
+                icon:
+                    "•",
+                text:
+                    "Sin cambios",
                 color:
                     "var(--color-text-muted)"
             };
@@ -1225,7 +1408,10 @@ const AtlasUI = {
 
     },
 
-    analysis(data, options = {}) {
+    analysis(
+        data,
+        options = {}
+    ) {
 
         const analysisMonth =
             options.analysisMonth ||
@@ -1260,14 +1446,6 @@ const AtlasUI = {
                     analysisMonth
                 );
 
-        const categories =
-            comparison.categories;
-
-        const savingRate =
-            summary.monthlyIncome > 0
-                ? summary.monthlySavingRate
-                : 0;
-
         const savingComparison =
             this.comparisonText(
                 comparison.savings,
@@ -1294,113 +1472,30 @@ const AtlasUI = {
                     Consulta los datos y comparativas de cada mes.
                 </p>
 
-                <section
-                    class="panel"
-                    style="
-                        padding:12px 14px;
-                        margin-bottom:18px;
-                    "
-                >
+                ${this.monthSelector({
+                    monthKey:
+                        analysisMonth,
 
-                    <div
-                        style="
-                            display:grid;
-                            grid-template-columns:
-                                44px
-                                minmax(0,1fr)
-                                44px;
-                            align-items:center;
-                            gap:10px;
-                        "
-                    >
+                    isCurrentMonth,
 
-                        <button
-                            class="iconbtn"
-                            type="button"
-                            data-action="previousAnalysisMonth"
-                            aria-label="Mes anterior"
-                            style="
-                                width:44px;
-                                height:44px;
-                            "
-                        >
-                            ‹
-                        </button>
+                    previousAction:
+                        "previousAnalysisMonth",
 
-                        <div
-                            style="
-                                text-align:center;
-                                min-width:0;
-                            "
-                        >
+                    nextAction:
+                        "nextAnalysisMonth",
 
-                            <strong
-                                style="
-                                    display:block;
-                                    font-size:17px;
-                                "
-                            >
-                                ${this.formatMonthKey(
-                                    analysisMonth
-                                )}
-                            </strong>
+                    currentAction:
+                        "currentAnalysisMonth",
 
-                            <small class="note">
-                                ${
-                                    isCurrentMonth
-                                        ? "Mes actual"
-                                        : `${monthMovements.length} movimientos`
-                                }
-                            </small>
-
-                        </div>
-
-                        <button
-                            class="iconbtn"
-                            type="button"
-                            data-action="nextAnalysisMonth"
-                            aria-label="Mes siguiente"
-                            ${
-                                isCurrentMonth
-                                    ? "disabled"
-                                    : ""
-                            }
-                            style="
-                                width:44px;
-                                height:44px;
-                                opacity:${
-                                    isCurrentMonth
-                                        ? "0.35"
-                                        : "1"
-                                };
-                            "
-                        >
-                            ›
-                        </button>
-
-                    </div>
-
-                    ${
-                        !isCurrentMonth
-                            ? `
-
-                                <button
-                                    class="secondary"
-                                    type="button"
-                                    data-action="currentAnalysisMonth"
-                                    style="
-                                        width:100%;
-                                        margin-top:10px;
-                                    "
-                                >
-                                    Volver al mes actual
-                                </button>
-
-                            `
-                            : ""
-                    }
-
-                </section>
+                    subtitle:
+                        isCurrentMonth
+                            ? "Mes actual"
+                            : this.formatMonthKey(
+                                comparison.previousMonthKey
+                            )
+                                ? "Histórico mensual"
+                                : ""
+                })}
 
                 <section
                     class="panel"
@@ -1513,7 +1608,6 @@ const AtlasUI = {
                                 >
                                     ${savingComparison.icon}
                                     ${savingComparison.text}
-                                    frente al mes anterior
                                 </small>
 
                             </div>
@@ -1555,14 +1649,13 @@ const AtlasUI = {
                                 >
                                     ${rateComparison.icon}
                                     ${rateComparison.text}
-                                    frente al mes anterior
                                 </small>
 
                             </div>
 
                             <strong>
                                 ${this.formatPercent(
-                                    savingRate
+                                    summary.monthlySavingRate
                                 )}
                             </strong>
 
@@ -1616,7 +1709,7 @@ const AtlasUI = {
                     </div>
 
                     ${this.categoryRows(
-                        categories
+                        comparison.categories
                     )}
 
                 </section>
@@ -1628,7 +1721,6 @@ const AtlasUI = {
                             <section
                                 class="panel"
                                 style="
-                                    margin-top:14px;
                                     text-align:center;
                                     padding:24px 18px;
                                 "
@@ -1644,7 +1736,7 @@ const AtlasUI = {
                                 </div>
 
                                 <strong>
-                                    Sin movimientos
+                                    Sin actividad registrada
                                 </strong>
 
                                 <p
@@ -1653,7 +1745,7 @@ const AtlasUI = {
                                         margin-top:8px;
                                     "
                                 >
-                                    No hay actividad registrada en
+                                    No hay datos financieros en
                                     ${this.formatMonthKey(
                                         analysisMonth
                                     )}.
@@ -1818,7 +1910,10 @@ const AtlasUI = {
             case "movements":
 
                 app.innerHTML =
-                    this.movements(data);
+                    this.movements(
+                        data,
+                        options
+                    );
 
                 break;
 
