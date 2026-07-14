@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    ui.js
-   Sprint 3.1 — Análisis histórico por meses
+   Sprint 3.2 — Comparativas mensuales y categorías
 ========================================================== */
 
 const AtlasUI = {
@@ -93,7 +93,7 @@ const AtlasUI = {
                 1
             );
 
-        const monthName =
+        const label =
             new Intl.DateTimeFormat(
                 "es-ES",
                 {
@@ -103,10 +103,8 @@ const AtlasUI = {
             ).format(date);
 
         return (
-            monthName
-                .charAt(0)
-                .toUpperCase() +
-            monthName.slice(1)
+            label.charAt(0).toUpperCase() +
+            label.slice(1)
         );
 
     },
@@ -675,6 +673,7 @@ const AtlasUI = {
                 ${
                     hasMovements
                         ? `
+
                             <p
                                 class="note"
                                 style="
@@ -684,6 +683,7 @@ const AtlasUI = {
                             >
                                 Los saldos se actualizan mediante movimientos.
                             </p>
+
                         `
                         : ""
                 }
@@ -886,11 +886,13 @@ const AtlasUI = {
                                                         ${
                                                             movement.note
                                                                 ? `
+
                                                                     <small>
                                                                         ${this.escapeHtml(
                                                                             movement.note
                                                                         )}
                                                                     </small>
+
                                                                 `
                                                                 : ""
                                                         }
@@ -939,6 +941,290 @@ const AtlasUI = {
 
     },
 
+    comparisonText(
+        comparison,
+        positiveIsGood = true
+    ) {
+
+        const difference =
+            Number(
+                comparison?.difference
+            ) || 0;
+
+        const percentage =
+            comparison?.percentage;
+
+        if (difference === 0) {
+
+            return {
+                icon: "•",
+                text: "Sin cambios",
+                color:
+                    "var(--color-text-muted)"
+            };
+
+        }
+
+        const isPositive =
+            difference > 0;
+
+        const isGood =
+            positiveIsGood
+                ? isPositive
+                : !isPositive;
+
+        const percentageText =
+            percentage === null
+                ? "Nuevo este mes"
+                : `${
+                    Math.abs(
+                        percentage
+                    ).toFixed(0)
+                }%`;
+
+        return {
+            icon:
+                isPositive
+                    ? "↑"
+                    : "↓",
+
+            text:
+                `${
+                    this.formatCurrency(
+                        Math.abs(
+                            difference
+                        )
+                    )
+                } · ${percentageText}`,
+
+            color:
+                isGood
+                    ? "var(--color-success)"
+                    : "var(--color-danger)"
+        };
+
+    },
+
+    comparisonCard(
+        label,
+        comparison,
+        positiveIsGood = true
+    ) {
+
+        const result =
+            this.comparisonText(
+                comparison,
+                positiveIsGood
+            );
+
+        return `
+
+            <div
+                class="card"
+                style="
+                    min-width:0;
+                    padding:16px;
+                "
+            >
+
+                <div class="label">
+                    ${label}
+                </div>
+
+                <div class="num">
+                    ${this.formatCurrency(
+                        comparison.current
+                    )}
+                </div>
+
+                <div
+                    class="note"
+                    style="
+                        color:${result.color};
+                    "
+                >
+                    ${result.icon}
+                    ${result.text}
+                </div>
+
+            </div>
+
+        `;
+
+    },
+
+    categoryRows(categories) {
+
+        if (
+            !Array.isArray(categories) ||
+            categories.length === 0
+        ) {
+
+            return `
+
+                <div
+                    style="
+                        text-align:center;
+                        padding:24px 12px;
+                    "
+                >
+
+                    <div
+                        style="
+                            font-size:28px;
+                            margin-bottom:8px;
+                        "
+                    >
+                        🧾
+                    </div>
+
+                    <strong>
+                        Sin gastos por categoría
+                    </strong>
+
+                    <p
+                        class="note"
+                        style="
+                            margin-top:8px;
+                        "
+                    >
+                        Registra gastos para ver su distribución.
+                    </p>
+
+                </div>
+
+            `;
+
+        }
+
+        const total =
+            categories.reduce(
+                (
+                    sum,
+                    item
+                ) =>
+                    sum +
+                    Number(
+                        item.amount || 0
+                    ),
+                0
+            );
+
+        return `
+
+            <div class="list">
+
+                ${categories
+                    .map(
+                        item => {
+
+                            const percentage =
+                                total > 0
+                                    ? (
+                                        Number(
+                                            item.amount || 0
+                                        ) /
+                                        total
+                                    ) * 100
+                                    : 0;
+
+                            return `
+
+                                <div
+                                    style="
+                                        padding:14px 0;
+                                        border-bottom:
+                                            1px solid
+                                            rgba(
+                                                145,
+                                                164,
+                                                202,
+                                                0.12
+                                            );
+                                    "
+                                >
+
+                                    <div
+                                        style="
+                                            display:flex;
+                                            justify-content:
+                                                space-between;
+                                            align-items:center;
+                                            gap:14px;
+                                        "
+                                    >
+
+                                        <div
+                                            style="
+                                                min-width:0;
+                                            "
+                                        >
+
+                                            <b>
+                                                ${this.escapeHtml(
+                                                    item.category
+                                                )}
+                                            </b>
+
+                                            <small
+                                                class="note"
+                                                style="
+                                                    display:block;
+                                                    margin-top:3px;
+                                                "
+                                            >
+                                                ${percentage.toFixed(0)}%
+                                                del gasto
+                                            </small>
+
+                                        </div>
+
+                                        <strong
+                                            style="
+                                                white-space:nowrap;
+                                            "
+                                        >
+                                            ${this.formatCurrency(
+                                                item.amount
+                                            )}
+                                        </strong>
+
+                                    </div>
+
+                                    <div
+                                        class="progress"
+                                        style="
+                                            margin-top:10px;
+                                        "
+                                    >
+
+                                        <i
+                                            style="
+                                                width:${
+                                                    Math.min(
+                                                        100,
+                                                        percentage
+                                                    )
+                                                }%;
+                                            "
+                                        ></i>
+
+                                    </div>
+
+                                </div>
+
+                            `;
+
+                        }
+                    )
+                    .join("")}
+
+            </div>
+
+        `;
+
+    },
+
     analysis(data, options = {}) {
 
         const analysisMonth =
@@ -960,10 +1246,12 @@ const AtlasUI = {
                     analysisMonth
                 );
 
-        const savingRate =
-            summary.monthlyIncome > 0
-                ? summary.monthlySavingRate
-                : 0;
+        const comparison =
+            AtlasCalculations
+                .monthlyComparison(
+                    data,
+                    analysisMonth
+                );
 
         const monthMovements =
             AtlasCalculations
@@ -971,6 +1259,26 @@ const AtlasUI = {
                     data,
                     analysisMonth
                 );
+
+        const categories =
+            comparison.categories;
+
+        const savingRate =
+            summary.monthlyIncome > 0
+                ? summary.monthlySavingRate
+                : 0;
+
+        const savingComparison =
+            this.comparisonText(
+                comparison.savings,
+                true
+            );
+
+        const rateComparison =
+            this.comparisonText(
+                comparison.savingRate,
+                true
+            );
 
         return `
 
@@ -983,7 +1291,7 @@ const AtlasUI = {
                 </h1>
 
                 <p class="subtitle">
-                    Consulta la actividad financiera de cada mes.
+                    Consulta los datos y comparativas de cada mes.
                 </p>
 
                 <section
@@ -1075,6 +1383,7 @@ const AtlasUI = {
                     ${
                         !isCurrentMonth
                             ? `
+
                                 <button
                                     class="secondary"
                                     type="button"
@@ -1086,123 +1395,85 @@ const AtlasUI = {
                                 >
                                     Volver al mes actual
                                 </button>
+
                             `
                             : ""
                     }
 
                 </section>
 
-                <div
-                    class="grid"
+                <section
+                    class="panel"
                     style="
-                        display:grid;
-                        grid-template-columns:
-                            repeat(
-                                2,
-                                minmax(0,1fr)
-                            );
-                        gap:12px;
                         margin-bottom:18px;
                     "
                 >
 
-                    <div
-                        class="card"
-                        style="
-                            min-width:0;
-                            padding:16px;
-                        "
-                    >
+                    <div class="panelhead">
 
-                        <div class="label">
-                            🟢 Ingresos
-                        </div>
+                        <div>
 
-                        <div class="num">
-                            ${this.formatCurrency(
-                                summary.monthlyIncome
-                            )}
-                        </div>
+                            <h2>
+                                Comparativa mensual
+                            </h2>
 
-                        <div class="note">
-                            Recibidos
-                        </div>
+                            <p
+                                class="note"
+                                style="
+                                    margin-top:5px;
+                                "
+                            >
+                                Frente a
+                                ${this.formatMonthKey(
+                                    comparison.previousMonthKey
+                                )}
+                            </p>
 
-                    </div>
-
-                    <div
-                        class="card"
-                        style="
-                            min-width:0;
-                            padding:16px;
-                        "
-                    >
-
-                        <div class="label">
-                            🔴 Gastos
-                        </div>
-
-                        <div class="num">
-                            ${this.formatCurrency(
-                                summary.monthlyExpenses
-                            )}
-                        </div>
-
-                        <div class="note">
-                            Consumo real
                         </div>
 
                     </div>
 
                     <div
-                        class="card"
+                        class="grid"
                         style="
-                            min-width:0;
-                            padding:16px;
+                            display:grid;
+                            grid-template-columns:
+                                repeat(
+                                    2,
+                                    minmax(0,1fr)
+                                );
+                            gap:12px;
+                            margin-top:14px;
                         "
                     >
 
-                        <div class="label">
-                            📈 Invertido
-                        </div>
+                        ${this.comparisonCard(
+                            "🟢 Ingresos",
+                            comparison.income,
+                            true
+                        )}
 
-                        <div class="num">
-                            ${this.formatCurrency(
-                                summary.monthlyInvested
-                            )}
-                        </div>
+                        ${this.comparisonCard(
+                            "🔴 Gastos",
+                            comparison.expenses,
+                            false
+                        )}
 
-                        <div class="note">
-                            Aportaciones
-                        </div>
+                        ${this.comparisonCard(
+                            "📈 Invertido",
+                            comparison.invested,
+                            true
+                        )}
 
-                    </div>
-
-                    <div
-                        class="card"
-                        style="
-                            min-width:0;
-                            padding:16px;
-                        "
-                    >
-
-                        <div class="label">
-                            💸 Salidas de caja
-                        </div>
-
-                        <div class="num">
-                            ${this.formatCurrency(
-                                summary.monthlyCashOutflow
-                            )}
-                        </div>
-
-                        <div class="note">
-                            Dinero salido del banco
-                        </div>
+                        ${this.comparisonCard(
+                            "💸 Salidas de caja",
+                            comparison.cashOutflow,
+                            false
+                        )}
 
                     </div>
 
-                </div>
+                </section>
 
                 <section class="panel">
 
@@ -1216,7 +1487,9 @@ const AtlasUI = {
 
                     <div
                         class="list"
-                        style="margin-top:8px"
+                        style="
+                            margin-top:8px;
+                        "
                     >
 
                         <div class="row">
@@ -1229,6 +1502,18 @@ const AtlasUI = {
 
                                 <small>
                                     Ingresos − gastos − inversión
+                                </small>
+
+                                <small
+                                    style="
+                                        color:
+                                            ${savingComparison.color};
+                                        margin-top:4px;
+                                    "
+                                >
+                                    ${savingComparison.icon}
+                                    ${savingComparison.text}
+                                    frente al mes anterior
                                 </small>
 
                             </div>
@@ -1259,6 +1544,18 @@ const AtlasUI = {
 
                                 <small>
                                     Porcentaje sobre ingresos
+                                </small>
+
+                                <small
+                                    style="
+                                        color:
+                                            ${rateComparison.color};
+                                        margin-top:4px;
+                                    "
+                                >
+                                    ${rateComparison.icon}
+                                    ${rateComparison.text}
+                                    frente al mes anterior
                                 </small>
 
                             </div>
@@ -1295,9 +1592,39 @@ const AtlasUI = {
 
                 </section>
 
+                <section class="panel">
+
+                    <div class="panelhead">
+
+                        <div>
+
+                            <h2>
+                                Gastos por categoría
+                            </h2>
+
+                            <p
+                                class="note"
+                                style="
+                                    margin-top:5px;
+                                "
+                            >
+                                Distribución del consumo real
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                    ${this.categoryRows(
+                        categories
+                    )}
+
+                </section>
+
                 ${
                     monthMovements.length === 0
                         ? `
+
                             <section
                                 class="panel"
                                 style="
@@ -1333,6 +1660,7 @@ const AtlasUI = {
                                 </p>
 
                             </section>
+
                         `
                         : ""
                 }
@@ -1340,6 +1668,7 @@ const AtlasUI = {
                 ${
                     isCurrentMonth
                         ? `
+
                             <section class="panel">
 
                                 <div class="panelhead">
@@ -1451,6 +1780,7 @@ const AtlasUI = {
                                 </div>
 
                             </section>
+
                         `
                         : ""
                 }
