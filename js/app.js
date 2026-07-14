@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    app.js
-   Sprint 2.4 — Protección de saldos calculados
+   Sprint 3.1 — Navegación histórica por meses
 ========================================================== */
 
 const AtlasApp = {
@@ -10,10 +10,15 @@ const AtlasApp = {
 
     route: "home",
 
+    analysisMonth: null,
+
     init() {
 
         this.data =
             AtlasStorage.load();
+
+        this.analysisMonth =
+            this.currentMonthKey();
 
         this.bindEvents();
 
@@ -45,6 +50,72 @@ const AtlasApp = {
             );
 
         }
+
+    },
+
+    currentMonthKey() {
+
+        const now =
+            new Date();
+
+        const year =
+            now.getFullYear();
+
+        const month =
+            String(
+                now.getMonth() + 1
+            ).padStart(2, "0");
+
+        return `${year}-${month}`;
+
+    },
+
+    shiftMonth(
+        monthKey,
+        difference
+    ) {
+
+        const [
+            year,
+            month
+        ] = String(monthKey)
+            .split("-")
+            .map(Number);
+
+        if (
+            !year ||
+            !month
+        ) {
+            return this.currentMonthKey();
+        }
+
+        const date =
+            new Date(
+                year,
+                month - 1 + difference,
+                1
+            );
+
+        const shiftedYear =
+            date.getFullYear();
+
+        const shiftedMonth =
+            String(
+                date.getMonth() + 1
+            ).padStart(2, "0");
+
+        return (
+            `${shiftedYear}-${shiftedMonth}`
+        );
+
+    },
+
+    isCurrentAnalysisMonth() {
+
+        return (
+            this.analysisMonth ===
+            this.currentMonthKey()
+        );
 
     },
 
@@ -114,6 +185,62 @@ const AtlasApp = {
 
                         break;
 
+                    case "previousAnalysisMonth":
+
+                        this.analysisMonth =
+                            this.shiftMonth(
+                                this.analysisMonth,
+                                -1
+                            );
+
+                        this.route =
+                            "analysis";
+
+                        this.render();
+
+                        break;
+
+                    case "nextAnalysisMonth":
+
+                        if (
+                            this.isCurrentAnalysisMonth()
+                        ) {
+                            return;
+                        }
+
+                        this.analysisMonth =
+                            this.shiftMonth(
+                                this.analysisMonth,
+                                1
+                            );
+
+                        if (
+                            this.analysisMonth >
+                            this.currentMonthKey()
+                        ) {
+                            this.analysisMonth =
+                                this.currentMonthKey();
+                        }
+
+                        this.route =
+                            "analysis";
+
+                        this.render();
+
+                        break;
+
+                    case "currentAnalysisMonth":
+
+                        this.analysisMonth =
+                            this.currentMonthKey();
+
+                        this.route =
+                            "analysis";
+
+                        this.render();
+
+                        break;
+
                     case "resetAtlas":
 
                         this.reset();
@@ -145,7 +272,17 @@ const AtlasApp = {
 
         AtlasUI.render(
             this.route,
-            this.data
+            this.data,
+            {
+                analysisMonth:
+                    this.analysisMonth,
+
+                currentMonth:
+                    this.currentMonthKey(),
+
+                isCurrentAnalysisMonth:
+                    this.isCurrentAnalysisMonth()
+            }
         );
 
     },
@@ -315,6 +452,9 @@ const AtlasApp = {
 
         this.route =
             "home";
+
+        this.analysisMonth =
+            this.currentMonthKey();
 
         this.render();
 
