@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    budgets.js
-   Sprint 5.0 — Pantalla mensual de presupuestos
+   Sprint 5.1 — Categorías visibles y espacio inferior
 ========================================================== */
 
 const AtlasBudgetsUI = {
@@ -58,58 +58,83 @@ const AtlasBudgetsUI = {
         const statuses = {
 
             healthy: {
+
                 label:
                     "Dentro del presupuesto",
+
                 color:
                     "var(--color-success)",
+
                 background:
                     "rgba(54, 211, 153, 0.12)",
+
                 icon:
                     "✓"
+
             },
 
             warning: {
+
                 label:
                     "Cerca del límite",
+
                 color:
                     "#f7b955",
+
                 background:
                     "rgba(247, 185, 85, 0.12)",
+
                 icon:
                     "!"
+
             },
 
             exceeded: {
+
                 label:
                     "Presupuesto superado",
+
                 color:
                     "var(--color-danger)",
+
                 background:
                     "rgba(255, 91, 112, 0.12)",
+
                 icon:
                     "↑"
+
             },
 
             unbudgeted: {
+
                 label:
                     "Gasto sin presupuesto",
+
                 color:
                     "var(--color-danger)",
+
                 background:
                     "rgba(255, 91, 112, 0.12)",
+
                 icon:
                     "!"
+
             },
 
             no_budget: {
+
                 label:
                     "Sin presupuesto",
+
                 color:
                     "var(--color-text-muted)",
+
                 background:
                     "rgba(145, 164, 202, 0.09)",
+
                 icon:
                     "—"
+
             }
 
         };
@@ -146,24 +171,28 @@ const AtlasBudgetsUI = {
 
     remainingText(item) {
 
+        const budget =
+            this.number(
+                item.budget
+            );
+
+        const spent =
+            this.number(
+                item.spent
+            );
+
         const remaining =
             this.number(
                 item.remaining
             );
 
         if (
-            this.number(
-                item.budget
-            ) <= 0
+            budget <= 0
         ) {
 
-            return (
-                this.number(
-                    item.spent
-                ) > 0
-                    ? "Sin límite configurado"
-                    : "Sin presupuesto activo"
-            );
+            return spent > 0
+                ? "Gasto sin presupuesto"
+                : "Sin presupuesto activo";
 
         }
 
@@ -241,6 +270,84 @@ const AtlasBudgetsUI = {
 
     },
 
+    incomeNotice(summary) {
+
+        if (
+            summary.monthlyIncome > 0
+        ) {
+
+            return "";
+
+        }
+
+        return `
+
+            <section
+                class="panel"
+                style="
+                    margin-bottom:14px;
+                    padding:17px;
+                    border-color:
+                        rgba(
+                            247,
+                            185,
+                            85,
+                            0.24
+                        );
+                    background:
+                        rgba(
+                            247,
+                            185,
+                            85,
+                            0.07
+                        );
+                "
+            >
+
+                <div
+                    style="
+                        display:flex;
+                        gap:12px;
+                        align-items:flex-start;
+                    "
+                >
+
+                    <span
+                        style="
+                            flex:0 0 auto;
+                            font-size:21px;
+                        "
+                    >
+                        💡
+                    </span>
+
+                    <div>
+
+                        <strong>
+                            Todavía no hay ingresos este mes
+                        </strong>
+
+                        <p
+                            class="note"
+                            style="
+                                margin-top:6px;
+                                line-height:1.45;
+                            "
+                        >
+                            Los presupuestos porcentuales aparecerán
+                            en 0 € hasta registrar ingresos.
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+        `;
+
+    },
+
     summaryHero(summary) {
 
         const status =
@@ -258,8 +365,9 @@ const AtlasBudgetsUI = {
             <section
                 class="hero"
                 style="
-                    padding:22px;
-                    margin-bottom:16px;
+                    min-height:0;
+                    padding:19px;
+                    margin-bottom:14px;
                 "
             >
 
@@ -268,11 +376,15 @@ const AtlasBudgetsUI = {
                         display:flex;
                         align-items:flex-start;
                         justify-content:space-between;
-                        gap:14px;
+                        gap:12px;
                     "
                 >
 
-                    <div>
+                    <div
+                        style="
+                            min-width:0;
+                        "
+                    >
 
                         <div class="eyebrow">
                             Presupuesto mensual
@@ -282,8 +394,8 @@ const AtlasBudgetsUI = {
                             class="value"
                             style="
                                 margin-top:7px;
-                                font-size:36px;
-                                line-height:1.05;
+                                font-size:34px;
+                                line-height:1;
                             "
                         >
                             ${this.currency(
@@ -309,13 +421,15 @@ const AtlasBudgetsUI = {
                     <div
                         style="
                             flex:0 0 auto;
-                            padding:8px 11px;
+                            max-width:48%;
+                            padding:8px 10px;
                             border-radius:14px;
                             color:${status.color};
                             background:${status.background};
-                            font-size:12px;
+                            font-size:11px;
                             font-weight:750;
-                            white-space:nowrap;
+                            line-height:1.25;
+                            text-align:center;
                         "
                     >
                         ${status.icon}
@@ -326,8 +440,8 @@ const AtlasBudgetsUI = {
 
                 <div
                     style="
-                        height:10px;
-                        margin-top:20px;
+                        height:9px;
+                        margin-top:17px;
                         overflow:hidden;
                         border-radius:99px;
                         background:
@@ -346,7 +460,6 @@ const AtlasBudgetsUI = {
                             height:100%;
                             border-radius:99px;
                             background:${status.color};
-                            transition:width 0.25s ease;
                         "
                     ></div>
 
@@ -356,8 +469,8 @@ const AtlasBudgetsUI = {
                     style="
                         display:flex;
                         justify-content:space-between;
-                        gap:12px;
-                        margin-top:9px;
+                        gap:10px;
+                        margin-top:8px;
                     "
                 >
 
@@ -389,149 +502,155 @@ const AtlasBudgetsUI = {
 
         return `
 
-            <div
-                class="grid"
+            <section
+                class="panel"
                 style="
-                    display:grid;
-                    grid-template-columns:
-                        repeat(
-                            2,
-                            minmax(0,1fr)
-                        );
-                    gap:10px;
-                    margin-bottom:16px;
+                    margin-top:14px;
+                    margin-bottom:14px;
+                    padding:15px;
                 "
             >
 
                 <div
-                    class="card"
+                    class="panelhead"
                     style="
-                        min-width:0;
-                        padding:15px;
+                        margin-bottom:12px;
                     "
                 >
 
-                    <div class="label">
-                        Presupuestado
-                    </div>
-
-                    <div
-                        class="num"
-                        style="
-                            margin-top:7px;
-                            font-size:21px;
-                        "
-                    >
-                        ${this.currency(
-                            summary.totalBudget
-                        )}
-                    </div>
+                    <h2>
+                        Resumen del mes
+                    </h2>
 
                 </div>
 
                 <div
-                    class="card"
                     style="
-                        min-width:0;
-                        padding:15px;
+                        display:grid;
+                        grid-template-columns:
+                            repeat(
+                                2,
+                                minmax(0,1fr)
+                            );
+                        gap:10px;
                     "
                 >
 
-                    <div class="label">
-                        Gastado
-                    </div>
+                    ${this.summaryMetric(
+                        "Presupuestado",
+                        summary.totalBudget,
+                        "inherit"
+                    )}
 
-                    <div
-                        class="num"
-                        style="
-                            margin-top:7px;
-                            font-size:21px;
-                            color:
-                                var(
-                                    --color-danger
-                                );
-                        "
-                    >
-                        ${this.currency(
-                            summary.totalSpent
-                        )}
-                    </div>
+                    ${this.summaryMetric(
+                        "Gastado",
+                        summary.totalSpent,
+                        "var(--color-danger)"
+                    )}
 
-                </div>
+                    ${this.summaryMetric(
+                        "Ingresos",
+                        summary.monthlyIncome,
+                        "var(--color-success)"
+                    )}
 
-                <div
-                    class="card"
-                    style="
-                        min-width:0;
-                        padding:15px;
-                    "
-                >
-
-                    <div class="label">
-                        Ingresos del mes
-                    </div>
-
-                    <div
-                        class="num"
-                        style="
-                            margin-top:7px;
-                            font-size:21px;
-                            color:
-                                var(
-                                    --color-success
-                                );
-                        "
-                    >
-                        ${this.currency(
-                            summary.monthlyIncome
-                        )}
-                    </div>
-
-                </div>
-
-                <div
-                    class="card"
-                    style="
-                        min-width:0;
-                        padding:15px;
-                    "
-                >
-
-                    <div class="label">
-                        Objetivo ahorro + inversión
-                    </div>
-
-                    <div
-                        class="num"
-                        style="
-                            margin-top:7px;
-                            font-size:21px;
-                            color:
-                                var(
-                                    --color-primary
-                                );
-                        "
-                    >
-                        ${this.currency(
-                            summary
-                                .savingAndInvestmentTargetAmount
-                        )}
-                    </div>
-
-                    <small
-                        class="note"
-                        style="
-                            display:block;
-                            margin-top:4px;
-                        "
-                    >
-                        ${this.percent(
+                    ${this.summaryMetric(
+                        "Objetivo ahorro + inversión",
+                        summary
+                            .savingAndInvestmentTargetAmount,
+                        "var(--color-primary)",
+                        this.percent(
                             summary
                                 .savingAndInvestmentTargetPercent
-                        )}
-                    </small>
+                        )
+                    )}
 
                 </div>
+
+            </section>
+
+        `;
+
+    },
+
+    summaryMetric(
+        label,
+        value,
+        color,
+        note = ""
+    ) {
+
+        return `
+
+            <div
+                style="
+                    min-width:0;
+                    min-height:82px;
+                    padding:12px;
+                    border-radius:17px;
+                    border:
+                        1px solid
+                        rgba(
+                            145,
+                            164,
+                            202,
+                            0.14
+                        );
+                    background:
+                        rgba(
+                            255,
+                            255,
+                            255,
+                            0.025
+                        );
+                "
+            >
+
+                <div
+                    class="label"
+                    style="
+                        font-size:10px;
+                        line-height:1.25;
+                    "
+                >
+                    ${label}
+                </div>
+
+                <strong
+                    style="
+                        display:block;
+                        margin-top:6px;
+                        color:${color};
+                        font-size:19px;
+                        line-height:1.05;
+                        white-space:nowrap;
+                        overflow:hidden;
+                        text-overflow:ellipsis;
+                    "
+                >
+                    ${this.currency(
+                        value
+                    )}
+                </strong>
+
+                ${
+                    note
+                        ? `
+
+                            <small
+                                class="note"
+                                style="
+                                    display:block;
+                                    margin-top:4px;
+                                    font-size:10px;
+                                "
+                            >
+                                ${note}
+                            </small>
+
+                        `
+                        : ""
+                }
 
             </div>
 
@@ -562,7 +681,7 @@ const AtlasBudgetsUI = {
                             145,
                             164,
                             202,
-                            0.11
+                            0.1
                         );
                 "
             >
@@ -706,7 +825,7 @@ const AtlasBudgetsUI = {
             <details
                 class="panel"
                 style="
-                    margin-bottom:12px;
+                    margin-bottom:10px;
                     padding:0;
                     overflow:hidden;
                 "
@@ -715,7 +834,7 @@ const AtlasBudgetsUI = {
                 <summary
                     style="
                         display:block;
-                        padding:17px;
+                        padding:16px;
                         cursor:pointer;
                         list-style:none;
                     "
@@ -726,7 +845,7 @@ const AtlasBudgetsUI = {
                             display:flex;
                             justify-content:space-between;
                             align-items:flex-start;
-                            gap:14px;
+                            gap:12px;
                         "
                     >
 
@@ -740,6 +859,7 @@ const AtlasBudgetsUI = {
                                 style="
                                     display:block;
                                     font-size:16px;
+                                    line-height:1.25;
                                 "
                             >
                                 ${this.escape(
@@ -754,7 +874,8 @@ const AtlasBudgetsUI = {
                                 class="note"
                                 style="
                                     display:block;
-                                    margin-top:5px;
+                                    margin-top:4px;
+                                    font-size:11px;
                                 "
                             >
                                 ${this.budgetModeText(
@@ -787,7 +908,8 @@ const AtlasBudgetsUI = {
                                 class="note"
                                 style="
                                     display:block;
-                                    margin-top:4px;
+                                    margin-top:3px;
+                                    font-size:11px;
                                 "
                             >
                                 de
@@ -802,8 +924,8 @@ const AtlasBudgetsUI = {
 
                     <div
                         style="
-                            height:8px;
-                            margin-top:14px;
+                            height:7px;
+                            margin-top:12px;
                             overflow:hidden;
                             border-radius:99px;
                             background:
@@ -832,19 +954,26 @@ const AtlasBudgetsUI = {
                             display:flex;
                             justify-content:space-between;
                             gap:10px;
-                            margin-top:9px;
+                            margin-top:8px;
                         "
                     >
 
                         <small
                             style="
                                 color:${status.color};
+                                font-size:11px;
                             "
                         >
                             ${status.label}
                         </small>
 
-                        <small class="note">
+                        <small
+                            class="note"
+                            style="
+                                font-size:11px;
+                                text-align:right;
+                            "
+                        >
                             ${this.remainingText(
                                 category
                             )}
@@ -858,15 +987,15 @@ const AtlasBudgetsUI = {
                     style="
                         padding:
                             0
-                            17px
-                            5px;
+                            16px
+                            4px;
                         border-top:
                             1px solid
                             rgba(
                                 145,
                                 164,
                                 202,
-                                0.11
+                                0.1
                             );
                     "
                 >
@@ -917,62 +1046,19 @@ const AtlasBudgetsUI = {
                     category.spent > 0
             );
 
-        if (
-            categories.length === 0
-        ) {
-
-            return `
-
-                <section class="panel">
-
-                    <div
-                        style="
-                            padding:28px 12px;
-                            text-align:center;
-                        "
-                    >
-
-                        <div
-                            style="
-                                margin-bottom:10px;
-                                font-size:31px;
-                            "
-                        >
-                            🎯
-                        </div>
-
-                        <strong>
-                            Sin presupuestos activos
-                        </strong>
-
-                        <p
-                            class="note"
-                            style="
-                                margin-top:8px;
-                                line-height:1.5;
-                            "
-                        >
-                            Activa presupuestos por categoría
-                            para controlar tus gastos mensuales.
-                        </p>
-
-                    </div>
-
-                </section>
-
-            `;
-
-        }
-
         return `
 
-            <section>
+            <section
+                style="
+                    margin-top:2px;
+                "
+            >
 
                 <div
                     class="panelhead"
                     style="
                         margin:
-                            4px
+                            0
                             2px
                             12px;
                     "
@@ -981,7 +1067,7 @@ const AtlasBudgetsUI = {
                     <div>
 
                         <h2>
-                            Categorías
+                            Presupuesto por categoría
                         </h2>
 
                         <p
@@ -990,98 +1076,64 @@ const AtlasBudgetsUI = {
                                 margin-top:4px;
                             "
                         >
-                            Toca una categoría para ver sus subcategorías
+                            Toca una categoría para ver el detalle
                         </p>
 
                     </div>
 
                 </div>
 
-                ${categories
-                    .map(
-                        category =>
-                            this.categoryCard(
-                                category
+                ${
+                    categories.length > 0
+                        ? categories
+                            .map(
+                                category =>
+                                    this.categoryCard(
+                                        category
+                                    )
                             )
-                    )
-                    .join("")}
+                            .join("")
+                        : `
 
-            </section>
+                            <section class="panel">
 
-        `;
+                                <div
+                                    style="
+                                        padding:26px 12px;
+                                        text-align:center;
+                                    "
+                                >
 
-    },
+                                    <div
+                                        style="
+                                            margin-bottom:9px;
+                                            font-size:29px;
+                                        "
+                                    >
+                                        🎯
+                                    </div>
 
-    incomeNotice(summary) {
+                                    <strong>
+                                        Sin presupuestos activos
+                                    </strong>
 
-        if (
-            summary.monthlyIncome > 0
-        ) {
+                                    <p
+                                        class="note"
+                                        style="
+                                            margin-top:7px;
+                                            line-height:1.45;
+                                        "
+                                    >
+                                        Activa presupuestos para controlar
+                                        los gastos por categoría.
+                                    </p>
 
-            return "";
+                                </div>
 
-        }
+                            </section>
 
-        return `
-
-            <section
-                class="panel"
-                style="
-                    margin-bottom:16px;
-                    border-color:
-                        rgba(
-                            247,
-                            185,
-                            85,
-                            0.24
-                        );
-                    background:
-                        rgba(
-                            247,
-                            185,
-                            85,
-                            0.07
-                        );
-                "
-            >
-
-                <div
-                    style="
-                        display:flex;
-                        gap:12px;
-                        align-items:flex-start;
-                    "
-                >
-
-                    <span
-                        style="
-                            font-size:22px;
-                        "
-                    >
-                        💡
-                    </span>
-
-                    <div>
-
-                        <strong>
-                            Todavía no hay ingresos este mes
-                        </strong>
-
-                        <p
-                            class="note"
-                            style="
-                                margin-top:6px;
-                                line-height:1.5;
-                            "
-                        >
-                            Los presupuestos porcentuales aparecerán
-                            en 0 € hasta registrar ingresos.
-                            Los presupuestos fijos seguirán funcionando.
-                        </p>
-
-                    </div>
-
-                </div>
+                        `
+                }
 
             </section>
 
@@ -1111,7 +1163,20 @@ const AtlasBudgetsUI = {
 
         return `
 
-            <div class="app">
+            <div
+                class="app"
+                style="
+                    min-height:100dvh;
+                    padding-bottom:
+                        calc(
+                            155px +
+                            env(
+                                safe-area-inset-bottom
+                            )
+                        );
+                    overflow:visible;
+                "
+            >
 
                 ${AtlasUI.header()}
 
@@ -1136,11 +1201,11 @@ const AtlasBudgetsUI = {
                     summary
                 )}
 
-                ${this.summaryCards(
+                ${this.categories(
                     summary
                 )}
 
-                ${this.categories(
+                ${this.summaryCards(
                     summary
                 )}
 
@@ -1152,10 +1217,10 @@ const AtlasBudgetsUI = {
 
 };
 
-/*
- * Integra la nueva ruta sin modificar
- * las demás pantallas de AtlasUI.
- */
+
+/* ==========================================================
+   INTEGRACIÓN CON AtlasUI
+========================================================== */
 
 AtlasBudgetsUI.originalRender =
     AtlasUI.render.bind(
