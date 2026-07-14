@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    ui.js
-   Sprint 2.5 — Gastos y salidas de caja
+   Sprint 3.1 — Análisis histórico por meses
 ========================================================== */
 
 const AtlasUI = {
@@ -67,6 +67,47 @@ const AtlasUI = {
         )
             .format(new Date())
             .toUpperCase();
+
+    },
+
+    formatMonthKey(monthKey) {
+
+        const [
+            year,
+            month
+        ] = String(monthKey || "")
+            .split("-")
+            .map(Number);
+
+        if (
+            !year ||
+            !month
+        ) {
+            return "";
+        }
+
+        const date =
+            new Date(
+                year,
+                month - 1,
+                1
+            );
+
+        const monthName =
+            new Intl.DateTimeFormat(
+                "es-ES",
+                {
+                    month: "long",
+                    year: "numeric"
+                }
+            ).format(date);
+
+        return (
+            monthName
+                .charAt(0)
+                .toUpperCase() +
+            monthName.slice(1)
+        );
 
     },
 
@@ -898,18 +939,38 @@ const AtlasUI = {
 
     },
 
-    analysis(data) {
+    analysis(data, options = {}) {
+
+        const analysisMonth =
+            options.analysisMonth ||
+            AtlasCalculations.monthKey();
+
+        const currentMonth =
+            options.currentMonth ||
+            AtlasCalculations.monthKey();
+
+        const isCurrentMonth =
+            analysisMonth ===
+            currentMonth;
 
         const summary =
             AtlasCalculations
                 .financialSummary(
-                    data
+                    data,
+                    analysisMonth
                 );
 
         const savingRate =
             summary.monthlyIncome > 0
                 ? summary.monthlySavingRate
                 : 0;
+
+        const monthMovements =
+            AtlasCalculations
+                .movementsForMonth(
+                    data,
+                    analysisMonth
+                );
 
         return `
 
@@ -922,8 +983,114 @@ const AtlasUI = {
                 </h1>
 
                 <p class="subtitle">
-                    Resumen financiero del mes actual.
+                    Consulta la actividad financiera de cada mes.
                 </p>
+
+                <section
+                    class="panel"
+                    style="
+                        padding:12px 14px;
+                        margin-bottom:18px;
+                    "
+                >
+
+                    <div
+                        style="
+                            display:grid;
+                            grid-template-columns:
+                                44px
+                                minmax(0,1fr)
+                                44px;
+                            align-items:center;
+                            gap:10px;
+                        "
+                    >
+
+                        <button
+                            class="iconbtn"
+                            type="button"
+                            data-action="previousAnalysisMonth"
+                            aria-label="Mes anterior"
+                            style="
+                                width:44px;
+                                height:44px;
+                            "
+                        >
+                            ‹
+                        </button>
+
+                        <div
+                            style="
+                                text-align:center;
+                                min-width:0;
+                            "
+                        >
+
+                            <strong
+                                style="
+                                    display:block;
+                                    font-size:17px;
+                                "
+                            >
+                                ${this.formatMonthKey(
+                                    analysisMonth
+                                )}
+                            </strong>
+
+                            <small class="note">
+                                ${
+                                    isCurrentMonth
+                                        ? "Mes actual"
+                                        : `${monthMovements.length} movimientos`
+                                }
+                            </small>
+
+                        </div>
+
+                        <button
+                            class="iconbtn"
+                            type="button"
+                            data-action="nextAnalysisMonth"
+                            aria-label="Mes siguiente"
+                            ${
+                                isCurrentMonth
+                                    ? "disabled"
+                                    : ""
+                            }
+                            style="
+                                width:44px;
+                                height:44px;
+                                opacity:${
+                                    isCurrentMonth
+                                        ? "0.35"
+                                        : "1"
+                                };
+                            "
+                        >
+                            ›
+                        </button>
+
+                    </div>
+
+                    ${
+                        !isCurrentMonth
+                            ? `
+                                <button
+                                    class="secondary"
+                                    type="button"
+                                    data-action="currentAnalysisMonth"
+                                    style="
+                                        width:100%;
+                                        margin-top:10px;
+                                    "
+                                >
+                                    Volver al mes actual
+                                </button>
+                            `
+                            : ""
+                    }
+
+                </section>
 
                 <div
                     class="grid"
@@ -958,7 +1125,7 @@ const AtlasUI = {
                         </div>
 
                         <div class="note">
-                            Recibidos este mes
+                            Recibidos
                         </div>
 
                     </div>
@@ -1006,7 +1173,7 @@ const AtlasUI = {
                         </div>
 
                         <div class="note">
-                            Aportaciones del mes
+                            Aportaciones
                         </div>
 
                     </div>
@@ -1104,121 +1271,189 @@ const AtlasUI = {
 
                         </div>
 
+                        <div class="row">
+
+                            <div>
+
+                                <b>
+                                    Movimientos
+                                </b>
+
+                                <small>
+                                    Registros del mes
+                                </small>
+
+                            </div>
+
+                            <strong>
+                                ${monthMovements.length}
+                            </strong>
+
+                        </div>
+
                     </div>
 
                 </section>
 
-                <section class="panel">
-
-                    <div class="panelhead">
-
-                        <h2>
-                            Situación actual
-                        </h2>
-
-                    </div>
-
-                    <div class="list">
-
-                        <div class="row">
-
-                            <div>
-
-                                <b>
-                                    Liquidez
-                                </b>
-
-                                <small>
-                                    Dinero disponible
-                                </small>
-
-                            </div>
-
-                            <strong>
-                                ${this.formatCurrency(
-                                    summary.liquidity
-                                )}
-                            </strong>
-
-                        </div>
-
-                        <div class="row">
-
-                            <div>
-
-                                <b>
-                                    Inversiones
-                                </b>
-
-                                <small>
-                                    Valor actual
-                                </small>
-
-                            </div>
-
-                            <strong>
-                                ${this.formatCurrency(
-                                    summary.investments
-                                )}
-                            </strong>
-
-                        </div>
-
-                        <div class="row">
-
-                            <div>
-
-                                <b>
-                                    Deuda
-                                </b>
-
-                                <small>
-                                    Saldo pendiente
-                                </small>
-
-                            </div>
-
-                            <strong>
-                                ${this.formatCurrency(
-                                    summary.debt
-                                )}
-                            </strong>
-
-                        </div>
-
-                        <div class="row">
-
-                            <div>
-
-                                <b>
-                                    Patrimonio neto
-                                </b>
-
-                                <small>
-                                    Liquidez + inversiones − deuda
-                                </small>
-
-                            </div>
-
-                            <strong
+                ${
+                    monthMovements.length === 0
+                        ? `
+                            <section
+                                class="panel"
                                 style="
-                                    color:${
-                                        summary.netWorth >= 0
-                                            ? "var(--color-success)"
-                                            : "var(--color-danger)"
-                                    };
+                                    margin-top:14px;
+                                    text-align:center;
+                                    padding:24px 18px;
                                 "
                             >
-                                ${this.formatCurrency(
-                                    summary.netWorth
-                                )}
-                            </strong>
 
-                        </div>
+                                <div
+                                    style="
+                                        font-size:30px;
+                                        margin-bottom:10px;
+                                    "
+                                >
+                                    🗓️
+                                </div>
 
-                    </div>
+                                <strong>
+                                    Sin movimientos
+                                </strong>
 
-                </section>
+                                <p
+                                    class="note"
+                                    style="
+                                        margin-top:8px;
+                                    "
+                                >
+                                    No hay actividad registrada en
+                                    ${this.formatMonthKey(
+                                        analysisMonth
+                                    )}.
+                                </p>
+
+                            </section>
+                        `
+                        : ""
+                }
+
+                ${
+                    isCurrentMonth
+                        ? `
+                            <section class="panel">
+
+                                <div class="panelhead">
+
+                                    <h2>
+                                        Situación actual
+                                    </h2>
+
+                                </div>
+
+                                <div class="list">
+
+                                    <div class="row">
+
+                                        <div>
+
+                                            <b>
+                                                Liquidez
+                                            </b>
+
+                                            <small>
+                                                Dinero disponible
+                                            </small>
+
+                                        </div>
+
+                                        <strong>
+                                            ${this.formatCurrency(
+                                                summary.liquidity
+                                            )}
+                                        </strong>
+
+                                    </div>
+
+                                    <div class="row">
+
+                                        <div>
+
+                                            <b>
+                                                Inversiones
+                                            </b>
+
+                                            <small>
+                                                Valor actual
+                                            </small>
+
+                                        </div>
+
+                                        <strong>
+                                            ${this.formatCurrency(
+                                                summary.investments
+                                            )}
+                                        </strong>
+
+                                    </div>
+
+                                    <div class="row">
+
+                                        <div>
+
+                                            <b>
+                                                Deuda
+                                            </b>
+
+                                            <small>
+                                                Saldo pendiente
+                                            </small>
+
+                                        </div>
+
+                                        <strong>
+                                            ${this.formatCurrency(
+                                                summary.debt
+                                            )}
+                                        </strong>
+
+                                    </div>
+
+                                    <div class="row">
+
+                                        <div>
+
+                                            <b>
+                                                Patrimonio neto
+                                            </b>
+
+                                            <small>
+                                                Liquidez + inversiones − deuda
+                                            </small>
+
+                                        </div>
+
+                                        <strong
+                                            style="
+                                                color:${
+                                                    summary.netWorth >= 0
+                                                        ? "var(--color-success)"
+                                                        : "var(--color-danger)"
+                                                };
+                                            "
+                                        >
+                                            ${this.formatCurrency(
+                                                summary.netWorth
+                                            )}
+                                        </strong>
+
+                                    </div>
+
+                                </div>
+
+                            </section>
+                        `
+                        : ""
+                }
 
             </div>
 
@@ -1226,7 +1461,11 @@ const AtlasUI = {
 
     },
 
-    render(route, data) {
+    render(
+        route,
+        data,
+        options = {}
+    ) {
 
         const app =
             document.getElementById(
@@ -1256,7 +1495,10 @@ const AtlasUI = {
             case "analysis":
 
                 app.innerHTML =
-                    this.analysis(data);
+                    this.analysis(
+                        data,
+                        options
+                    );
 
                 break;
 
