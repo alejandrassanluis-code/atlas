@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    calculations.js
-   Sprint 2.5 — Gastos y salidas de caja
+   Sprint 3.2 — Comparativas mensuales y categorías
 ========================================================== */
 
 const AtlasCalculations = {
@@ -145,6 +145,33 @@ const AtlasCalculations = {
 
     },
 
+    previousMonthKey(monthKey) {
+
+        const [
+            year,
+            month
+        ] = String(monthKey)
+            .split("-")
+            .map(Number);
+
+        if (
+            !year ||
+            !month
+        ) {
+            return this.monthKey();
+        }
+
+        const date =
+            new Date(
+                year,
+                month - 2,
+                1
+            );
+
+        return this.monthKey(date);
+
+    },
+
     movementMonthKey(movement) {
 
         return String(
@@ -269,11 +296,6 @@ const AtlasCalculations = {
                 movement.amount
             );
 
-        /*
-           Gasto pagado directamente
-           desde una cuenta de liquidez.
-        */
-
         if (
             this.isNormalExpense(
                 movement
@@ -293,21 +315,9 @@ const AtlasCalculations = {
                 return amount;
             }
 
-            /*
-               Una compra con tarjeta aumenta
-               deuda, pero todavía no provoca
-               salida de dinero del banco.
-            */
-
             return 0;
 
         }
-
-        /*
-           Toda inversión desde liquidez
-           representa una salida de caja,
-           aunque no sea un gasto.
-        */
 
         if (
             movement.type ===
@@ -316,17 +326,6 @@ const AtlasCalculations = {
             return amount;
         }
 
-        /*
-           El pago de cualquier deuda desde
-           liquidez sí es salida de caja.
-
-           En tarjetas no vuelve a contar
-           como gasto.
-
-           En el préstamo del coche también
-           cuenta como gasto mensual.
-        */
-
         if (
             this.isDebtPayment(
                 movement
@@ -334,15 +333,6 @@ const AtlasCalculations = {
         ) {
             return amount;
         }
-
-        /*
-           Un traspaso entre cuentas de
-           liquidez no cambia la caja total.
-
-           Un traspaso hacia una deuda sí
-           representa dinero que sale de
-           las cuentas disponibles.
-        */
 
         if (
             movement.type ===
@@ -520,6 +510,130 @@ const AtlasCalculations = {
 
     },
 
+    expenseCategories(
+        data,
+        monthKey = this.monthKey()
+    ) {
+
+        const categories = {};
+
+        this.movementsForMonth(
+            data,
+            monthKey
+        )
+            .filter(
+                movement =>
+                    this.expenseCountsForSavings(
+                        movement
+                    )
+            )
+            .forEach(
+                movement => {
+
+                    const category =
+                        movement.category ||
+                        (
+                            this.isLoanPayment(
+                                movement
+                            )
+                                ? "Préstamo"
+                                : "Otros gastos"
+                        );
+
+                    categories[category] =
+                        (
+                            categories[category] ||
+                            0
+                        ) +
+                        this.number(
+                            movement.amount
+                        );
+
+                }
+            );
+
+        return Object.entries(
+            categories
+        )
+            .map(
+                ([
+                    category,
+                    amount
+                ]) => ({
+                    category,
+                    amount
+                })
+            )
+            .sort(
+                (a, b) =>
+                    b.amount -
+                    a.amount
+            );
+
+    },
+
+    percentageChange(
+        currentValue,
+        previousValue
+    ) {
+
+        const current =
+            this.number(currentValue);
+
+        const previous =
+            this.number(previousValue);
+
+        if (previous === 0) {
+
+            if (current === 0) {
+                return 0;
+            }
+
+            return null;
+
+        }
+
+        return (
+            (
+                current -
+                previous
+            ) /
+            Math.abs(previous)
+        ) * 100;
+
+    },
+
+    metricComparison(
+        currentValue,
+        previousValue
+    ) {
+
+        const current =
+            this.number(currentValue);
+
+        const previous =
+            this.number(previousValue);
+
+        return {
+
+            current,
+
+            previous,
+
+            difference:
+                current -
+                previous,
+
+            percentage:
+                this.percentageChange(
+                    current,
+                    previous
+                )
+
+        };
+
+    },
+
     investmentGain(data) {
 
         return (
@@ -636,6 +750,86 @@ const AtlasCalculations = {
             monthlySavingRate,
 
             monthKey
+
+        };
+
+    },
+
+    monthlyComparison(
+        data,
+        monthKey = this.monthKey()
+    ) {
+
+        const previousMonthKey =
+            this.previousMonthKey(
+                monthKey
+            );
+
+        const current =
+            this.financialSummary(
+                data,
+                monthKey
+            );
+
+        const previous =
+            this.financialSummary(
+                data,
+                previousMonthKey
+            );
+
+        return {
+
+            monthKey,
+
+            previousMonthKey,
+
+            income:
+                this.metricComparison(
+                    current.monthlyIncome,
+                    previous.monthlyIncome
+                ),
+
+            expenses:
+                this.metricComparison(
+                    current.monthlyExpenses,
+                    previous.monthlyExpenses
+                ),
+
+            invested:
+                this.metricComparison(
+                    current.monthlyInvested,
+                    previous.monthlyInvested
+                ),
+
+            cashOutflow:
+                this.metricComparison(
+                    current.monthlyCashOutflow,
+                    previous.monthlyCashOutflow
+                ),
+
+            savings:
+                this.metricComparison(
+                    current.monthlySavings,
+                    previous.monthlySavings
+                ),
+
+            savingRate:
+                this.metricComparison(
+                    current.monthlySavingRate,
+                    previous.monthlySavingRate
+                ),
+
+            categories:
+                this.expenseCategories(
+                    data,
+                    monthKey
+                ),
+
+            previousCategories:
+                this.expenseCategories(
+                    data,
+                    previousMonthKey
+                )
 
         };
 
