@@ -10,6 +10,11 @@ const AtlasOverviewCards = {
 
     data: null,
 
+    originalDashboard:
+        AtlasUI.dashboard.bind(
+            AtlasUI
+        ),
+
     number(value) {
 
         const result =
@@ -21,17 +26,17 @@ const AtlasOverviewCards = {
 
     },
 
-    escape(value) {
+    currency(value) {
 
-        return AtlasUI.escapeHtml(
+        return AtlasUI.formatCurrency(
             value
         );
 
     },
 
-    currency(value) {
+    escape(value) {
 
-        return AtlasUI.formatCurrency(
+        return AtlasUI.escapeHtml(
             value
         );
 
@@ -87,9 +92,15 @@ const AtlasOverviewCards = {
 
     },
 
-    visibleAccounts(accounts) {
+    relevantLiquidityAccounts(data) {
 
-        const accountsWithBalance =
+        const accounts =
+            this.accountsByGroup(
+                data,
+                "liquidity"
+            );
+
+        const withBalance =
             accounts.filter(
                 account =>
                     Math.abs(
@@ -99,72 +110,13 @@ const AtlasOverviewCards = {
                     ) > 0
             );
 
-        const source =
-            accountsWithBalance.length > 0
-                ? accountsWithBalance
-                : accounts;
-
-        return source.slice(
-            0,
-            3
-        );
+        return withBalance.length > 0
+            ? withBalance
+            : accounts;
 
     },
 
-    liquidityDetails(data) {
-
-        const accounts =
-            this.accountsByGroup(
-                data,
-                "liquidity"
-            );
-
-        const visible =
-            this.visibleAccounts(
-                accounts
-            );
-
-        const hiddenCount =
-            Math.max(
-                0,
-                accounts.filter(
-                    account =>
-                        Math.abs(
-                            this.number(
-                                account.balance
-                            )
-                        ) > 0
-                ).length -
-                visible.length
-            );
-
-        return {
-
-            accounts:
-                visible.map(
-                    account => ({
-
-                        name:
-                            account.name,
-
-                        value:
-                            this.number(
-                                account.balance
-                            )
-
-                    })
-                ),
-
-            hiddenCount,
-
-            footer:
-                ""
-
-        };
-
-    },
-
-    investmentDetails(data) {
+    relevantInvestmentAccounts(data) {
 
         const accounts =
             this.accountsByGroup(
@@ -172,12 +124,7 @@ const AtlasOverviewCards = {
                 "investment"
             );
 
-        const visible =
-            this.visibleAccounts(
-                accounts
-            );
-
-        const relevantAccounts =
+        const withValue =
             accounts.filter(
                 account =>
                     Math.abs(
@@ -192,18 +139,88 @@ const AtlasOverviewCards = {
                     ) > 0
             );
 
-        const totalInvested =
-            relevantAccounts.reduce(
-                (total, account) =>
-                    total +
-                    this.number(
-                        account.invested
-                    ),
-                0
+        return withValue.length > 0
+            ? withValue
+            : accounts;
+
+    },
+
+    relevantDebtAccounts(data) {
+
+        const accounts =
+            this.accountsByGroup(
+                data,
+                "debt"
             );
 
-        const currentValue =
-            relevantAccounts.reduce(
+        const withDebt =
+            accounts.filter(
+                account =>
+                    Math.max(
+                        0,
+                        this.number(
+                            account.balance
+                        )
+                    ) > 0
+            );
+
+        return withDebt.length > 0
+            ? withDebt
+            : accounts;
+
+    },
+
+    liquidityDetails(data) {
+
+        const accounts =
+            this.relevantLiquidityAccounts(
+                data
+            );
+
+        return {
+
+            rows:
+                accounts
+                    .slice(0, 3)
+                    .map(
+                        account => ({
+
+                            name:
+                                account.name,
+
+                            value:
+                                this.number(
+                                    account.balance
+                                ),
+
+                            secondary:
+                                ""
+
+                        })
+                    ),
+
+            hiddenCount:
+                Math.max(
+                    0,
+                    accounts.length - 3
+                ),
+
+            footer:
+                ""
+
+        };
+
+    },
+
+    investmentDetails(data) {
+
+        const accounts =
+            this.relevantInvestmentAccounts(
+                data
+            );
+
+        const totalValue =
+            accounts.reduce(
                 (total, account) =>
                     total +
                     this.number(
@@ -212,44 +229,52 @@ const AtlasOverviewCards = {
                 0
             );
 
-        const gain =
-            currentValue -
-            totalInvested;
-
-        const hiddenCount =
-            Math.max(
-                0,
-                relevantAccounts.length -
-                visible.length
+        const totalInvested =
+            accounts.reduce(
+                (total, account) =>
+                    total +
+                    this.number(
+                        account.invested
+                    ),
+                0
             );
+
+        const gain =
+            totalValue -
+            totalInvested;
 
         return {
 
-            accounts:
-                visible.map(
-                    account => ({
+            rows:
+                accounts
+                    .slice(0, 3)
+                    .map(
+                        account => ({
 
-                        name:
-                            account.name,
+                            name:
+                                account.name,
 
-                        value:
-                            this.number(
-                                account.balance
-                            ),
+                            value:
+                                this.number(
+                                    account.balance
+                                ),
 
-                        secondary:
-                            `Aportado ${this.currency(
-                                account.invested
-                            )}`
+                            secondary:
+                                `Aportado ${this.currency(
+                                    account.invested
+                                )}`
 
-                    })
+                        })
+                    ),
+
+            hiddenCount:
+                Math.max(
+                    0,
+                    accounts.length - 3
                 ),
 
-            hiddenCount,
-
             footer:
-                totalInvested > 0 ||
-                currentValue > 0
+                accounts.length > 0
                     ? `Aportado ${this.currency(
                         totalInvested
                     )} · ${
@@ -265,73 +290,71 @@ const AtlasOverviewCards = {
 
     },
 
+    debtAccountType(account) {
+
+        if (
+            account.type ===
+                "credit_card" ||
+            account.kind ===
+                "credit_card"
+        ) {
+
+            return "Tarjeta";
+
+        }
+
+        if (
+            account.type === "loan" ||
+            account.kind === "loan"
+        ) {
+
+            return "Préstamo";
+
+        }
+
+        return "Deuda";
+
+    },
+
     debtDetails(data) {
 
         const accounts =
-            this.accountsByGroup(
-                data,
-                "debt"
-            );
-
-        const relevantAccounts =
-            accounts.filter(
-                account =>
-                    Math.max(
-                        0,
-                        this.number(
-                            account.balance
-                        )
-                    ) > 0
-            );
-
-        const source =
-            relevantAccounts.length > 0
-                ? relevantAccounts
-                : accounts;
-
-        const visible =
-            source.slice(
-                0,
-                3
-            );
-
-        const hiddenCount =
-            Math.max(
-                0,
-                relevantAccounts.length -
-                visible.length
+            this.relevantDebtAccounts(
+                data
             );
 
         return {
 
-            accounts:
-                visible.map(
-                    account => ({
+            rows:
+                accounts
+                    .slice(0, 3)
+                    .map(
+                        account => ({
 
-                        name:
-                            account.name,
+                            name:
+                                account.name,
 
-                        value:
-                            Math.max(
-                                0,
-                                this.number(
-                                    account.balance
+                            value:
+                                Math.max(
+                                    0,
+                                    this.number(
+                                        account.balance
+                                    )
+                                ),
+
+                            secondary:
+                                this.debtAccountType(
+                                    account
                                 )
-                            ),
 
-                        secondary:
-                            account.type ===
-                            "credit_card"
-                                ? "Tarjeta"
-                                : account.type ===
-                                    "loan"
-                                    ? "Préstamo"
-                                    : "Deuda"
+                        })
+                    ),
 
-                    })
+            hiddenCount:
+                Math.max(
+                    0,
+                    accounts.length - 3
                 ),
-
-            hiddenCount,
 
             footer:
                 ""
@@ -369,7 +392,7 @@ const AtlasOverviewCards = {
 
                 return {
 
-                    accounts: [],
+                    rows: [],
                     hiddenCount: 0,
                     footer: ""
 
@@ -382,21 +405,12 @@ const AtlasOverviewCards = {
     detailRows(details) {
 
         if (
-            details.accounts.length === 0
+            details.rows.length === 0
         ) {
 
             return `
 
-                <div
-                    style="
-                        padding:10px 0 4px;
-                        color:
-                            var(
-                                --color-text-muted
-                            );
-                        font-size:12px;
-                    "
-                >
+                <div class="atlas-overview-empty">
                     No hay cuentas configuradas.
                 </div>
 
@@ -406,76 +420,29 @@ const AtlasOverviewCards = {
 
         return `
 
-            <div
-                style="
-                    display:flex;
-                    flex-direction:column;
-                    gap:7px;
-                    margin-top:10px;
-                    padding-top:9px;
-                    border-top:
-                        1px solid
-                        rgba(
-                            145,
-                            164,
-                            202,
-                            0.12
-                        );
-                "
-            >
+            <div class="atlas-overview-details">
 
-                ${details.accounts
+                ${details.rows
                     .map(
-                        account => `
+                        row => `
 
-                            <div
-                                style="
-                                    display:flex;
-                                    align-items:flex-start;
-                                    justify-content:
-                                        space-between;
-                                    gap:12px;
-                                "
-                            >
+                            <div class="atlas-overview-row">
 
-                                <div
-                                    style="
-                                        min-width:0;
-                                    "
-                                >
+                                <div class="atlas-overview-row-text">
 
-                                    <strong
-                                        style="
-                                            display:block;
-                                            overflow:hidden;
-                                            color:#f7f8fc;
-                                            font-size:12px;
-                                            line-height:1.25;
-                                            text-overflow:
-                                                ellipsis;
-                                            white-space:
-                                                nowrap;
-                                        "
-                                    >
+                                    <strong>
                                         ${this.escape(
-                                            account.name
+                                            row.name
                                         )}
                                     </strong>
 
                                     ${
-                                        account.secondary
+                                        row.secondary
                                             ? `
 
-                                                <small
-                                                    class="note"
-                                                    style="
-                                                        display:block;
-                                                        margin-top:2px;
-                                                        font-size:9px;
-                                                    "
-                                                >
+                                                <small>
                                                     ${this.escape(
-                                                        account.secondary
+                                                        row.secondary
                                                     )}
                                                 </small>
 
@@ -486,16 +453,10 @@ const AtlasOverviewCards = {
                                 </div>
 
                                 <strong
-                                    style="
-                                        flex:0 0 auto;
-                                        color:#f7f8fc;
-                                        font-size:12px;
-                                        white-space:
-                                            nowrap;
-                                    "
+                                    class="atlas-overview-row-value"
                                 >
                                     ${this.currency(
-                                        account.value
+                                        row.value
                                     )}
                                 </strong>
 
@@ -509,20 +470,15 @@ const AtlasOverviewCards = {
                     details.hiddenCount > 0
                         ? `
 
-                            <small
-                                class="note"
-                                style="
-                                    display:block;
-                                    margin-top:1px;
-                                    font-size:10px;
-                                "
-                            >
+                            <small class="atlas-overview-more">
+
                                 +${details.hiddenCount}
                                 ${
                                     details.hiddenCount === 1
                                         ? "cuenta más"
                                         : "cuentas más"
                                 }
+
                             </small>
 
                         `
@@ -533,23 +489,7 @@ const AtlasOverviewCards = {
                     details.footer
                         ? `
 
-                            <small
-                                class="note"
-                                style="
-                                    display:block;
-                                    margin-top:2px;
-                                    padding-top:7px;
-                                    border-top:
-                                        1px solid
-                                        rgba(
-                                            145,
-                                            164,
-                                            202,
-                                            0.1
-                                        );
-                                    font-size:10px;
-                                "
-                            >
+                            <small class="atlas-overview-footer">
                                 ${this.escape(
                                     details.footer
                                 )}
@@ -585,7 +525,15 @@ const AtlasOverviewCards = {
         return `
 
             <button
-                class="card"
+                class="
+                    card
+                    atlas-overview-card
+                    ${
+                        expanded
+                            ? "atlas-overview-card-expanded"
+                            : ""
+                    }
+                "
                 type="button"
                 data-overview-card="${type}"
                 aria-expanded="${
@@ -593,74 +541,18 @@ const AtlasOverviewCards = {
                         ? "true"
                         : "false"
                 }"
-                style="
-                    min-width:0;
-                    min-height:${
-                        expanded
-                            ? "132px"
-                            : "78px"
-                    };
-                    grid-column:${
-                        expanded
-                            ? "1 / -1"
-                            : "auto"
-                    };
-                    padding:${
-                        expanded
-                            ? "13px 14px"
-                            : "11px 12px"
-                    };
-                    color:inherit;
-                    text-align:left;
-                    transition:
-                        min-height
-                        0.2s ease,
-                        padding
-                        0.2s ease,
-                        transform
-                        0.16s ease;
-                "
             >
 
-                <div
-                    style="
-                        display:flex;
-                        align-items:flex-start;
-                        justify-content:
-                            space-between;
-                        gap:10px;
-                    "
-                >
+                <div class="atlas-overview-head">
 
-                    <div
-                        style="
-                            min-width:0;
-                        "
-                    >
+                    <div>
 
-                        <div
-                            class="label"
-                            style="
-                                font-size:11px;
-                                white-space:nowrap;
-                            "
-                        >
+                        <div class="label">
                             ${icon}
                             ${label}
                         </div>
 
-                        <div
-                            class="num"
-                            style="
-                                margin-top:6px;
-                                font-size:${
-                                    expanded
-                                        ? "22px"
-                                        : "20px"
-                                };
-                                line-height:1.05;
-                            "
-                        >
+                        <div class="num">
                             ${this.currency(
                                 value
                             )}
@@ -669,27 +561,8 @@ const AtlasOverviewCards = {
                     </div>
 
                     <span
+                        class="atlas-overview-arrow"
                         aria-hidden="true"
-                        style="
-                            flex:0 0 auto;
-                            color:
-                                var(
-                                    --color-text-muted
-                                );
-                            font-size:17px;
-                            line-height:1;
-                            transform:
-                                rotate(
-                                    ${
-                                        expanded
-                                            ? "180deg"
-                                            : "0deg"
-                                    }
-                                );
-                            transition:
-                                transform
-                                0.2s ease;
-                        "
                     >
                         ⌄
                     </span>
@@ -762,35 +635,22 @@ const AtlasOverviewCards = {
         return `
 
             <div
-                class="app"
-                style="
-                    min-height:auto;
-                    padding-bottom:
-                        calc(
-                            78px +
-                            env(
-                                safe-area-inset-bottom
-                            )
-                        );
+                class="
+                    app
+                    atlas-overview-dashboard
+                    ${
+                        this.expandedCard
+                            ? "atlas-overview-dashboard-expanded"
+                            : ""
+                    }
                 "
             >
 
-                <header
-                    class="header"
-                    style="
-                        margin-bottom:10px;
-                    "
-                >
+                <header class="header atlas-home-header">
 
                     <div class="brand">
 
-                        <div
-                            class="logo"
-                            style="
-                                width:40px;
-                                height:40px;
-                            "
-                        >
+                        <div class="logo atlas-home-logo">
                             A
                         </div>
 
@@ -809,77 +669,35 @@ const AtlasOverviewCards = {
                     </div>
 
                     <button
-                        class="iconbtn"
+                        class="iconbtn atlas-home-settings"
                         type="button"
                         data-action="openSettings"
                         aria-label="Abrir ajustes"
-                        style="
-                            width:40px;
-                            height:40px;
-                            font-size:20px;
-                        "
                     >
                         ⚙︎
                     </button>
 
                 </header>
 
-                <section
-                    class="hero"
-                    style="
-                        min-height:0;
-                        padding:14px 18px;
-                        margin-bottom:10px;
-                    "
-                >
+                <section class="hero atlas-home-hero">
 
-                    <div
-                        class="eyebrow"
-                        style="
-                            font-size:11px;
-                        "
-                    >
+                    <div class="eyebrow">
                         Patrimonio neto
                     </div>
 
-                    <div
-                        class="value"
-                        style="
-                            margin-top:4px;
-                            font-size:34px;
-                            line-height:1.05;
-                        "
-                    >
+                    <div class="value">
                         ${this.currency(
                             summary.netWorth
                         )}
                     </div>
 
-                    <div
-                        class="trend"
-                        style="
-                            margin-top:5px;
-                            font-size:11px;
-                        "
-                    >
+                    <div class="trend">
                         Liquidez + inversiones − deuda
                     </div>
 
                 </section>
 
-                <div
-                    class="grid"
-                    style="
-                        display:grid;
-                        grid-template-columns:
-                            repeat(
-                                2,
-                                minmax(0,1fr)
-                            );
-                        gap:8px;
-                        margin:0 0 9px;
-                    "
-                >
+                <div class="grid atlas-overview-grid">
 
                     ${this.interactiveCard({
 
@@ -936,39 +754,23 @@ const AtlasOverviewCards = {
                     })}
 
                     <button
-                        class="card"
+                        class="card atlas-overview-savings"
                         type="button"
                         data-route="analysis"
-                        style="
-                            min-width:0;
-                            min-height:78px;
-                            padding:11px 12px;
-                            color:inherit;
-                            text-align:left;
-                        "
                     >
 
-                        <div
-                            class="label"
-                            style="
-                                font-size:11px;
-                                white-space:nowrap;
-                            "
-                        >
+                        <div class="label">
                             🐷 Ahorro acumulado
                         </div>
 
                         <div
                             class="num"
                             style="
-                                margin-top:6px;
                                 color:${
                                     cumulativeSavings >= 0
                                         ? "var(--color-success)"
                                         : "var(--color-danger)"
                                 };
-                                font-size:20px;
-                                line-height:1.05;
                             "
                         >
                             ${this.currency(
@@ -981,65 +783,31 @@ const AtlasOverviewCards = {
                 </div>
 
                 <button
-                    class="panel"
+                    class="panel atlas-home-month"
                     type="button"
                     data-route="analysis"
-                    style="
-                        display:block;
-                        width:100%;
-                        margin:0;
-                        padding:11px 13px;
-                        color:inherit;
-                        text-align:left;
-                    "
                 >
 
-                    <div
-                        style="
-                            display:flex;
-                            align-items:center;
-                            justify-content:
-                                space-between;
-                            gap:10px;
-                            margin-bottom:8px;
-                        "
-                    >
+                    <div class="atlas-home-month-head">
 
                         <div>
 
-                            <div
-                                class="label"
-                                style="
-                                    font-size:10px;
-                                "
-                            >
+                            <div class="label">
                                 Este mes
                             </div>
 
-                            <strong
-                                style="
-                                    display:block;
-                                    margin-top:1px;
-                                    font-size:13px;
-                                "
-                            >
+                            <strong>
                                 ${AtlasUI.currentMonth()}
                             </strong>
 
                         </div>
 
-                        <div
-                            style="
-                                text-align:right;
-                            "
-                        >
+                        <div class="atlas-home-month-result">
 
                             <strong
                                 style="
-                                    display:block;
                                     color:
                                         ${monthlySavingColor};
-                                    font-size:16px;
                                 "
                             >
                                 ${this.currency(
@@ -1047,14 +815,8 @@ const AtlasOverviewCards = {
                                 )}
                             </strong>
 
-                            <small
-                                class="note"
-                                style="
-                                    display:block;
-                                    margin-top:1px;
-                                    font-size:9px;
-                                "
-                            >
+                            <small class="note">
+
                                 ${
                                     income > 0
                                         ? `${AtlasUI.formatPercent(
@@ -1062,53 +824,27 @@ const AtlasOverviewCards = {
                                         )} de ahorro`
                                         : "Ahorro mensual"
                                 }
+
                             </small>
 
                         </div>
 
                     </div>
 
-                    <div
-                        style="
-                            display:grid;
-                            grid-template-columns:
-                                repeat(
-                                    3,
-                                    minmax(0,1fr)
-                                );
-                            gap:7px;
-                        "
-                    >
+                    <div class="atlas-home-month-grid">
 
-                        <div
-                            style="
-                                min-width:0;
-                            "
-                        >
+                        <div>
 
-                            <small
-                                class="note"
-                                style="
-                                    display:block;
-                                    font-size:9px;
-                                "
-                            >
+                            <small class="note">
                                 Ingresos
                             </small>
 
                             <strong
                                 style="
-                                    display:block;
-                                    margin-top:2px;
-                                    overflow:hidden;
                                     color:
                                         var(
                                             --color-success
                                         );
-                                    font-size:13px;
-                                    text-overflow:
-                                        ellipsis;
-                                    white-space:nowrap;
                                 "
                             >
                                 ${this.currency(
@@ -1118,35 +854,18 @@ const AtlasOverviewCards = {
 
                         </div>
 
-                        <div
-                            style="
-                                min-width:0;
-                            "
-                        >
+                        <div>
 
-                            <small
-                                class="note"
-                                style="
-                                    display:block;
-                                    font-size:9px;
-                                "
-                            >
+                            <small class="note">
                                 Gastos
                             </small>
 
                             <strong
                                 style="
-                                    display:block;
-                                    margin-top:2px;
-                                    overflow:hidden;
                                     color:
                                         var(
                                             --color-danger
                                         );
-                                    font-size:13px;
-                                    text-overflow:
-                                        ellipsis;
-                                    white-space:nowrap;
                                 "
                             >
                                 ${this.currency(
@@ -1156,35 +875,18 @@ const AtlasOverviewCards = {
 
                         </div>
 
-                        <div
-                            style="
-                                min-width:0;
-                            "
-                        >
+                        <div>
 
-                            <small
-                                class="note"
-                                style="
-                                    display:block;
-                                    font-size:9px;
-                                "
-                            >
+                            <small class="note">
                                 Invertido
                             </small>
 
                             <strong
                                 style="
-                                    display:block;
-                                    margin-top:2px;
-                                    overflow:hidden;
                                     color:
                                         var(
                                             --color-primary
                                         );
-                                    font-size:13px;
-                                    text-overflow:
-                                        ellipsis;
-                                    white-space:nowrap;
                                 "
                             >
                                 ${this.currency(
@@ -1224,7 +926,7 @@ const AtlasOverviewCards = {
         }
 
         app.innerHTML =
-            AtlasUI.dashboard(
+            this.dashboard(
                 this.data
             );
 
@@ -1248,83 +950,395 @@ const AtlasOverviewCards = {
 
     },
 
-    bindCards() {
+    installStyles() {
 
-        document
-            .querySelectorAll(
-                "[data-overview-card]"
+        if (
+            document.getElementById(
+                "atlas-overview-styles"
             )
-            .forEach(
-                card => {
+        ) {
 
-                    if (
-                        card.dataset
-                            .overviewBound ===
-                        "true"
-                    ) {
+            return;
 
-                        return;
+        }
 
-                    }
+        const style =
+            document.createElement(
+                "style"
+            );
 
-                    card.dataset
-                        .overviewBound =
-                        "true";
+        style.id =
+            "atlas-overview-styles";
 
-                    card.addEventListener(
-                        "click",
-                        () => {
+        style.textContent = `
 
-                            const type =
-                                card.dataset
-                                    .overviewCard;
+            .atlas-overview-dashboard {
+                min-height: auto;
+                padding-bottom:
+                    calc(
+                        78px +
+                        env(
+                            safe-area-inset-bottom
+                        )
+                    );
+            }
 
-                            this.expandedCard =
-                                this.expandedCard ===
-                                type
-                                    ? null
-                                    : type;
+            .atlas-home-header {
+                margin-bottom: 10px;
+            }
 
-                            this.renderDashboard();
+            .atlas-home-logo {
+                width: 40px;
+                height: 40px;
+            }
 
-                        }
+            .atlas-home-settings {
+                width: 40px;
+                height: 40px;
+                font-size: 20px;
+            }
+
+            .atlas-home-hero {
+                min-height: 0;
+                margin-bottom: 10px;
+                padding: 14px 18px;
+            }
+
+            .atlas-home-hero .eyebrow {
+                font-size: 11px;
+            }
+
+            .atlas-home-hero .value {
+                margin-top: 4px;
+                font-size: 34px;
+                line-height: 1.05;
+            }
+
+            .atlas-home-hero .trend {
+                margin-top: 5px;
+                font-size: 11px;
+            }
+
+            .atlas-overview-grid {
+                display: grid;
+                grid-template-columns:
+                    repeat(
+                        2,
+                        minmax(0, 1fr)
+                    );
+                gap: 8px;
+                margin:
+                    0
+                    0
+                    9px;
+            }
+
+            .atlas-overview-card,
+            .atlas-overview-savings {
+                min-width: 0;
+                min-height: 78px;
+                padding: 11px 12px;
+                color: inherit;
+                text-align: left;
+                -webkit-tap-highlight-color:
+                    transparent;
+            }
+
+            .atlas-overview-card-expanded {
+                grid-column: 1 / -1;
+                min-height: 142px;
+                padding: 13px 14px;
+            }
+
+            .atlas-overview-head {
+                display: flex;
+                align-items: flex-start;
+                justify-content:
+                    space-between;
+                gap: 10px;
+            }
+
+            .atlas-overview-card .label,
+            .atlas-overview-savings .label {
+                font-size: 11px;
+                white-space: nowrap;
+            }
+
+            .atlas-overview-card .num,
+            .atlas-overview-savings .num {
+                margin-top: 6px;
+                font-size: 20px;
+                line-height: 1.05;
+            }
+
+            .atlas-overview-card-expanded .num {
+                font-size: 22px;
+            }
+
+            .atlas-overview-arrow {
+                flex: 0 0 auto;
+                color:
+                    var(
+                        --color-text-muted
+                    );
+                font-size: 17px;
+                line-height: 1;
+                transition:
+                    transform
+                    0.2s ease;
+            }
+
+            .atlas-overview-card-expanded
+            .atlas-overview-arrow {
+                transform:
+                    rotate(
+                        180deg
+                    );
+            }
+
+            .atlas-overview-details {
+                display: flex;
+                flex-direction: column;
+                gap: 7px;
+                margin-top: 10px;
+                padding-top: 9px;
+                border-top:
+                    1px solid
+                    rgba(
+                        145,
+                        164,
+                        202,
+                        0.12
+                    );
+            }
+
+            .atlas-overview-row {
+                display: flex;
+                align-items: flex-start;
+                justify-content:
+                    space-between;
+                gap: 12px;
+            }
+
+            .atlas-overview-row-text {
+                min-width: 0;
+            }
+
+            .atlas-overview-row-text strong {
+                display: block;
+                overflow: hidden;
+                color: #f7f8fc;
+                font-size: 12px;
+                line-height: 1.25;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .atlas-overview-row-text small {
+                display: block;
+                margin-top: 2px;
+                color:
+                    var(
+                        --color-text-muted
+                    );
+                font-size: 9px;
+            }
+
+            .atlas-overview-row-value {
+                flex: 0 0 auto;
+                color: #f7f8fc;
+                font-size: 12px;
+                white-space: nowrap;
+            }
+
+            .atlas-overview-more {
+                display: block;
+                color:
+                    var(
+                        --color-text-muted
+                    );
+                font-size: 10px;
+            }
+
+            .atlas-overview-footer {
+                display: block;
+                margin-top: 2px;
+                padding-top: 7px;
+                border-top:
+                    1px solid
+                    rgba(
+                        145,
+                        164,
+                        202,
+                        0.1
+                    );
+                color:
+                    var(
+                        --color-text-muted
+                    );
+                font-size: 10px;
+            }
+
+            .atlas-overview-empty {
+                padding: 12px 0 4px;
+                color:
+                    var(
+                        --color-text-muted
+                    );
+                font-size: 12px;
+            }
+
+            .atlas-home-month {
+                display: block;
+                width: 100%;
+                margin: 0;
+                padding: 11px 13px;
+                color: inherit;
+                text-align: left;
+            }
+
+            .atlas-home-month-head {
+                display: flex;
+                align-items: center;
+                justify-content:
+                    space-between;
+                gap: 10px;
+                margin-bottom: 8px;
+            }
+
+            .atlas-home-month-head .label {
+                font-size: 10px;
+            }
+
+            .atlas-home-month-head > div > strong {
+                display: block;
+                margin-top: 1px;
+                font-size: 13px;
+            }
+
+            .atlas-home-month-result {
+                text-align: right;
+            }
+
+            .atlas-home-month-result strong {
+                display: block;
+                font-size: 16px;
+            }
+
+            .atlas-home-month-result small {
+                display: block;
+                margin-top: 1px;
+                font-size: 9px;
+            }
+
+            .atlas-home-month-grid {
+                display: grid;
+                grid-template-columns:
+                    repeat(
+                        3,
+                        minmax(0, 1fr)
+                    );
+                gap: 7px;
+            }
+
+            .atlas-home-month-grid > div {
+                min-width: 0;
+            }
+
+            .atlas-home-month-grid small {
+                display: block;
+                font-size: 9px;
+            }
+
+            .atlas-home-month-grid strong {
+                display: block;
+                margin-top: 2px;
+                overflow: hidden;
+                font-size: 13px;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .atlas-overview-dashboard-expanded {
+                height: auto !important;
+                min-height:
+                    calc(
+                        100dvh -
+                        68px -
+                        env(
+                            safe-area-inset-bottom
+                        )
+                    ) !important;
+                justify-content:
+                    flex-start !important;
+                overflow-x: hidden !important;
+                overflow-y: auto !important;
+                padding-bottom:
+                    calc(
+                        102px +
+                        env(
+                            safe-area-inset-bottom
+                        )
+                    ) !important;
+            }
+
+        `;
+
+        document.head.appendChild(
+            style
+        );
+
+    },
+
+    bindEvents() {
+
+        document.addEventListener(
+            "click",
+            event => {
+
+                const card =
+                    event.target.closest(
+                        "[data-overview-card]"
                     );
 
+                if (!card) {
+
+                    return;
+
                 }
-            );
+
+                event.preventDefault();
+
+                const type =
+                    card.dataset
+                        .overviewCard;
+
+                this.expandedCard =
+                    this.expandedCard === type
+                        ? null
+                        : type;
+
+                this.renderDashboard();
+
+            }
+        );
+
+    },
+
+    init() {
+
+        this.installStyles();
+
+        this.bindEvents();
+
+        AtlasUI.dashboard =
+            data =>
+                this.dashboard(
+                    data
+                );
 
     }
 
 };
 
-
-/* ==========================================================
-   INTEGRACIÓN CON AtlasUI
-========================================================== */
-
-AtlasOverviewCards.originalDashboard =
-    AtlasUI.dashboard.bind(
-        AtlasUI
-    );
-
-AtlasOverviewCards.originalBindDynamicControls =
-    AtlasUI.bindDynamicControls.bind(
-        AtlasUI
-    );
-
-AtlasUI.dashboard = function(data) {
-
-    return AtlasOverviewCards.dashboard(
-        data
-    );
-
-};
-
-AtlasUI.bindDynamicControls = function() {
-
-    AtlasOverviewCards
-        .originalBindDynamicControls();
-
-    AtlasOverviewCards.bindCards();
-
-};
+AtlasOverviewCards.init();
