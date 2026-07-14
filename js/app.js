@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    app.js
-   Sprint 2.2 — Integración de movimientos
+   Sprint 2.4 — Protección de saldos calculados
 ========================================================== */
 
 const AtlasApp = {
@@ -77,9 +77,7 @@ const AtlasApp = {
                     );
 
                 if (!actionButton) {
-
                     return;
-
                 }
 
                 const action =
@@ -112,21 +110,13 @@ const AtlasApp = {
 
                     case "editAccounts":
 
-                        AtlasSetup.open(
-                            this.data,
-                            updatedData => {
+                        this.openAccountEditor();
 
-                                this.data =
-                                    updatedData;
+                        break;
 
-                                this.render();
+                    case "resetAtlas":
 
-                                AtlasUI.toast(
-                                    "Datos actualizados."
-                                );
-
-                            }
-                        );
+                        this.reset();
 
                         break;
 
@@ -160,6 +150,47 @@ const AtlasApp = {
 
     },
 
+    hasMovements() {
+
+        return (
+            Array.isArray(
+                this.data?.movements
+            ) &&
+            this.data.movements.length > 0
+        );
+
+    },
+
+    openAccountEditor() {
+
+        if (this.hasMovements()) {
+
+            AtlasUI.toast(
+                "Los saldos ya se calculan con tus movimientos."
+            );
+
+            return;
+
+        }
+
+        AtlasSetup.open(
+            this.data,
+            updatedData => {
+
+                this.data =
+                    updatedData;
+
+                this.render();
+
+                AtlasUI.toast(
+                    "Saldos iniciales actualizados."
+                );
+
+            }
+        );
+
+    },
+
     save() {
 
         const saved =
@@ -184,6 +215,16 @@ const AtlasApp = {
         value
     ) {
 
+        if (this.hasMovements()) {
+
+            AtlasUI.toast(
+                "No se pueden modificar saldos iniciales después de registrar movimientos."
+            );
+
+            return false;
+
+        }
+
         const account =
             this.data.accounts.find(
                 item =>
@@ -191,9 +232,7 @@ const AtlasApp = {
             );
 
         if (!account) {
-
             return false;
-
         }
 
         account.balance =
@@ -213,6 +252,16 @@ const AtlasApp = {
         currentValue
     ) {
 
+        if (this.hasMovements()) {
+
+            AtlasUI.toast(
+                "No se pueden modificar saldos iniciales después de registrar movimientos."
+            );
+
+            return false;
+
+        }
+
         const account =
             this.data.accounts.find(
                 item =>
@@ -220,9 +269,7 @@ const AtlasApp = {
             );
 
         if (!account) {
-
             return false;
-
         }
 
         account.invested =
@@ -256,13 +303,11 @@ const AtlasApp = {
         const confirmed =
             AtlasUI.confirm(
                 "Reiniciar Atlas",
-                "Se eliminarán todos los datos guardados en este dispositivo."
+                "Se eliminarán las cuentas, saldos y movimientos guardados en este dispositivo."
             );
 
         if (!confirmed) {
-
             return;
-
         }
 
         this.data =
@@ -281,6 +326,10 @@ const AtlasApp = {
                     updatedData;
 
                 this.render();
+
+                AtlasUI.toast(
+                    "Atlas se ha reiniciado."
+                );
 
             }
         );
