@@ -1,260 +1,493 @@
 /* ==========================================================
    ATLAS
    calculations.js
-   Cálculos financieros principales
+   Sprint 2.4 — Cálculos financieros correctos
 ========================================================== */
 
 const AtlasCalculations = {
 
     number(value) {
-        return Number(value) || 0;
+
+        const result =
+            Number(value);
+
+        return Number.isFinite(result)
+            ? result
+            : 0;
+
     },
 
-    accountsByGroup(data, group) {
+    accountGroup(data, group) {
+
         return data.accounts.filter(
-            account => account.group === group
+            account =>
+                account.group === group
         );
+
+    },
+
+    liquidityAccounts(data) {
+
+        return this.accountGroup(
+            data,
+            "liquidity"
+        );
+
+    },
+
+    investmentAccounts(data) {
+
+        return this.accountGroup(
+            data,
+            "investment"
+        );
+
+    },
+
+    debtAccounts(data) {
+
+        return this.accountGroup(
+            data,
+            "debt"
+        );
+
     },
 
     totalLiquidity(data) {
-        return this.accountsByGroup(data, "liquidity")
-            .reduce(
-                (total, account) =>
-                    total + this.number(account.balance),
-                0
-            );
-    },
 
-    totalInvestments(data) {
-        return this.accountsByGroup(data, "investment")
+        return this.liquidityAccounts(data)
             .reduce(
                 (total, account) =>
-                    total + this.number(account.balance),
-                0
-            );
-    },
-
-    totalDebt(data) {
-        return this.accountsByGroup(data, "debt")
-            .reduce(
-                (total, account) =>
-                    total + Math.abs(
-                        this.number(account.balance)
+                    total +
+                    this.number(
+                        account.balance
                     ),
                 0
             );
+
+    },
+
+    totalInvestments(data) {
+
+        return this.investmentAccounts(data)
+            .reduce(
+                (total, account) =>
+                    total +
+                    this.number(
+                        account.balance
+                    ),
+                0
+            );
+
+    },
+
+    totalInvestedCapital(data) {
+
+        return this.investmentAccounts(data)
+            .reduce(
+                (total, account) =>
+                    total +
+                    this.number(
+                        account.invested
+                    ),
+                0
+            );
+
+    },
+
+    totalDebt(data) {
+
+        return this.debtAccounts(data)
+            .reduce(
+                (total, account) =>
+                    total +
+                    Math.max(
+                        0,
+                        this.number(
+                            account.balance
+                        )
+                    ),
+                0
+            );
+
     },
 
     netWorth(data) {
+
         return (
             this.totalLiquidity(data) +
             this.totalInvestments(data) -
             this.totalDebt(data)
         );
+
     },
 
-    movementDate(movement) {
-        return new Date(
-            `${movement.date}T12:00:00`
+    monthKey(date = new Date()) {
+
+        const year =
+            date.getFullYear();
+
+        const month =
+            String(
+                date.getMonth() + 1
+            ).padStart(2, "0");
+
+        return `${year}-${month}`;
+
+    },
+
+    movementMonthKey(movement) {
+
+        return String(
+            movement.date || ""
+        ).slice(0, 7);
+
+    },
+
+    movementsForMonth(
+        data,
+        monthKey = this.monthKey()
+    ) {
+
+        return data.movements.filter(
+            movement =>
+                this.movementMonthKey(
+                    movement
+                ) === monthKey
         );
+
     },
 
-    movementsForMonth(data, year, month) {
-        return data.movements.filter(movement => {
+    isDebtPayment(movement) {
 
-            if (!movement.date) {
-                return false;
-            }
+        return (
+            movement.kind ===
+            "debt_payment"
+        );
 
-            const date =
-                this.movementDate(movement);
-
-            return (
-                date.getFullYear() === year &&
-                date.getMonth() === month
-            );
-
-        });
     },
 
-    currentMonthMovements(data) {
-        const now = new Date();
+    isCreditCardSettlement(movement) {
+
+        if (
+            !this.isDebtPayment(
+                movement
+            )
+        ) {
+            return false;
+        }
+
+        return (
+            movement.toAccountId ===
+                "amex" ||
+            movement.toAccountId ===
+                "bbva_credit"
+        );
+
+    },
+
+    isLoanPayment(movement) {
+
+        if (
+            !this.isDebtPayment(
+                movement
+            )
+        ) {
+            return false;
+        }
+
+        return (
+            movement.toAccountId ===
+            "loan_car"
+        );
+
+    },
+
+    isNormalExpense(movement) {
+
+        return (
+            movement.type ===
+                "expense" &&
+            !this.isDebtPayment(
+                movement
+            )
+        );
+
+    },
+
+    expenseCountsForSavings(
+        movement
+    ) {
+
+        /*
+           Una compra con Amex o tarjeta BBVA
+           ya cuenta como gasto cuando se registra.
+
+           Pagar después la tarjeta es solo
+           liquidar una deuda y no debe contar
+           una segunda vez.
+
+           La cuota del préstamo del coche sí
+           cuenta como gasto mensual.
+        */
+
+        if (
+            this.isCreditCardSettlement(
+                movement
+            )
+        ) {
+            return false;
+        }
+
+        if (
+            this.isLoanPayment(
+                movement
+            )
+        ) {
+            return true;
+        }
+
+        return this.isNormalExpense(
+            movement
+        );
+
+    },
+
+    monthlyIncome(
+        data,
+        monthKey = this.monthKey()
+    ) {
 
         return this.movementsForMonth(
             data,
-            now.getFullYear(),
-            now.getMonth()
-        );
-    },
-
-    totalByMovementType(movements, type) {
-        return movements
+            monthKey
+        )
             .filter(
                 movement =>
-                    movement.type === type
+                    movement.type ===
+                    "income"
             )
             .reduce(
                 (total, movement) =>
                     total +
-                    this.number(movement.amount),
+                    this.number(
+                        movement.amount
+                    ),
                 0
             );
+
     },
 
-    monthlyIncome(data) {
-        return this.totalByMovementType(
-            this.currentMonthMovements(data),
-            "income"
-        );
+    monthlyExpenses(
+        data,
+        monthKey = this.monthKey()
+    ) {
+
+        return this.movementsForMonth(
+            data,
+            monthKey
+        )
+            .filter(
+                movement =>
+                    this.expenseCountsForSavings(
+                        movement
+                    )
+            )
+            .reduce(
+                (total, movement) =>
+                    total +
+                    this.number(
+                        movement.amount
+                    ),
+                0
+            );
+
     },
 
-    monthlyExpenses(data) {
-        return this.totalByMovementType(
-            this.currentMonthMovements(data),
-            "expense"
-        );
+    monthlyInvested(
+        data,
+        monthKey = this.monthKey()
+    ) {
+
+        return this.movementsForMonth(
+            data,
+            monthKey
+        )
+            .filter(
+                movement =>
+                    movement.type ===
+                    "investment"
+            )
+            .reduce(
+                (total, movement) =>
+                    total +
+                    this.number(
+                        movement.amount
+                    ),
+                0
+            );
+
     },
 
-    monthlyInvested(data) {
-        return this.totalByMovementType(
-            this.currentMonthMovements(data),
-            "investment"
-        );
-    },
+    monthlySavings(
+        data,
+        monthKey = this.monthKey()
+    ) {
 
-    monthlySavings(data) {
         return (
-            this.monthlyIncome(data) -
-            this.monthlyExpenses(data) -
-            this.monthlyInvested(data)
+            this.monthlyIncome(
+                data,
+                monthKey
+            ) -
+            this.monthlyExpenses(
+                data,
+                monthKey
+            ) -
+            this.monthlyInvested(
+                data,
+                monthKey
+            )
         );
+
     },
 
-    monthlySavingsRate(data) {
+    monthlySavingRate(
+        data,
+        monthKey = this.monthKey()
+    ) {
+
         const income =
-            this.monthlyIncome(data);
+            this.monthlyIncome(
+                data,
+                monthKey
+            );
 
         if (income <= 0) {
             return 0;
         }
 
         return (
-            this.monthlySavings(data) /
+            this.monthlySavings(
+                data,
+                monthKey
+            ) /
             income
         ) * 100;
+
     },
 
-    investmentDetails(account) {
-        const invested =
-            this.number(account.invested);
+    investmentGain(data) {
 
-        const currentValue =
-            this.number(account.balance);
-
-        const gain =
-            currentValue - invested;
-
-        const profitability =
-            invested > 0
-                ? (gain / invested) * 100
-                : 0;
-
-        return {
-            invested,
-            currentValue,
-            gain,
-            profitability
-        };
-    },
-
-    totalInvestedCapital(data) {
-        return this.accountsByGroup(
-            data,
-            "investment"
-        ).reduce(
-            (total, account) =>
-                total +
-                this.number(account.invested),
-            0
-        );
-    },
-
-    totalInvestmentGain(data) {
         return (
             this.totalInvestments(data) -
             this.totalInvestedCapital(data)
         );
+
     },
 
-    expensesByCategory(data, year, month) {
-        const result = {};
+    investmentReturn(data) {
 
-        this.movementsForMonth(
-            data,
-            year,
-            month
-        )
-            .filter(
-                movement =>
-                    movement.type === "expense"
-            )
-            .forEach(movement => {
+        const investedCapital =
+            this.totalInvestedCapital(data);
 
-                const category =
-                    movement.category || "Otros";
+        if (investedCapital <= 0) {
+            return 0;
+        }
 
-                result[category] =
-                    (result[category] || 0) +
-                    this.number(movement.amount);
+        return (
+            this.investmentGain(data) /
+            investedCapital
+        ) * 100;
 
-            });
+    },
 
-        return Object.entries(result)
-            .map(([category, amount]) => ({
-                category,
-                amount
-            }))
-            .sort(
-                (a, b) =>
-                    b.amount - a.amount
+    financialSummary(
+        data,
+        monthKey = this.monthKey()
+    ) {
+
+        const liquidity =
+            this.totalLiquidity(data);
+
+        const investments =
+            this.totalInvestments(data);
+
+        const investedCapital =
+            this.totalInvestedCapital(
+                data
             );
-    },
 
-    financialSummary(data) {
+        const investmentGain =
+            investments -
+            investedCapital;
+
+        const debt =
+            this.totalDebt(data);
+
+        const netWorth =
+            liquidity +
+            investments -
+            debt;
+
+        const monthlyIncome =
+            this.monthlyIncome(
+                data,
+                monthKey
+            );
+
+        const monthlyExpenses =
+            this.monthlyExpenses(
+                data,
+                monthKey
+            );
+
+        const monthlyInvested =
+            this.monthlyInvested(
+                data,
+                monthKey
+            );
+
+        const monthlySavings =
+            monthlyIncome -
+            monthlyExpenses -
+            monthlyInvested;
+
+        const monthlySavingRate =
+            monthlyIncome > 0
+                ? (
+                    monthlySavings /
+                    monthlyIncome
+                ) * 100
+                : 0;
+
         return {
-            liquidity:
-                this.totalLiquidity(data),
 
-            investments:
-                this.totalInvestments(data),
+            liquidity,
+            investments,
+            investedCapital,
+            investmentGain,
 
-            investedCapital:
-                this.totalInvestedCapital(data),
+            investmentReturn:
+                investedCapital > 0
+                    ? (
+                        investmentGain /
+                        investedCapital
+                    ) * 100
+                    : 0,
 
-            investmentGain:
-                this.totalInvestmentGain(data),
+            debt,
+            netWorth,
 
-            debt:
-                this.totalDebt(data),
+            monthlyIncome,
+            monthlyExpenses,
+            monthlyInvested,
+            monthlySavings,
+            monthlySavingRate,
 
-            netWorth:
-                this.netWorth(data),
+            monthKey
 
-            monthlyIncome:
-                this.monthlyIncome(data),
-
-            monthlyExpenses:
-                this.monthlyExpenses(data),
-
-            monthlyInvested:
-                this.monthlyInvested(data),
-
-            monthlySavings:
-                this.monthlySavings(data),
-
-            monthlySavingsRate:
-                this.monthlySavingsRate(data)
         };
+
     }
 
 };
