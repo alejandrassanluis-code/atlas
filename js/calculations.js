@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    calculations.js
-   Sprint 3.3 — Tendencias de 3, 6 y 12 meses
+   Sprint 4.1 — Resumen mensual y deuda sin duplicidades
 ========================================================== */
 
 const AtlasCalculations = {
@@ -17,20 +17,48 @@ const AtlasCalculations = {
 
     },
 
-    findAccount(data, accountId) {
+    movements(data) {
 
-        return data.accounts.find(
+        return Array.isArray(
+            data?.movements
+        )
+            ? data.movements
+            : [];
+
+    },
+
+    accounts(data) {
+
+        return Array.isArray(
+            data?.accounts
+        )
+            ? data.accounts
+            : [];
+
+    },
+
+    findAccount(
+        data,
+        accountId
+    ) {
+
+        return this.accounts(data).find(
             account =>
-                account.id === accountId
+                account.id ===
+                accountId
         );
 
     },
 
-    accountGroup(data, group) {
+    accountGroup(
+        data,
+        group
+    ) {
 
-        return data.accounts.filter(
+        return this.accounts(data).filter(
             account =>
-                account.group === group
+                account.group ===
+                group
         );
 
     },
@@ -66,7 +94,10 @@ const AtlasCalculations = {
 
         return this.liquidityAccounts(data)
             .reduce(
-                (total, account) =>
+                (
+                    total,
+                    account
+                ) =>
                     total +
                     this.number(
                         account.balance
@@ -80,7 +111,10 @@ const AtlasCalculations = {
 
         return this.investmentAccounts(data)
             .reduce(
-                (total, account) =>
+                (
+                    total,
+                    account
+                ) =>
                     total +
                     this.number(
                         account.balance
@@ -94,7 +128,10 @@ const AtlasCalculations = {
 
         return this.investmentAccounts(data)
             .reduce(
-                (total, account) =>
+                (
+                    total,
+                    account
+                ) =>
                     total +
                     this.number(
                         account.invested
@@ -108,7 +145,10 @@ const AtlasCalculations = {
 
         return this.debtAccounts(data)
             .reduce(
-                (total, account) =>
+                (
+                    total,
+                    account
+                ) =>
                     total +
                     Math.max(
                         0,
@@ -131,7 +171,9 @@ const AtlasCalculations = {
 
     },
 
-    monthKey(date = new Date()) {
+    monthKey(
+        date = new Date()
+    ) {
 
         const year =
             date.getFullYear();
@@ -139,7 +181,10 @@ const AtlasCalculations = {
         const month =
             String(
                 date.getMonth() + 1
-            ).padStart(2, "0");
+            ).padStart(
+                2,
+                "0"
+            );
 
         return `${year}-${month}`;
 
@@ -163,7 +208,9 @@ const AtlasCalculations = {
             !year ||
             !month
         ) {
+
             return this.monthKey();
+
         }
 
         const date =
@@ -173,7 +220,9 @@ const AtlasCalculations = {
                 1
             );
 
-        return this.monthKey(date);
+        return this.monthKey(
+            date
+        );
 
     },
 
@@ -194,13 +243,16 @@ const AtlasCalculations = {
         const months =
             Math.max(
                 1,
-                Number(numberOfMonths) || 1
+                Number(
+                    numberOfMonths
+                ) || 1
             );
 
         const keys = [];
 
         for (
-            let index = months - 1;
+            let index =
+                months - 1;
             index >= 0;
             index -= 1
         ) {
@@ -221,8 +273,11 @@ const AtlasCalculations = {
     movementMonthKey(movement) {
 
         return String(
-            movement.date || ""
-        ).slice(0, 7);
+            movement?.date || ""
+        ).slice(
+            0,
+            7
+        );
 
     },
 
@@ -231,56 +286,96 @@ const AtlasCalculations = {
         monthKey = this.monthKey()
     ) {
 
-        return data.movements.filter(
-            movement =>
-                this.movementMonthKey(
-                    movement
-                ) === monthKey
-        );
+        return this.movements(data)
+            .filter(
+                movement =>
+                    this.movementMonthKey(
+                        movement
+                    ) === monthKey
+            );
+
+    },
+
+    movementKind(movement) {
+
+        if (
+            movement?.kind ===
+            "debt_payment"
+        ) {
+
+            return "debt_payment";
+
+        }
+
+        return movement?.type || "";
 
     },
 
     isDebtPayment(movement) {
 
         return (
-            movement.kind ===
+            this.movementKind(
+                movement
+            ) ===
             "debt_payment"
         );
 
     },
 
-    isCreditCardSettlement(movement) {
+    isCreditCardSettlement(
+        data,
+        movement
+    ) {
 
         if (
             !this.isDebtPayment(
                 movement
             )
         ) {
+
             return false;
+
         }
 
+        const account =
+            this.findAccount(
+                data,
+                movement.toAccountId
+            );
+
         return (
-            movement.toAccountId ===
-                "amex" ||
-            movement.toAccountId ===
-                "bbva_credit"
+            account?.type ===
+            "credit_card"
         );
 
     },
 
-    isLoanPayment(movement) {
+    isLoanPayment(
+        data,
+        movement
+    ) {
 
         if (
             !this.isDebtPayment(
                 movement
             )
         ) {
+
             return false;
+
         }
 
+        const account =
+            this.findAccount(
+                data,
+                movement.toAccountId
+            );
+
         return (
-            movement.toAccountId ===
-            "loan_car"
+            account?.group ===
+                "debt" &&
+            account?.type !==
+                "credit_card"
         );
 
     },
@@ -288,7 +383,7 @@ const AtlasCalculations = {
     isNormalExpense(movement) {
 
         return (
-            movement.type ===
+            movement?.type ===
                 "expense" &&
             !this.isDebtPayment(
                 movement
@@ -297,22 +392,28 @@ const AtlasCalculations = {
 
     },
 
-    expenseCountsForSavings(movement) {
+    expenseCountsForSavings(
+        data,
+        movement
+    ) {
+
+        /*
+         * Las compras se cuentan como gasto
+         * cuando se registran.
+         *
+         * Los pagos posteriores de tarjeta
+         * o préstamo solo reducen liquidez
+         * y deuda. No vuelven a sumar gasto.
+         */
 
         if (
-            this.isCreditCardSettlement(
+            this.isDebtPayment(
                 movement
             )
         ) {
+
             return false;
-        }
 
-        if (
-            this.isLoanPayment(
-                movement
-            )
-        ) {
-            return true;
         }
 
         return this.isNormalExpense(
@@ -328,7 +429,7 @@ const AtlasCalculations = {
 
         const amount =
             this.number(
-                movement.amount
+                movement?.amount
             );
 
         if (
@@ -347,7 +448,9 @@ const AtlasCalculations = {
                 account?.group ===
                 "liquidity"
             ) {
+
                 return amount;
+
             }
 
             return 0;
@@ -355,10 +458,12 @@ const AtlasCalculations = {
         }
 
         if (
-            movement.type ===
+            movement?.type ===
             "investment"
         ) {
+
             return amount;
+
         }
 
         if (
@@ -366,11 +471,13 @@ const AtlasCalculations = {
                 movement
             )
         ) {
+
             return amount;
+
         }
 
         if (
-            movement.type ===
+            movement?.type ===
             "transfer"
         ) {
 
@@ -392,7 +499,9 @@ const AtlasCalculations = {
                 toAccount?.group ===
                     "debt"
             ) {
+
                 return amount;
+
             }
 
         }
@@ -416,7 +525,10 @@ const AtlasCalculations = {
                     "income"
             )
             .reduce(
-                (total, movement) =>
+                (
+                    total,
+                    movement
+                ) =>
                     total +
                     this.number(
                         movement.amount
@@ -438,11 +550,15 @@ const AtlasCalculations = {
             .filter(
                 movement =>
                     this.expenseCountsForSavings(
+                        data,
                         movement
                     )
             )
             .reduce(
-                (total, movement) =>
+                (
+                    total,
+                    movement
+                ) =>
                     total +
                     this.number(
                         movement.amount
@@ -467,7 +583,10 @@ const AtlasCalculations = {
                     "investment"
             )
             .reduce(
-                (total, movement) =>
+                (
+                    total,
+                    movement
+                ) =>
                     total +
                     this.number(
                         movement.amount
@@ -487,7 +606,10 @@ const AtlasCalculations = {
             monthKey
         )
             .reduce(
-                (total, movement) =>
+                (
+                    total,
+                    movement
+                ) =>
                     total +
                     this.movementCashOutflow(
                         data,
@@ -531,8 +653,12 @@ const AtlasCalculations = {
                 monthKey
             );
 
-        if (income <= 0) {
+        if (
+            income <= 0
+        ) {
+
             return 0;
+
         }
 
         return (
@@ -559,6 +685,7 @@ const AtlasCalculations = {
             .filter(
                 movement =>
                     this.expenseCountsForSavings(
+                        data,
                         movement
                     )
             )
@@ -567,17 +694,13 @@ const AtlasCalculations = {
 
                     const category =
                         movement.category ||
-                        (
-                            this.isLoanPayment(
-                                movement
-                            )
-                                ? "Préstamo"
-                                : "Otros gastos"
-                        );
+                        "Otros gastos";
 
                     categories[category] =
                         (
-                            categories[category] ||
+                            categories[
+                                category
+                            ] ||
                             0
                         ) +
                         this.number(
@@ -595,12 +718,18 @@ const AtlasCalculations = {
                     category,
                     amount
                 ]) => ({
+
                     category,
+
                     amount
+
                 })
             )
             .sort(
-                (a, b) =>
+                (
+                    a,
+                    b
+                ) =>
                     b.amount -
                     a.amount
             );
@@ -613,15 +742,25 @@ const AtlasCalculations = {
     ) {
 
         const current =
-            this.number(currentValue);
+            this.number(
+                currentValue
+            );
 
         const previous =
-            this.number(previousValue);
+            this.number(
+                previousValue
+            );
 
-        if (previous === 0) {
+        if (
+            previous === 0
+        ) {
 
-            if (current === 0) {
+            if (
+                current === 0
+            ) {
+
                 return 0;
+
             }
 
             return null;
@@ -633,7 +772,9 @@ const AtlasCalculations = {
                 current -
                 previous
             ) /
-            Math.abs(previous)
+            Math.abs(
+                previous
+            )
         ) * 100;
 
     },
@@ -644,10 +785,14 @@ const AtlasCalculations = {
     ) {
 
         const current =
-            this.number(currentValue);
+            this.number(
+                currentValue
+            );
 
         const previous =
-            this.number(previousValue);
+            this.number(
+                previousValue
+            );
 
         return {
 
@@ -672,8 +817,12 @@ const AtlasCalculations = {
     investmentGain(data) {
 
         return (
-            this.totalInvestments(data) -
-            this.totalInvestedCapital(data)
+            this.totalInvestments(
+                data
+            ) -
+            this.totalInvestedCapital(
+                data
+            )
         );
 
     },
@@ -681,14 +830,22 @@ const AtlasCalculations = {
     investmentReturn(data) {
 
         const investedCapital =
-            this.totalInvestedCapital(data);
+            this.totalInvestedCapital(
+                data
+            );
 
-        if (investedCapital <= 0) {
+        if (
+            investedCapital <= 0
+        ) {
+
             return 0;
+
         }
 
         return (
-            this.investmentGain(data) /
+            this.investmentGain(
+                data
+            ) /
             investedCapital
         ) * 100;
 
@@ -700,10 +857,14 @@ const AtlasCalculations = {
     ) {
 
         const liquidity =
-            this.totalLiquidity(data);
+            this.totalLiquidity(
+                data
+            );
 
         const investments =
-            this.totalInvestments(data);
+            this.totalInvestments(
+                data
+            );
 
         const investedCapital =
             this.totalInvestedCapital(
@@ -715,7 +876,9 @@ const AtlasCalculations = {
             investedCapital;
 
         const debt =
-            this.totalDebt(data);
+            this.totalDebt(
+                data
+            );
 
         const netWorth =
             liquidity +
@@ -762,8 +925,11 @@ const AtlasCalculations = {
         return {
 
             liquidity,
+
             investments,
+
             investedCapital,
+
             investmentGain,
 
             investmentReturn:
@@ -775,14 +941,48 @@ const AtlasCalculations = {
                     : 0,
 
             debt,
+
             netWorth,
 
+            /*
+             * Nombres completos usados por
+             * Análisis y Tendencias.
+             */
+
             monthlyIncome,
+
             monthlyExpenses,
+
             monthlyInvested,
+
             monthlyCashOutflow,
+
             monthlySavings,
+
             monthlySavingRate,
+
+            /*
+             * Alias usados por el cuadro
+             * compacto de Inicio.
+             */
+
+            income:
+                monthlyIncome,
+
+            expenses:
+                monthlyExpenses,
+
+            invested:
+                monthlyInvested,
+
+            cashOutflow:
+                monthlyCashOutflow,
+
+            savings:
+                monthlySavings,
+
+            savingRate:
+                monthlySavingRate,
 
             monthKey
 
@@ -873,22 +1073,29 @@ const AtlasCalculations = {
     average(values) {
 
         const validValues =
-            values
-                .map(
-                    value =>
-                        this.number(value)
-                );
+            values.map(
+                value =>
+                    this.number(
+                        value
+                    )
+            );
 
         if (
             validValues.length === 0
         ) {
+
             return 0;
+
         }
 
         return (
             validValues.reduce(
-                (total, value) =>
-                    total + value,
+                (
+                    total,
+                    value
+                ) =>
+                    total +
+                    value,
                 0
             ) /
             validValues.length
@@ -967,7 +1174,9 @@ const AtlasCalculations = {
                     .forEach(
                         item => {
 
-                            totals[item.category] =
+                            totals[
+                                item.category
+                            ] =
                                 (
                                     totals[
                                         item.category
@@ -992,12 +1201,18 @@ const AtlasCalculations = {
                     category,
                     amount
                 ]) => ({
+
                     category,
+
                     amount
+
                 })
             )
             .sort(
-                (a, b) =>
+                (
+                    a,
+                    b
+                ) =>
                     b.amount -
                     a.amount
             );
@@ -1010,17 +1225,26 @@ const AtlasCalculations = {
     ) {
 
         if (
-            !Array.isArray(months) ||
+            !Array.isArray(
+                months
+            ) ||
             months.length === 0
         ) {
+
             return null;
+
         }
 
         return months.reduce(
-            (best, month) => {
+            (
+                best,
+                month
+            ) => {
 
                 if (!best) {
+
                     return month;
+
                 }
 
                 return (
@@ -1046,17 +1270,26 @@ const AtlasCalculations = {
     ) {
 
         if (
-            !Array.isArray(months) ||
+            !Array.isArray(
+                months
+            ) ||
             months.length === 0
         ) {
+
             return null;
+
         }
 
         return months.reduce(
-            (worst, month) => {
+            (
+                worst,
+                month
+            ) => {
 
                 if (!worst) {
+
                     return month;
+
                 }
 
                 return (
@@ -1099,7 +1332,10 @@ const AtlasCalculations = {
 
             income:
                 months.reduce(
-                    (total, month) =>
+                    (
+                        total,
+                        month
+                    ) =>
                         total +
                         month.income,
                     0
@@ -1107,7 +1343,10 @@ const AtlasCalculations = {
 
             expenses:
                 months.reduce(
-                    (total, month) =>
+                    (
+                        total,
+                        month
+                    ) =>
                         total +
                         month.expenses,
                     0
@@ -1115,7 +1354,10 @@ const AtlasCalculations = {
 
             invested:
                 months.reduce(
-                    (total, month) =>
+                    (
+                        total,
+                        month
+                    ) =>
                         total +
                         month.invested,
                     0
@@ -1123,7 +1365,10 @@ const AtlasCalculations = {
 
             cashOutflow:
                 months.reduce(
-                    (total, month) =>
+                    (
+                        total,
+                        month
+                    ) =>
                         total +
                         month.cashOutflow,
                     0
@@ -1131,7 +1376,10 @@ const AtlasCalculations = {
 
             savings:
                 months.reduce(
-                    (total, month) =>
+                    (
+                        total,
+                        month
+                    ) =>
                         total +
                         month.savings,
                     0
@@ -1194,7 +1442,9 @@ const AtlasCalculations = {
         return {
 
             period:
-                Number(period),
+                Number(
+                    period
+                ),
 
             startMonthKey:
                 monthKeys[0] ||
