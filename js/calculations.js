@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    calculations.js
-   Sprint 3.2 — Comparativas mensuales y categorías
+   Sprint 3.3 — Tendencias de 3, 6 y 12 meses
 ========================================================== */
 
 const AtlasCalculations = {
@@ -145,12 +145,17 @@ const AtlasCalculations = {
 
     },
 
-    previousMonthKey(monthKey) {
+    shiftMonthKey(
+        monthKey,
+        difference
+    ) {
 
         const [
             year,
             month
-        ] = String(monthKey)
+        ] = String(
+            monthKey || ""
+        )
             .split("-")
             .map(Number);
 
@@ -164,11 +169,52 @@ const AtlasCalculations = {
         const date =
             new Date(
                 year,
-                month - 2,
+                month - 1 + difference,
                 1
             );
 
         return this.monthKey(date);
+
+    },
+
+    previousMonthKey(monthKey) {
+
+        return this.shiftMonthKey(
+            monthKey,
+            -1
+        );
+
+    },
+
+    monthKeys(
+        endMonthKey = this.monthKey(),
+        numberOfMonths = 6
+    ) {
+
+        const months =
+            Math.max(
+                1,
+                Number(numberOfMonths) || 1
+            );
+
+        const keys = [];
+
+        for (
+            let index = months - 1;
+            index >= 0;
+            index -= 1
+        ) {
+
+            keys.push(
+                this.shiftMonthKey(
+                    endMonthKey,
+                    -index
+                )
+            );
+
+        }
+
+        return keys;
 
     },
 
@@ -252,17 +298,6 @@ const AtlasCalculations = {
     },
 
     expenseCountsForSavings(movement) {
-
-        /*
-           Las compras con tarjeta cuentan
-           como gasto en la fecha de compra.
-
-           La liquidación posterior de Amex
-           o tarjeta BBVA no vuelve a contar.
-
-           La cuota del préstamo del coche
-           sí cuenta como gasto mensual.
-        */
 
         if (
             this.isCreditCardSettlement(
@@ -829,6 +864,378 @@ const AtlasCalculations = {
                 this.expenseCategories(
                     data,
                     previousMonthKey
+                )
+
+        };
+
+    },
+
+    average(values) {
+
+        const validValues =
+            values
+                .map(
+                    value =>
+                        this.number(value)
+                );
+
+        if (
+            validValues.length === 0
+        ) {
+            return 0;
+        }
+
+        return (
+            validValues.reduce(
+                (total, value) =>
+                    total + value,
+                0
+            ) /
+            validValues.length
+        );
+
+    },
+
+    trendMonths(
+        data,
+        period = 6,
+        endMonthKey = this.monthKey()
+    ) {
+
+        return this.monthKeys(
+            endMonthKey,
+            period
+        )
+            .map(
+                monthKey => {
+
+                    const summary =
+                        this.financialSummary(
+                            data,
+                            monthKey
+                        );
+
+                    return {
+
+                        monthKey,
+
+                        income:
+                            summary.monthlyIncome,
+
+                        expenses:
+                            summary.monthlyExpenses,
+
+                        invested:
+                            summary.monthlyInvested,
+
+                        cashOutflow:
+                            summary.monthlyCashOutflow,
+
+                        savings:
+                            summary.monthlySavings,
+
+                        savingRate:
+                            summary.monthlySavingRate,
+
+                        movements:
+                            this.movementsForMonth(
+                                data,
+                                monthKey
+                            ).length
+
+                    };
+
+                }
+            );
+
+    },
+
+    trendCategoryTotals(
+        data,
+        monthKeys
+    ) {
+
+        const totals = {};
+
+        monthKeys.forEach(
+            monthKey => {
+
+                this.expenseCategories(
+                    data,
+                    monthKey
+                )
+                    .forEach(
+                        item => {
+
+                            totals[item.category] =
+                                (
+                                    totals[
+                                        item.category
+                                    ] ||
+                                    0
+                                ) +
+                                this.number(
+                                    item.amount
+                                );
+
+                        }
+                    );
+
+            }
+        );
+
+        return Object.entries(
+            totals
+        )
+            .map(
+                ([
+                    category,
+                    amount
+                ]) => ({
+                    category,
+                    amount
+                })
+            )
+            .sort(
+                (a, b) =>
+                    b.amount -
+                    a.amount
+            );
+
+    },
+
+    bestMonth(
+        months,
+        property
+    ) {
+
+        if (
+            !Array.isArray(months) ||
+            months.length === 0
+        ) {
+            return null;
+        }
+
+        return months.reduce(
+            (best, month) => {
+
+                if (!best) {
+                    return month;
+                }
+
+                return (
+                    this.number(
+                        month[property]
+                    ) >
+                    this.number(
+                        best[property]
+                    )
+                )
+                    ? month
+                    : best;
+
+            },
+            null
+        );
+
+    },
+
+    worstMonth(
+        months,
+        property
+    ) {
+
+        if (
+            !Array.isArray(months) ||
+            months.length === 0
+        ) {
+            return null;
+        }
+
+        return months.reduce(
+            (worst, month) => {
+
+                if (!worst) {
+                    return month;
+                }
+
+                return (
+                    this.number(
+                        month[property]
+                    ) <
+                    this.number(
+                        worst[property]
+                    )
+                )
+                    ? month
+                    : worst;
+
+            },
+            null
+        );
+
+    },
+
+    trendSummary(
+        data,
+        period = 6,
+        endMonthKey = this.monthKey()
+    ) {
+
+        const months =
+            this.trendMonths(
+                data,
+                period,
+                endMonthKey
+            );
+
+        const monthKeys =
+            months.map(
+                month =>
+                    month.monthKey
+            );
+
+        const totals = {
+
+            income:
+                months.reduce(
+                    (total, month) =>
+                        total +
+                        month.income,
+                    0
+                ),
+
+            expenses:
+                months.reduce(
+                    (total, month) =>
+                        total +
+                        month.expenses,
+                    0
+                ),
+
+            invested:
+                months.reduce(
+                    (total, month) =>
+                        total +
+                        month.invested,
+                    0
+                ),
+
+            cashOutflow:
+                months.reduce(
+                    (total, month) =>
+                        total +
+                        month.cashOutflow,
+                    0
+                ),
+
+            savings:
+                months.reduce(
+                    (total, month) =>
+                        total +
+                        month.savings,
+                    0
+                )
+
+        };
+
+        const averages = {
+
+            income:
+                this.average(
+                    months.map(
+                        month =>
+                            month.income
+                    )
+                ),
+
+            expenses:
+                this.average(
+                    months.map(
+                        month =>
+                            month.expenses
+                    )
+                ),
+
+            invested:
+                this.average(
+                    months.map(
+                        month =>
+                            month.invested
+                    )
+                ),
+
+            cashOutflow:
+                this.average(
+                    months.map(
+                        month =>
+                            month.cashOutflow
+                    )
+                ),
+
+            savings:
+                this.average(
+                    months.map(
+                        month =>
+                            month.savings
+                    )
+                ),
+
+            savingRate:
+                this.average(
+                    months.map(
+                        month =>
+                            month.savingRate
+                    )
+                )
+
+        };
+
+        return {
+
+            period:
+                Number(period),
+
+            startMonthKey:
+                monthKeys[0] ||
+                endMonthKey,
+
+            endMonthKey,
+
+            months,
+
+            totals,
+
+            averages,
+
+            bestSavingsMonth:
+                this.bestMonth(
+                    months,
+                    "savings"
+                ),
+
+            worstSavingsMonth:
+                this.worstMonth(
+                    months,
+                    "savings"
+                ),
+
+            highestExpenseMonth:
+                this.bestMonth(
+                    months,
+                    "expenses"
+                ),
+
+            lowestExpenseMonth:
+                this.worstMonth(
+                    months,
+                    "expenses"
+                ),
+
+            categories:
+                this.trendCategoryTotals(
+                    data,
+                    monthKeys
                 )
 
         };
