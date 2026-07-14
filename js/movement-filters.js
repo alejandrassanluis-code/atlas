@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    movement-filters.js
-   Sprint 7.2 — Búsqueda y filtros de movimientos
+   Sprint 7.3 — Resumen y filtros avanzados
 ========================================================== */
 
 const AtlasMovementFilters = {
@@ -446,6 +446,96 @@ const AtlasMovementFilters = {
 
     },
 
+    matchesAmount(
+        movement,
+        minimumAmount,
+        maximumAmount
+    ) {
+
+        const amount =
+            this.number(
+                movement?.amount
+            );
+
+        if (
+            minimumAmount !== "" &&
+            minimumAmount !== null &&
+            minimumAmount !== undefined
+        ) {
+
+            const minimum =
+                this.number(
+                    minimumAmount
+                );
+
+            if (
+                amount < minimum
+            ) {
+
+                return false;
+
+            }
+
+        }
+
+        if (
+            maximumAmount !== "" &&
+            maximumAmount !== null &&
+            maximumAmount !== undefined
+        ) {
+
+            const maximum =
+                this.number(
+                    maximumAmount
+                );
+
+            if (
+                amount > maximum
+            ) {
+
+                return false;
+
+            }
+
+        }
+
+        return true;
+
+    },
+
+    matchesDate(
+        movement,
+        dateFrom,
+        dateTo
+    ) {
+
+        const movementDate =
+            String(
+                movement?.date || ""
+            );
+
+        if (
+            dateFrom &&
+            movementDate < dateFrom
+        ) {
+
+            return false;
+
+        }
+
+        if (
+            dateTo &&
+            movementDate > dateTo
+        ) {
+
+            return false;
+
+        }
+
+        return true;
+
+    },
+
     filteredMovements(
         data,
         monthKey,
@@ -488,6 +578,22 @@ const AtlasMovementFilters = {
                     this.matchesAccount(
                         movement,
                         filters.accountId
+                    )
+            )
+            .filter(
+                movement =>
+                    this.matchesAmount(
+                        movement,
+                        filters.minimumAmount,
+                        filters.maximumAmount
+                    )
+            )
+            .filter(
+                movement =>
+                    this.matchesDate(
+                        movement,
+                        filters.dateFrom,
+                        filters.dateTo
                     )
             )
             .sort(
@@ -687,20 +793,92 @@ const AtlasMovementFilters = {
 
     },
 
+    monthDateLimits(monthKey) {
+
+        const [
+            year,
+            month
+        ] = String(
+            monthKey || ""
+        )
+            .split("-")
+            .map(Number);
+
+        if (
+            !year ||
+            !month
+        ) {
+
+            return {
+
+                minimum:
+                    "",
+
+                maximum:
+                    ""
+
+            };
+
+        }
+
+        const lastDay =
+            new Date(
+                year,
+                month,
+                0
+            ).getDate();
+
+        return {
+
+            minimum:
+                `${monthKey}-01`,
+
+            maximum:
+                `${monthKey}-${String(
+                    lastDay
+                ).padStart(
+                    2,
+                    "0"
+                )}`
+
+        };
+
+    },
+
     filtersPanel(
         data,
         filters,
         resultCount,
-        totalCount
+        totalCount,
+        monthKey
     ) {
 
         const filtersActive =
             Boolean(
+
                 filters.search ||
+
                 filters.type !==
                     "all" ||
+
                 filters.accountId !==
-                    "all"
+                    "all" ||
+
+                filters.minimumAmount !==
+                    "" ||
+
+                filters.maximumAmount !==
+                    "" ||
+
+                filters.dateFrom ||
+
+                filters.dateTo
+
+            );
+
+        const dateLimits =
+            this.monthDateLimits(
+                monthKey
             );
 
         return `
@@ -775,6 +953,139 @@ const AtlasMovementFilters = {
 
                 </div>
 
+                <details
+                    class="atlas-movement-advanced"
+                    ${
+                        filters.minimumAmount !== "" ||
+                        filters.maximumAmount !== "" ||
+                        filters.dateFrom ||
+                        filters.dateTo
+                            ? "open"
+                            : ""
+                    }
+                >
+
+                    <summary>
+                        Filtros avanzados
+                    </summary>
+
+                    <div class="atlas-movement-advanced-content">
+
+                        <div class="atlas-movement-filter-grid">
+
+                            <label>
+
+                                <span>
+                                    Importe mínimo
+                                </span>
+
+                                <div class="atlas-movement-amount-filter">
+
+                                    <input
+                                        type="number"
+                                        name="movementMinimumAmount"
+                                        min="0"
+                                        step="0.01"
+                                        inputmode="decimal"
+                                        value="${this.escape(
+                                            filters.minimumAmount
+                                        )}"
+                                        placeholder="0"
+                                        data-movement-advanced-filter
+                                    >
+
+                                    <b>
+                                        €
+                                    </b>
+
+                                </div>
+
+                            </label>
+
+                            <label>
+
+                                <span>
+                                    Importe máximo
+                                </span>
+
+                                <div class="atlas-movement-amount-filter">
+
+                                    <input
+                                        type="number"
+                                        name="movementMaximumAmount"
+                                        min="0"
+                                        step="0.01"
+                                        inputmode="decimal"
+                                        value="${this.escape(
+                                            filters.maximumAmount
+                                        )}"
+                                        placeholder="Sin límite"
+                                        data-movement-advanced-filter
+                                    >
+
+                                    <b>
+                                        €
+                                    </b>
+
+                                </div>
+
+                            </label>
+
+                        </div>
+
+                        <div class="atlas-movement-filter-grid">
+
+                            <label>
+
+                                <span>
+                                    Desde
+                                </span>
+
+                                <input
+                                    type="date"
+                                    name="movementDateFrom"
+                                    min="${dateLimits.minimum}"
+                                    max="${dateLimits.maximum}"
+                                    value="${this.escape(
+                                        filters.dateFrom
+                                    )}"
+                                    data-movement-advanced-filter
+                                >
+
+                            </label>
+
+                            <label>
+
+                                <span>
+                                    Hasta
+                                </span>
+
+                                <input
+                                    type="date"
+                                    name="movementDateTo"
+                                    min="${dateLimits.minimum}"
+                                    max="${dateLimits.maximum}"
+                                    value="${this.escape(
+                                        filters.dateTo
+                                    )}"
+                                    data-movement-advanced-filter
+                                >
+
+                            </label>
+
+                        </div>
+
+                        <button
+                            class="atlas-movement-apply"
+                            type="submit"
+                        >
+                            Aplicar filtros
+                        </button>
+
+                    </div>
+
+                </details>
+
                 <div class="atlas-movement-filter-footer">
 
                     <small>
@@ -811,6 +1122,187 @@ const AtlasMovementFilters = {
                 </div>
 
             </form>
+
+        `;
+
+    },
+
+    movementSummary(list) {
+
+        const summary = {
+
+            income:
+                0,
+
+            expenses:
+                0,
+
+            invested:
+                0,
+
+            debtPayments:
+                0,
+
+            transfers:
+                0
+
+        };
+
+        list.forEach(
+            movement => {
+
+                const amount =
+                    this.number(
+                        movement.amount
+                    );
+
+                const kind =
+                    this.movementKind(
+                        movement
+                    );
+
+                if (
+                    kind === "income"
+                ) {
+
+                    summary.income +=
+                        amount;
+
+                    return;
+
+                }
+
+                if (
+                    kind === "expense"
+                ) {
+
+                    summary.expenses +=
+                        amount;
+
+                    return;
+
+                }
+
+                if (
+                    kind === "investment"
+                ) {
+
+                    summary.invested +=
+                        amount;
+
+                    return;
+
+                }
+
+                if (
+                    kind === "debt_payment"
+                ) {
+
+                    summary.debtPayments +=
+                        amount;
+
+                    return;
+
+                }
+
+                if (
+                    kind === "transfer"
+                ) {
+
+                    summary.transfers +=
+                        amount;
+
+                }
+
+            }
+        );
+
+        summary.result =
+            summary.income -
+            summary.expenses -
+            summary.invested;
+
+        return summary;
+
+    },
+
+    summaryCard(
+        icon,
+        label,
+        value,
+        color
+    ) {
+
+        return `
+
+            <article class="atlas-movement-summary-card">
+
+                <small>
+                    ${icon}
+                    ${label}
+                </small>
+
+                <strong
+                    style="
+                        color:${color};
+                    "
+                >
+                    ${AtlasUI.formatCurrency(
+                        value
+                    )}
+                </strong>
+
+            </article>
+
+        `;
+
+    },
+
+    summaryPanel(list) {
+
+        const summary =
+            this.movementSummary(
+                list
+            );
+
+        const resultColor =
+            summary.result >= 0
+                ? "var(--color-success)"
+                : "var(--color-danger)";
+
+        return `
+
+            <section class="atlas-movement-summary">
+
+                ${this.summaryCard(
+                    "🟢",
+                    "Ingresos",
+                    summary.income,
+                    "var(--color-success)"
+                )}
+
+                ${this.summaryCard(
+                    "🔴",
+                    "Gastos",
+                    summary.expenses,
+                    "var(--color-danger)"
+                )}
+
+                ${this.summaryCard(
+                    "📈",
+                    "Invertido",
+                    summary.invested,
+                    "#9d8cff"
+                )}
+
+                ${this.summaryCard(
+                    "◎",
+                    "Resultado",
+                    summary.result,
+                    resultColor
+                )}
+
+            </section>
 
         `;
 
@@ -1031,6 +1523,38 @@ const AtlasMovementFilters = {
                     options.movementFilters
                         ?.accountId ??
                     "all"
+                ),
+
+            minimumAmount:
+                String(
+                    options.movementMinimumAmount ??
+                    options.movementFilters
+                        ?.minimumAmount ??
+                    ""
+                ),
+
+            maximumAmount:
+                String(
+                    options.movementMaximumAmount ??
+                    options.movementFilters
+                        ?.maximumAmount ??
+                    ""
+                ),
+
+            dateFrom:
+                String(
+                    options.movementDateFrom ??
+                    options.movementFilters
+                        ?.dateFrom ??
+                    ""
+                ),
+
+            dateTo:
+                String(
+                    options.movementDateTo ??
+                    options.movementFilters
+                        ?.dateTo ??
+                    ""
                 )
 
         };
@@ -1050,11 +1574,25 @@ const AtlasMovementFilters = {
 
         const filtersActive =
             Boolean(
+
                 filters.search ||
+
                 filters.type !==
                     "all" ||
+
                 filters.accountId !==
-                    "all"
+                    "all" ||
+
+                filters.minimumAmount !==
+                    "" ||
+
+                filters.maximumAmount !==
+                    "" ||
+
+                filters.dateFrom ||
+
+                filters.dateTo
+
             );
 
         return `
@@ -1068,7 +1606,7 @@ const AtlasMovementFilters = {
                 </h1>
 
                 <p class="subtitle">
-                    Consulta, busca y edita las operaciones de cada mes.
+                    Consulta, filtra y edita las operaciones de cada mes.
                 </p>
 
                 ${AtlasUI.monthSelector({
@@ -1101,7 +1639,12 @@ const AtlasMovementFilters = {
                     data,
                     filters,
                     list.length,
-                    allMonthlyMovements.length
+                    allMonthlyMovements.length,
+                    movementsMonth
+                )}
+
+                ${this.summaryPanel(
+                    list
                 )}
 
                 <section class="panel atlas-movement-list-panel">
@@ -1155,7 +1698,11 @@ const AtlasMovementFilters = {
             )
         ) {
 
-            return;
+            document
+                .getElementById(
+                    "atlas-movement-filter-styles"
+                )
+                .remove();
 
         }
 
@@ -1183,7 +1730,7 @@ const AtlasMovementFilters = {
                 display: flex;
                 flex-direction: column;
                 gap: 12px;
-                margin-bottom: 16px;
+                margin-bottom: 14px;
                 padding: 14px;
                 border:
                     1px solid
@@ -1305,7 +1852,8 @@ const AtlasMovementFilters = {
                 font-weight: 700;
             }
 
-            .atlas-movement-filter-grid select {
+            .atlas-movement-filter-grid select,
+            .atlas-movement-filter-grid input {
                 width: 100%;
                 min-width: 0;
                 min-height: 48px;
@@ -1325,6 +1873,130 @@ const AtlasMovementFilters = {
                 background: #19243a;
                 color: #f7f8fc;
                 font-size: 13px;
+            }
+
+            .atlas-movement-filter-grid input:focus,
+            .atlas-movement-filter-grid select:focus {
+                border-color:
+                    var(
+                        --color-primary
+                    );
+                box-shadow:
+                    0 0 0 3px
+                    rgba(
+                        77,
+                        163,
+                        255,
+                        0.1
+                    );
+            }
+
+            .atlas-movement-advanced {
+                overflow: hidden;
+                border:
+                    1px solid
+                    rgba(
+                        145,
+                        164,
+                        202,
+                        0.13
+                    );
+                border-radius: 16px;
+                background:
+                    rgba(
+                        255,
+                        255,
+                        255,
+                        0.02
+                    );
+            }
+
+            .atlas-movement-advanced summary {
+                min-height: 46px;
+                display: flex;
+                align-items: center;
+                justify-content:
+                    space-between;
+                padding:
+                    0
+                    13px;
+                color:
+                    var(
+                        --color-text-muted
+                    );
+                cursor: pointer;
+                font-size: 12px;
+                font-weight: 750;
+                list-style: none;
+            }
+
+            .atlas-movement-advanced summary::-webkit-details-marker {
+                display: none;
+            }
+
+            .atlas-movement-advanced summary::after {
+                content: "⌄";
+                color:
+                    var(
+                        --color-primary
+                    );
+                font-size: 18px;
+                transition:
+                    transform
+                    0.2s ease;
+            }
+
+            .atlas-movement-advanced[open]
+            summary::after {
+                transform:
+                    rotate(180deg);
+            }
+
+            .atlas-movement-advanced-content {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+                padding:
+                    2px
+                    12px
+                    12px;
+            }
+
+            .atlas-movement-amount-filter {
+                position: relative;
+            }
+
+            .atlas-movement-amount-filter input {
+                padding-right: 32px;
+            }
+
+            .atlas-movement-amount-filter b {
+                position: absolute;
+                top: 50%;
+                right: 12px;
+                transform:
+                    translateY(-50%);
+                color:
+                    var(
+                        --color-text-muted
+                    );
+                font-size: 13px;
+            }
+
+            .atlas-movement-apply {
+                width: 100%;
+                min-height: 44px;
+                border-radius: 14px;
+                color: #ffffff;
+                background:
+                    rgba(
+                        77,
+                        163,
+                        255,
+                        0.18
+                    );
+                font-size: 13px;
+                font-weight: 750;
             }
 
             .atlas-movement-filter-footer {
@@ -1352,6 +2024,57 @@ const AtlasMovementFilters = {
                 background: transparent;
                 font-size: 11px;
                 font-weight: 750;
+            }
+
+            .atlas-movement-summary {
+                display: grid;
+                grid-template-columns:
+                    repeat(
+                        2,
+                        minmax(0, 1fr)
+                    );
+                gap: 9px;
+                margin-bottom: 14px;
+            }
+
+            .atlas-movement-summary-card {
+                min-width: 0;
+                padding: 13px;
+                border:
+                    1px solid
+                    rgba(
+                        145,
+                        164,
+                        202,
+                        0.14
+                    );
+                border-radius: 17px;
+                background:
+                    rgba(
+                        255,
+                        255,
+                        255,
+                        0.028
+                    );
+            }
+
+            .atlas-movement-summary-card small {
+                display: block;
+                color:
+                    var(
+                        --color-text-muted
+                    );
+                font-size: 10px;
+            }
+
+            .atlas-movement-summary-card strong {
+                display: block;
+                margin-top: 7px;
+                overflow: hidden;
+                font-size: 19px;
+                line-height: 1.05;
+                text-overflow: ellipsis;
+                white-space: nowrap;
             }
 
             .atlas-movement-list-panel {
