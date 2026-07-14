@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    calculations.js
-   Sprint 4.1 — Resumen mensual y deuda sin duplicidades
+   Sprint 5.0 — Motor de presupuestos mensuales
 ========================================================== */
 
 const AtlasCalculations = {
@@ -736,6 +736,1055 @@ const AtlasCalculations = {
 
     },
 
+    /*
+     * =======================================================
+     * PRESUPUESTOS
+     * =======================================================
+     */
+
+    expenseCatalog(data) {
+
+        const categories =
+            data?.catalog
+                ?.categories
+                ?.expense;
+
+        return Array.isArray(
+            categories
+        )
+            ? categories
+            : [];
+
+    },
+
+    budgetConfiguration(data) {
+
+        return (
+            data?.catalog
+                ?.budgets ||
+            {}
+        );
+
+    },
+
+    categoryBudgetConfigurations(data) {
+
+        const budgets =
+            this.budgetConfiguration(
+                data
+            );
+
+        return Array.isArray(
+            budgets.categoryBudgets
+        )
+            ? budgets.categoryBudgets
+            : [];
+
+    },
+
+    findExpenseCategory(
+        data,
+        categoryId
+    ) {
+
+        return this.expenseCatalog(
+            data
+        ).find(
+            category =>
+                category.id ===
+                categoryId
+        ) || null;
+
+    },
+
+    findExpenseSubcategory(
+        data,
+        categoryId,
+        subcategoryId
+    ) {
+
+        const category =
+            this.findExpenseCategory(
+                data,
+                categoryId
+            );
+
+        if (
+            !category ||
+            !Array.isArray(
+                category.subcategories
+            )
+        ) {
+
+            return null;
+
+        }
+
+        return category
+            .subcategories
+            .find(
+                subcategory =>
+                    subcategory.id ===
+                    subcategoryId
+            ) || null;
+
+    },
+
+    findCategoryBudgetConfiguration(
+        data,
+        categoryId
+    ) {
+
+        return this
+            .categoryBudgetConfigurations(
+                data
+            )
+            .find(
+                budget =>
+                    budget.categoryId ===
+                    categoryId
+            ) || null;
+
+    },
+
+    findSubcategoryBudgetConfiguration(
+        data,
+        categoryId,
+        subcategoryId
+    ) {
+
+        const categoryBudget =
+            this.findCategoryBudgetConfiguration(
+                data,
+                categoryId
+            );
+
+        if (
+            !categoryBudget ||
+            !Array.isArray(
+                categoryBudget.subcategories
+            )
+        ) {
+
+            return null;
+
+        }
+
+        return categoryBudget
+            .subcategories
+            .find(
+                budget =>
+                    budget.subcategoryId ===
+                    subcategoryId
+            ) || null;
+
+    },
+
+    movementCategoryId(
+        data,
+        movement
+    ) {
+
+        if (
+            movement?.categoryId
+        ) {
+
+            return movement.categoryId;
+
+        }
+
+        const legacyCategory =
+            String(
+                movement?.category || ""
+            )
+                .trim()
+                .toLowerCase();
+
+        if (!legacyCategory) {
+
+            return null;
+
+        }
+
+        const category =
+            this.expenseCatalog(data)
+                .find(
+                    item => {
+
+                        const name =
+                            String(
+                                item.name || ""
+                            )
+                                .trim()
+                                .toLowerCase();
+
+                        return (
+                            legacyCategory ===
+                                name ||
+                            legacyCategory.includes(
+                                name
+                            )
+                        );
+
+                    }
+                );
+
+        return category?.id || null;
+
+    },
+
+    movementSubcategoryId(
+        data,
+        movement
+    ) {
+
+        if (
+            movement?.subcategoryId
+        ) {
+
+            return movement.subcategoryId;
+
+        }
+
+        const categoryId =
+            this.movementCategoryId(
+                data,
+                movement
+            );
+
+        const category =
+            this.findExpenseCategory(
+                data,
+                categoryId
+            );
+
+        if (
+            !category ||
+            !Array.isArray(
+                category.subcategories
+            )
+        ) {
+
+            return null;
+
+        }
+
+        const legacyCategory =
+            String(
+                movement?.category || ""
+            )
+                .trim()
+                .toLowerCase();
+
+        const subcategory =
+            category.subcategories
+                .find(
+                    item => {
+
+                        const name =
+                            String(
+                                item.name || ""
+                            )
+                                .trim()
+                                .toLowerCase();
+
+                        return (
+                            legacyCategory ===
+                                name ||
+                            legacyCategory.includes(
+                                name
+                            )
+                        );
+
+                    }
+                );
+
+        return subcategory?.id || null;
+
+    },
+
+    monthlyExpenseMovements(
+        data,
+        monthKey = this.monthKey()
+    ) {
+
+        return this.movementsForMonth(
+            data,
+            monthKey
+        )
+            .filter(
+                movement =>
+                    this.expenseCountsForSavings(
+                        data,
+                        movement
+                    )
+            );
+
+    },
+
+    monthlyExpenseForCategory(
+        data,
+        categoryId,
+        monthKey = this.monthKey()
+    ) {
+
+        return this.monthlyExpenseMovements(
+            data,
+            monthKey
+        )
+            .filter(
+                movement =>
+                    this.movementCategoryId(
+                        data,
+                        movement
+                    ) ===
+                    categoryId
+            )
+            .reduce(
+                (
+                    total,
+                    movement
+                ) =>
+                    total +
+                    this.number(
+                        movement.amount
+                    ),
+                0
+            );
+
+    },
+
+    monthlyExpenseForSubcategory(
+        data,
+        categoryId,
+        subcategoryId,
+        monthKey = this.monthKey()
+    ) {
+
+        return this.monthlyExpenseMovements(
+            data,
+            monthKey
+        )
+            .filter(
+                movement =>
+                    this.movementCategoryId(
+                        data,
+                        movement
+                    ) ===
+                        categoryId &&
+                    this.movementSubcategoryId(
+                        data,
+                        movement
+                    ) ===
+                        subcategoryId
+            )
+            .reduce(
+                (
+                    total,
+                    movement
+                ) =>
+                    total +
+                    this.number(
+                        movement.amount
+                    ),
+                0
+            );
+
+    },
+
+    budgetAmount(
+        configuration,
+        monthlyIncome
+    ) {
+
+        if (
+            !configuration ||
+            configuration.active === false
+        ) {
+
+            return 0;
+
+        }
+
+        const mode =
+            String(
+                configuration.mode ||
+                "percentage"
+            );
+
+        if (
+            mode === "fixed" ||
+            mode === "fixed_amount"
+        ) {
+
+            return Math.max(
+                0,
+                this.number(
+                    configuration.fixedAmount
+                )
+            );
+
+        }
+
+        const percentage =
+            Math.max(
+                0,
+                this.number(
+                    configuration.targetPercent
+                )
+            );
+
+        if (
+            monthlyIncome <= 0
+        ) {
+
+            return 0;
+
+        }
+
+        return (
+            monthlyIncome *
+            percentage
+        ) / 100;
+
+    },
+
+    recommendedBudgetAmount(
+        configuration,
+        monthlyIncome
+    ) {
+
+        if (!configuration) {
+
+            return 0;
+
+        }
+
+        if (
+            monthlyIncome <= 0
+        ) {
+
+            return 0;
+
+        }
+
+        return (
+            monthlyIncome *
+            Math.max(
+                0,
+                this.number(
+                    configuration
+                        .recommendedPercent
+                )
+            )
+        ) / 100;
+
+    },
+
+    budgetUsedPercent(
+        spent,
+        budget
+    ) {
+
+        const budgetAmount =
+            this.number(
+                budget
+            );
+
+        const spentAmount =
+            this.number(
+                spent
+            );
+
+        if (
+            budgetAmount <= 0
+        ) {
+
+            return spentAmount > 0
+                ? null
+                : 0;
+
+        }
+
+        return (
+            spentAmount /
+            budgetAmount
+        ) * 100;
+
+    },
+
+    budgetThresholds(data) {
+
+        const thresholds =
+            this.budgetConfiguration(
+                data
+            )?.thresholds || {};
+
+        return {
+
+            healthy:
+                Math.max(
+                    0,
+                    this.number(
+                        thresholds.healthy ??
+                        80
+                    )
+                ),
+
+            warning:
+                Math.max(
+                    0,
+                    this.number(
+                        thresholds.warning ??
+                        100
+                    )
+                )
+
+        };
+
+    },
+
+    budgetStatus(
+        data,
+        spent,
+        budget
+    ) {
+
+        const spentAmount =
+            this.number(
+                spent
+            );
+
+        const budgetAmount =
+            this.number(
+                budget
+            );
+
+        if (
+            budgetAmount <= 0
+        ) {
+
+            return spentAmount > 0
+                ? "unbudgeted"
+                : "no_budget";
+
+        }
+
+        const percentage =
+            this.budgetUsedPercent(
+                spentAmount,
+                budgetAmount
+            );
+
+        const thresholds =
+            this.budgetThresholds(
+                data
+            );
+
+        if (
+            percentage <
+            thresholds.healthy
+        ) {
+
+            return "healthy";
+
+        }
+
+        if (
+            percentage <=
+            thresholds.warning
+        ) {
+
+            return "warning";
+
+        }
+
+        return "exceeded";
+
+    },
+
+    budgetRemaining(
+        spent,
+        budget
+    ) {
+
+        return (
+            this.number(
+                budget
+            ) -
+            this.number(
+                spent
+            )
+        );
+
+    },
+
+    subcategoryBudgetSummary(
+        data,
+        category,
+        subcategory,
+        categoryBudget,
+        monthKey,
+        monthlyIncome
+    ) {
+
+        const configuration =
+            categoryBudget
+                ?.subcategories
+                ?.find(
+                    item =>
+                        item.subcategoryId ===
+                        subcategory.id
+                ) ||
+            null;
+
+        const spent =
+            this.monthlyExpenseForSubcategory(
+                data,
+                category.id,
+                subcategory.id,
+                monthKey
+            );
+
+        const budget =
+            this.budgetAmount(
+                configuration,
+                monthlyIncome
+            );
+
+        const recommendedBudget =
+            this.recommendedBudgetAmount(
+                configuration,
+                monthlyIncome
+            );
+
+        const remaining =
+            this.budgetRemaining(
+                spent,
+                budget
+            );
+
+        const usedPercent =
+            this.budgetUsedPercent(
+                spent,
+                budget
+            );
+
+        return {
+
+            subcategoryId:
+                subcategory.id,
+
+            categoryId:
+                category.id,
+
+            name:
+                subcategory.name,
+
+            icon:
+                subcategory.icon || "",
+
+            active:
+                configuration
+                    ?.active !== false,
+
+            mode:
+                configuration
+                    ?.mode ||
+                "percentage",
+
+            targetPercent:
+                this.number(
+                    configuration
+                        ?.targetPercent
+                ),
+
+            recommendedPercent:
+                this.number(
+                    configuration
+                        ?.recommendedPercent
+                ),
+
+            fixedAmount:
+                configuration
+                    ?.fixedAmount ??
+                null,
+
+            budget,
+
+            recommendedBudget,
+
+            spent,
+
+            remaining,
+
+            usedPercent,
+
+            status:
+                this.budgetStatus(
+                    data,
+                    spent,
+                    budget
+                )
+
+        };
+
+    },
+
+    categoryBudgetSummary(
+        data,
+        category,
+        monthKey,
+        monthlyIncome
+    ) {
+
+        const configuration =
+            this.findCategoryBudgetConfiguration(
+                data,
+                category.id
+            );
+
+        const spent =
+            this.monthlyExpenseForCategory(
+                data,
+                category.id,
+                monthKey
+            );
+
+        const budget =
+            this.budgetAmount(
+                configuration,
+                monthlyIncome
+            );
+
+        const recommendedBudget =
+            this.recommendedBudgetAmount(
+                configuration,
+                monthlyIncome
+            );
+
+        const remaining =
+            this.budgetRemaining(
+                spent,
+                budget
+            );
+
+        const usedPercent =
+            this.budgetUsedPercent(
+                spent,
+                budget
+            );
+
+        const subcategories =
+            (
+                Array.isArray(
+                    category.subcategories
+                )
+                    ? category.subcategories
+                    : []
+            )
+                .filter(
+                    subcategory =>
+                        subcategory.active !==
+                        false
+                )
+                .sort(
+                    (
+                        first,
+                        second
+                    ) =>
+                        this.number(
+                            first.order
+                        ) -
+                        this.number(
+                            second.order
+                        )
+                )
+                .map(
+                    subcategory =>
+                        this.subcategoryBudgetSummary(
+                            data,
+                            category,
+                            subcategory,
+                            configuration,
+                            monthKey,
+                            monthlyIncome
+                        )
+                );
+
+        return {
+
+            categoryId:
+                category.id,
+
+            name:
+                category.name,
+
+            icon:
+                category.icon || "",
+
+            active:
+                configuration
+                    ?.active !== false,
+
+            mode:
+                configuration
+                    ?.mode ||
+                "percentage",
+
+            targetPercent:
+                this.number(
+                    configuration
+                        ?.targetPercent
+                ),
+
+            recommendedPercent:
+                this.number(
+                    configuration
+                        ?.recommendedPercent
+                ),
+
+            fixedAmount:
+                configuration
+                    ?.fixedAmount ??
+                null,
+
+            budget,
+
+            recommendedBudget,
+
+            spent,
+
+            remaining,
+
+            usedPercent,
+
+            status:
+                this.budgetStatus(
+                    data,
+                    spent,
+                    budget
+                ),
+
+            subcategories
+
+        };
+
+    },
+
+    budgetSummary(
+        data,
+        monthKey = this.monthKey()
+    ) {
+
+        const configuration =
+            this.budgetConfiguration(
+                data
+            );
+
+        const monthlyIncome =
+            this.monthlyIncome(
+                data,
+                monthKey
+            );
+
+        const monthlyExpenses =
+            this.monthlyExpenses(
+                data,
+                monthKey
+            );
+
+        const categories =
+            this.expenseCatalog(data)
+                .filter(
+                    category =>
+                        category.active !==
+                        false
+                )
+                .sort(
+                    (
+                        first,
+                        second
+                    ) =>
+                        this.number(
+                            first.order
+                        ) -
+                        this.number(
+                            second.order
+                        )
+                )
+                .map(
+                    category =>
+                        this.categoryBudgetSummary(
+                            data,
+                            category,
+                            monthKey,
+                            monthlyIncome
+                        )
+                );
+
+        const activeCategories =
+            categories.filter(
+                category =>
+                    category.active
+            );
+
+        const totalBudget =
+            activeCategories.reduce(
+                (
+                    total,
+                    category
+                ) =>
+                    total +
+                    this.number(
+                        category.budget
+                    ),
+                0
+            );
+
+        const budgetedSpent =
+            activeCategories.reduce(
+                (
+                    total,
+                    category
+                ) =>
+                    total +
+                    this.number(
+                        category.spent
+                    ),
+                0
+            );
+
+        const totalRemaining =
+            totalBudget -
+            monthlyExpenses;
+
+        const usedPercent =
+            this.budgetUsedPercent(
+                monthlyExpenses,
+                totalBudget
+            );
+
+        const totalTargetPercent =
+            activeCategories.reduce(
+                (
+                    total,
+                    category
+                ) => {
+
+                    if (
+                        category.mode ===
+                            "fixed" ||
+                        category.mode ===
+                            "fixed_amount"
+                    ) {
+
+                        if (
+                            monthlyIncome <= 0
+                        ) {
+
+                            return total;
+
+                        }
+
+                        return (
+                            total +
+                            (
+                                category.budget /
+                                monthlyIncome
+                            ) *
+                            100
+                        );
+
+                    }
+
+                    return (
+                        total +
+                        this.number(
+                            category.targetPercent
+                        )
+                    );
+
+                },
+                0
+            );
+
+        const savingAndInvestmentTargetPercent =
+            this.number(
+                configuration
+                    .savingAndInvestmentTargetPercent
+            );
+
+        const savingAndInvestmentTargetAmount =
+            monthlyIncome > 0
+                ? (
+                    monthlyIncome *
+                    savingAndInvestmentTargetPercent
+                ) / 100
+                : 0;
+
+        return {
+
+            enabled:
+                configuration.enabled !==
+                false,
+
+            monthKey,
+
+            monthlyIncome,
+
+            monthlyExpenses,
+
+            totalBudget,
+
+            totalSpent:
+                monthlyExpenses,
+
+            budgetedSpent,
+
+            unbudgetedSpent:
+                Math.max(
+                    0,
+                    monthlyExpenses -
+                    budgetedSpent
+                ),
+
+            remaining:
+                totalRemaining,
+
+            usedPercent,
+
+            status:
+                this.budgetStatus(
+                    data,
+                    monthlyExpenses,
+                    totalBudget
+                ),
+
+            totalTargetPercent,
+
+            recommendedMaximumPercent:
+                this.number(
+                    configuration
+                        .warnAboveTotalPercent ??
+                    100
+                ),
+
+            savingAndInvestmentTargetPercent,
+
+            savingAndInvestmentTargetAmount,
+
+            thresholds:
+                this.budgetThresholds(
+                    data
+                ),
+
+            categories
+
+        };
+
+    },
+
     percentageChange(
         currentValue,
         previousValue
@@ -944,11 +1993,6 @@ const AtlasCalculations = {
 
             netWorth,
 
-            /*
-             * Nombres completos usados por
-             * Análisis y Tendencias.
-             */
-
             monthlyIncome,
 
             monthlyExpenses,
@@ -960,11 +2004,6 @@ const AtlasCalculations = {
             monthlySavings,
 
             monthlySavingRate,
-
-            /*
-             * Alias usados por el cuadro
-             * compacto de Inicio.
-             */
 
             income:
                 monthlyIncome,
