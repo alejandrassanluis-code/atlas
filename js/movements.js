@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    movements.js
-   Sprint 4.2 — Guardado explícito compatible con Safari
+   Sprint 4.3 — Límite de pagos de deuda
 ========================================================== */
 
 const AtlasMovements = {
@@ -133,6 +133,22 @@ const AtlasMovements = {
 
     },
 
+    formatCurrency(value) {
+
+        return new Intl.NumberFormat(
+            "es-ES",
+            {
+                style: "currency",
+                currency: "EUR",
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 2
+            }
+        ).format(
+            this.number(value)
+        );
+
+    },
+
     findMovement(id) {
 
         return (
@@ -170,6 +186,63 @@ const AtlasMovements = {
         }
 
         return movement?.type || "";
+
+    },
+
+    debtAvailableForPayment(movement) {
+
+        const debtAccount =
+            this.findAccount(
+                movement.toAccountId
+            );
+
+        if (!debtAccount) {
+
+            return 0;
+
+        }
+
+        let available =
+            Math.max(
+                0,
+                this.number(
+                    debtAccount.balance
+                )
+            );
+
+        /*
+         * Al editar un pago existente, el saldo actual
+         * ya incluye ese pago. Sumamos de nuevo el importe
+         * original cuando se mantiene la misma deuda.
+         */
+
+        if (this.editingId) {
+
+            const oldMovement =
+                this.findMovement(
+                    this.editingId
+                );
+
+            if (
+                oldMovement &&
+                this.getMovementKind(
+                    oldMovement
+                ) ===
+                    "debt_payment" &&
+                oldMovement.toAccountId ===
+                    movement.toAccountId
+            ) {
+
+                available +=
+                    this.number(
+                        oldMovement.amount
+                    );
+
+            }
+
+        }
+
+        return available;
 
     },
 
@@ -1955,6 +2028,35 @@ const AtlasMovements = {
             ) {
 
                 return "Selecciona una deuda válida.";
+
+            }
+
+            const availableDebt =
+                this.debtAvailableForPayment(
+                    movement
+                );
+
+            if (
+                availableDebt <= 0
+            ) {
+
+                return "Esta deuda ya está completamente pagada.";
+
+            }
+
+            if (
+                movement.amount >
+                availableDebt + 0.001
+            ) {
+
+                return (
+                    "El pago no puede superar " +
+                    `la deuda pendiente de ${
+                        this.formatCurrency(
+                            availableDebt
+                        )
+                    }.`
+                );
 
             }
 
