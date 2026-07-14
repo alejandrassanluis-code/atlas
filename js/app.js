@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    app.js
-   Sprint 4.0 — Limpieza visual y navegación
+   Sprint 5.0 — Navegación de presupuestos
 ========================================================== */
 
 const AtlasApp = {
@@ -13,6 +13,8 @@ const AtlasApp = {
     analysisMonth: null,
 
     movementsMonth: null,
+
+    budgetMonth: null,
 
     analysisView: "monthly",
 
@@ -27,11 +29,17 @@ const AtlasApp = {
         this.data =
             AtlasStorage.load();
 
-        this.analysisMonth =
+        const currentMonth =
             this.currentMonthKey();
 
+        this.analysisMonth =
+            currentMonth;
+
         this.movementsMonth =
-            this.currentMonthKey();
+            currentMonth;
+
+        this.budgetMonth =
+            currentMonth;
 
         this.analysisView =
             "monthly";
@@ -153,6 +161,15 @@ const AtlasApp = {
 
         return (
             this.movementsMonth ===
+            this.currentMonthKey()
+        );
+
+    },
+
+    isCurrentBudgetMonth() {
+
+        return (
+            this.budgetMonth ===
             this.currentMonthKey()
         );
 
@@ -321,6 +338,39 @@ const AtlasApp = {
 
                         break;
 
+                    case "previousBudgetMonth":
+
+                        this.budgetMonth =
+                            this.shiftMonth(
+                                this.budgetMonth,
+                                -1
+                            );
+
+                        this.route =
+                            "budgets";
+
+                        this.render();
+
+                        break;
+
+                    case "nextBudgetMonth":
+
+                        this.nextBudgetMonth();
+
+                        break;
+
+                    case "currentBudgetMonth":
+
+                        this.budgetMonth =
+                            this.currentMonthKey();
+
+                        this.route =
+                            "budgets";
+
+                        this.render();
+
+                        break;
+
                     case "resetAtlas":
 
                         this.reset();
@@ -401,6 +451,9 @@ const AtlasApp = {
                         movementMonth;
 
                     this.analysisMonth =
+                        movementMonth;
+
+                    this.budgetMonth =
                         movementMonth;
 
                 }
@@ -502,6 +555,37 @@ const AtlasApp = {
 
     },
 
+    nextBudgetMonth() {
+
+        if (
+            this.isCurrentBudgetMonth()
+        ) {
+            return;
+        }
+
+        this.budgetMonth =
+            this.shiftMonth(
+                this.budgetMonth,
+                1
+            );
+
+        if (
+            this.budgetMonth >
+            this.currentMonthKey()
+        ) {
+
+            this.budgetMonth =
+                this.currentMonthKey();
+
+        }
+
+        this.route =
+            "budgets";
+
+        this.render();
+
+    },
+
     setTrendsPeriod(value) {
 
         const period =
@@ -581,8 +665,26 @@ const AtlasApp = {
 
     navigate(route) {
 
+        const allowedRoutes = [
+
+            "home",
+
+            "movements",
+
+            "budgets",
+
+            "analysis",
+
+            "ai"
+
+        ];
+
         this.route =
-            route || "home";
+            allowedRoutes.includes(
+                route
+            )
+                ? route
+                : "home";
 
         this.render();
 
@@ -808,6 +910,9 @@ const AtlasApp = {
                 movementsMonth:
                     this.movementsMonth,
 
+                budgetMonth:
+                    this.budgetMonth,
+
                 currentMonth:
                     this.currentMonthKey(),
 
@@ -824,7 +929,10 @@ const AtlasApp = {
                     this.isCurrentAnalysisMonth(),
 
                 isCurrentMovementsMonth:
-                    this.isCurrentMovementsMonth()
+                    this.isCurrentMovementsMonth(),
+
+                isCurrentBudgetMonth:
+                    this.isCurrentBudgetMonth()
 
             }
         );
@@ -867,14 +975,20 @@ const AtlasApp = {
         this.data =
             AtlasStorage.reset();
 
+        const currentMonth =
+            this.currentMonthKey();
+
         this.route =
             "home";
 
         this.analysisMonth =
-            this.currentMonthKey();
+            currentMonth;
 
         this.movementsMonth =
-            this.currentMonthKey();
+            currentMonth;
+
+        this.budgetMonth =
+            currentMonth;
 
         this.analysisView =
             "monthly";
