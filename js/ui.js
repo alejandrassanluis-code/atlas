@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    ui.js
-   Sprint 3.4 — Ajustes, tendencias y snapshots
+   Sprint 4.0 — Inicio compacto, análisis y tendencias
 ========================================================== */
 
 const AtlasUI = {
@@ -506,6 +506,55 @@ const AtlasUI = {
 
     },
 
+    cumulativeSavings(data) {
+
+        const monthKeys =
+            [
+                ...new Set(
+                    (data.movements || [])
+                        .map(
+                            movement =>
+                                String(
+                                    movement.date || ""
+                                ).slice(0, 7)
+                        )
+                        .filter(
+                            monthKey =>
+                                /^\d{4}-\d{2}$/.test(
+                                    monthKey
+                                )
+                        )
+                )
+            ];
+
+        return monthKeys.reduce(
+            (
+                total,
+                monthKey
+            ) => {
+
+                const summary =
+                    AtlasCalculations
+                        .financialSummary(
+                            data,
+                            monthKey
+                        );
+
+                return (
+                    total +
+                    (
+                        Number(
+                            summary.monthlySavings
+                        ) || 0
+                    )
+                );
+
+            },
+            0
+        );
+
+    },
+
     dashboard(data) {
 
         const summary =
@@ -514,48 +563,133 @@ const AtlasUI = {
                     data
                 );
 
-        const profitability =
-            this.investmentProfitability(
-                summary
+        const cumulativeSavings =
+            this.cumulativeSavings(
+                data
             );
 
-        const savingsStatus =
-            this.savingsStatus(data);
+        const income =
+            Number(
+                summary.income
+            ) || 0;
 
-        const investmentNote =
-            summary.investedCapital > 0
-                ? `${
-                    profitability >= 0
-                        ? "+"
-                        : ""
-                }${this.formatPercent(
-                    profitability
-                )}`
-                : "Sin aportaciones";
+        const expenses =
+            Number(
+                summary.expenses
+            ) || 0;
+
+        const invested =
+            Number(
+                summary.invested
+            ) || 0;
+
+        const monthlySavings =
+            Number(
+                summary.monthlySavings
+            ) || 0;
+
+        const monthlySavingRate =
+            income > 0
+                ? (
+                    monthlySavings /
+                    income
+                ) * 100
+                : 0;
+
+        const monthlySavingColor =
+            monthlySavings >= 0
+                ? "var(--color-success)"
+                : "var(--color-danger)";
 
         return `
 
-            <div class="app">
+            <div
+                class="app"
+                style="
+                    min-height:auto;
+                    padding-bottom:
+                        calc(
+                            78px +
+                            env(
+                                safe-area-inset-bottom
+                            )
+                        );
+                "
+            >
 
-                ${this.header()}
+                <header
+                    class="header"
+                    style="
+                        margin-bottom:10px;
+                    "
+                >
+
+                    <div class="brand">
+
+                        <div
+                            class="logo"
+                            style="
+                                width:40px;
+                                height:40px;
+                            "
+                        >
+                            A
+                        </div>
+
+                        <div>
+
+                            <b>
+                                ATLAS
+                            </b>
+
+                            <small>
+                                ${this.shortDate()}
+                            </small>
+
+                        </div>
+
+                    </div>
+
+                    <button
+                        class="iconbtn"
+                        type="button"
+                        data-action="openSettings"
+                        aria-label="Abrir ajustes"
+                        style="
+                            width:40px;
+                            height:40px;
+                            font-size:20px;
+                        "
+                    >
+                        ⚙︎
+                    </button>
+
+                </header>
 
                 <section
                     class="hero"
                     style="
-                        padding:20px 24px;
-                        margin-bottom:18px;
+                        min-height:0;
+                        padding:14px 18px;
+                        margin-bottom:10px;
                     "
                 >
 
-                    <div class="eyebrow">
+                    <div
+                        class="eyebrow"
+                        style="
+                            font-size:11px;
+                        "
+                    >
                         Patrimonio neto
                     </div>
 
                     <div
                         class="value"
                         style="
-                            margin-top:8px;
-                            font-size:42px;
+                            margin-top:4px;
+                            font-size:34px;
+                            line-height:1.05;
                         "
                     >
                         ${this.formatCurrency(
@@ -565,9 +699,12 @@ const AtlasUI = {
 
                     <div
                         class="trend"
-                        style="margin-top:8px"
+                        style="
+                            margin-top:5px;
+                            font-size:11px;
+                        "
                     >
-                        Tu situación financiera actual
+                        Liquidez + inversiones − deuda
                     </div>
 
                 </section>
@@ -581,9 +718,8 @@ const AtlasUI = {
                                 2,
                                 minmax(0,1fr)
                             );
-                        gap:12px;
-                        margin-top:18px;
-                        margin-bottom:14px;
+                        gap:8px;
+                        margin:0 0 9px;
                     "
                 >
 
@@ -592,26 +728,36 @@ const AtlasUI = {
                         type="button"
                         data-route="analysis"
                         style="
-                            text-align:left;
                             min-width:0;
-                            padding:16px;
+                            min-height:78px;
+                            padding:11px 12px;
+                            text-align:left;
                         "
                     >
 
-                        <div class="label">
+                        <div
+                            class="label"
+                            style="
+                                font-size:11px;
+                                white-space:nowrap;
+                            "
+                        >
                             💵 Liquidez
                         </div>
 
-                        <div class="num">
+                        <div
+                            class="num"
+                            style="
+                                margin-top:6px;
+                                font-size:20px;
+                                line-height:1.05;
+                            "
+                        >
                             ${this.formatCurrency(
                                 summary.liquidity
                             )}
                         </div>
 
-                        <div class="note">
-                            Disponible
-                        </div>
-
                     </button>
 
                     <button
@@ -619,26 +765,36 @@ const AtlasUI = {
                         type="button"
                         data-route="analysis"
                         style="
-                            text-align:left;
                             min-width:0;
-                            padding:16px;
+                            min-height:78px;
+                            padding:11px 12px;
+                            text-align:left;
                         "
                     >
 
-                        <div class="label">
+                        <div
+                            class="label"
+                            style="
+                                font-size:11px;
+                                white-space:nowrap;
+                            "
+                        >
                             📈 Inversiones
                         </div>
 
-                        <div class="num">
+                        <div
+                            class="num"
+                            style="
+                                margin-top:6px;
+                                font-size:20px;
+                                line-height:1.05;
+                            "
+                        >
                             ${this.formatCurrency(
                                 summary.investments
                             )}
                         </div>
 
-                        <div class="note">
-                            ${investmentNote}
-                        </div>
-
                     </button>
 
                     <button
@@ -646,30 +802,36 @@ const AtlasUI = {
                         type="button"
                         data-route="analysis"
                         style="
-                            text-align:left;
                             min-width:0;
-                            padding:16px;
+                            min-height:78px;
+                            padding:11px 12px;
+                            text-align:left;
                         "
                     >
 
-                        <div class="label">
+                        <div
+                            class="label"
+                            style="
+                                font-size:11px;
+                                white-space:nowrap;
+                            "
+                        >
                             💳 Deuda
                         </div>
 
-                        <div class="num">
+                        <div
+                            class="num"
+                            style="
+                                margin-top:6px;
+                                font-size:20px;
+                                line-height:1.05;
+                            "
+                        >
                             ${this.formatCurrency(
                                 summary.debt
                             )}
                         </div>
 
-                        <div class="note">
-                            ${
-                                summary.debt > 0
-                                    ? "Pendiente"
-                                    : "Sin deuda"
-                            }
-                        </div>
-
                     </button>
 
                     <button
@@ -677,72 +839,262 @@ const AtlasUI = {
                         type="button"
                         data-route="analysis"
                         style="
-                            text-align:left;
                             min-width:0;
-                            padding:16px;
+                            min-height:78px;
+                            padding:11px 12px;
+                            text-align:left;
                         "
                     >
 
-                        <div class="label">
-                            🐷 Ahorro
-                            ${this.currentMonth()}
-                        </div>
-
-                        <div class="num">
-                            ${this.formatCurrency(
-                                summary.monthlySavings
-                            )}
+                        <div
+                            class="label"
+                            style="
+                                font-size:11px;
+                                white-space:nowrap;
+                            "
+                        >
+                            🐷 Ahorro acumulado
                         </div>
 
                         <div
-                            class="note"
+                            class="num"
                             style="
-                                color:
-                                    ${savingsStatus.color};
+                                margin-top:6px;
+                                font-size:20px;
+                                line-height:1.05;
+                                color:${
+                                    cumulativeSavings >= 0
+                                        ? "var(--color-success)"
+                                        : "var(--color-danger)"
+                                };
                             "
                         >
-                            ${savingsStatus.label}
+                            ${this.formatCurrency(
+                                cumulativeSavings
+                            )}
                         </div>
 
                     </button>
 
                 </div>
 
-                <section
+                <button
                     class="panel"
+                    type="button"
+                    data-route="analysis"
                     style="
-                        padding:16px 18px;
-                        margin-top:12px;
+                        display:block;
+                        width:100%;
+                        margin:0;
+                        padding:11px 13px;
+                        color:inherit;
+                        text-align:left;
                     "
                 >
 
-                    <div class="insight">
-
-                        <div class="badge">
-                            ✨
-                        </div>
+                    <div
+                        style="
+                            display:flex;
+                            align-items:center;
+                            justify-content:
+                                space-between;
+                            gap:10px;
+                            margin-bottom:8px;
+                        "
+                    >
 
                         <div>
 
-                            <div class="label">
-                                Atlas
+                            <div
+                                class="label"
+                                style="
+                                    font-size:10px;
+                                "
+                            >
+                                Este mes
                             </div>
 
-                            <p
-                                class="note"
-                                style="margin-top:5px"
+                            <strong
+                                style="
+                                    display:block;
+                                    margin-top:1px;
+                                    font-size:13px;
+                                "
                             >
-                                ${this.atlasMessage(
-                                    data,
-                                    summary
+                                ${this.currentMonth()}
+                            </strong>
+
+                        </div>
+
+                        <div
+                            style="
+                                text-align:right;
+                            "
+                        >
+
+                            <strong
+                                style="
+                                    display:block;
+                                    color:
+                                        ${monthlySavingColor};
+                                    font-size:16px;
+                                "
+                            >
+                                ${this.formatCurrency(
+                                    monthlySavings
                                 )}
-                            </p>
+                            </strong>
+
+                            <small
+                                class="note"
+                                style="
+                                    display:block;
+                                    margin-top:1px;
+                                    font-size:9px;
+                                "
+                            >
+                                ${
+                                    income > 0
+                                        ? `${this.formatPercent(
+                                            monthlySavingRate
+                                        )} de ahorro`
+                                        : "Ahorro mensual"
+                                }
+                            </small>
 
                         </div>
 
                     </div>
 
-                </section>
+                    <div
+                        style="
+                            display:grid;
+                            grid-template-columns:
+                                repeat(
+                                    3,
+                                    minmax(0,1fr)
+                                );
+                            gap:7px;
+                        "
+                    >
+
+                        <div
+                            style="
+                                min-width:0;
+                            "
+                        >
+
+                            <small
+                                class="note"
+                                style="
+                                    display:block;
+                                    font-size:9px;
+                                "
+                            >
+                                Ingresos
+                            </small>
+
+                            <strong
+                                style="
+                                    display:block;
+                                    margin-top:2px;
+                                    font-size:13px;
+                                    color:
+                                        var(
+                                            --color-success
+                                        );
+                                    white-space:nowrap;
+                                    overflow:hidden;
+                                    text-overflow:
+                                        ellipsis;
+                                "
+                            >
+                                ${this.formatCurrency(
+                                    income
+                                )}
+                            </strong>
+
+                        </div>
+
+                        <div
+                            style="
+                                min-width:0;
+                            "
+                        >
+
+                            <small
+                                class="note"
+                                style="
+                                    display:block;
+                                    font-size:9px;
+                                "
+                            >
+                                Gastos
+                            </small>
+
+                            <strong
+                                style="
+                                    display:block;
+                                    margin-top:2px;
+                                    font-size:13px;
+                                    color:
+                                        var(
+                                            --color-danger
+                                        );
+                                    white-space:nowrap;
+                                    overflow:hidden;
+                                    text-overflow:
+                                        ellipsis;
+                                "
+                            >
+                                ${this.formatCurrency(
+                                    expenses
+                                )}
+                            </strong>
+
+                        </div>
+
+                        <div
+                            style="
+                                min-width:0;
+                            "
+                        >
+
+                            <small
+                                class="note"
+                                style="
+                                    display:block;
+                                    font-size:9px;
+                                "
+                            >
+                                Invertido
+                            </small>
+
+                            <strong
+                                style="
+                                    display:block;
+                                    margin-top:2px;
+                                    font-size:13px;
+                                    color:
+                                        var(
+                                            --color-primary
+                                        );
+                                    white-space:nowrap;
+                                    overflow:hidden;
+                                    text-overflow:
+                                        ellipsis;
+                                "
+                            >
+                                ${this.formatCurrency(
+                                    invested
+                                )}
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+                </button>
 
             </div>
 
