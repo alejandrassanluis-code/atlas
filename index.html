@@ -1,131 +1,222 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
-  <meta charset="UTF-8">
 
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1, viewport-fit=cover"
-  >
+    <meta charset="UTF-8">
 
-  <meta name="theme-color" content="#0B1020">
-  <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta
+        name="viewport"
+        content="
+            width=device-width,
+            initial-scale=1,
+            maximum-scale=1,
+            viewport-fit=cover
+        "
+    >
 
-  <meta
-    name="apple-mobile-web-app-status-bar-style"
-    content="black-translucent"
-  >
+    <meta
+        name="theme-color"
+        content="#0b1020"
+    >
 
-  <meta
-    name="apple-mobile-web-app-title"
-    content="Atlas"
-  >
+    <meta
+        name="apple-mobile-web-app-capable"
+        content="yes"
+    >
 
-  <title>Atlas</title>
+    <meta
+        name="apple-mobile-web-app-status-bar-style"
+        content="black-translucent"
+    >
 
-  <link
-    rel="manifest"
-    href="manifest.json"
-  >
+    <meta
+        name="apple-mobile-web-app-title"
+        content="Atlas"
+    >
 
-  <link
-    rel="apple-touch-icon"
-    href="assets/icon-180.png"
-  >
+    <meta
+        name="description"
+        content="Atlas — Control financiero personal"
+    >
 
-  <link
-    rel="icon"
-    href="assets/icon-192.png"
-  >
+    <title>Atlas</title>
 
-  <link
-    rel="stylesheet"
-    href="css/variables.css"
-  >
+    <link
+        rel="manifest"
+        href="manifest.json"
+    >
 
-  <link
-    rel="stylesheet"
-    href="css/layout.css"
-  >
+    <link
+        rel="apple-touch-icon"
+        href="icons/icon-192.png"
+    >
 
-  <link
-    rel="stylesheet"
-    href="css/components.css"
-  >
+    <link
+        rel="stylesheet"
+        href="css/variables.css"
+    >
 
-  <link
-    rel="stylesheet"
-    href="css/pages.css"
-  >
+    <link
+        rel="stylesheet"
+        href="css/layout.css"
+    >
+
+    <link
+        rel="stylesheet"
+        href="css/components.css"
+    >
+
+    <link
+        rel="stylesheet"
+        href="css/pages.css"
+    >
+
 </head>
 
 <body>
 
-  <div id="app"></div>
+    <main id="app"></main>
 
-  <nav
-    class="tabbar"
-    aria-label="Navegación principal"
-  >
-
-    <button
-      class="active"
-      type="button"
-      data-route="home"
-      aria-label="Inicio"
+    <nav
+        class="tabbar"
+        aria-label="Navegación principal"
     >
-      <span>⌂</span>
-      <span>Inicio</span>
-    </button>
 
-    <button
-      type="button"
-      data-route="movements"
-      aria-label="Movimientos"
-    >
-      <span>⇄</span>
-      <span>Movimientos</span>
-    </button>
+        <button
+            class="active"
+            type="button"
+            data-route="home"
+            aria-label="Inicio"
+        >
 
-    <button
-      class="add"
-      type="button"
-      data-action="newMovement"
-      aria-label="Añadir movimiento"
-    >
-      <span>＋</span>
-    </button>
+            <span
+                aria-hidden="true"
+                style="
+                    display:block;
+                    font-size:25px;
+                    line-height:1;
+                    margin-bottom:5px;
+                "
+            >
+                ⌂
+            </span>
 
-    <button
-      type="button"
-      data-route="analysis"
-      aria-label="Análisis"
-    >
-      <span>⌁</span>
-      <span>Análisis</span>
-    </button>
+            <small>
+                Inicio
+            </small>
 
-    <button
-      type="button"
-      data-route="settings"
-      aria-label="Ajustes"
-    >
-      <span>⚙︎</span>
-      <span>Ajustes</span>
-    </button>
+        </button>
 
-  </nav>
+        <button
+            type="button"
+            data-route="movements"
+            aria-label="Movimientos"
+        >
 
-  <div id="modal-root"></div>
-  <div id="toast-root"></div>
+            <span
+                aria-hidden="true"
+                style="
+                    display:block;
+                    font-size:24px;
+                    line-height:1;
+                    margin-bottom:5px;
+                "
+            >
+                ⇄
+            </span>
 
-  <script src="js/data.js"></script>
-  <script src="js/storage.js"></script>
-  <script src="js/calculations.js"></script>
-  <script src="js/ui.js"></script>
-  <script src="js/setup.js"></script>
-  <script src="js/movements.js"></script>
-  <script src="js/app.js"></script>
+            <small>
+                Movimientos
+            </small>
+
+        </button>
+
+        <button
+            class="fab"
+            type="button"
+            data-action="newMovement"
+            aria-label="Nuevo movimiento"
+        >
+            +
+        </button>
+
+        <button
+            type="button"
+            data-route="analysis"
+            aria-label="Análisis"
+        >
+
+            <span
+                aria-hidden="true"
+                style="
+                    display:block;
+                    font-size:24px;
+                    line-height:1;
+                    margin-bottom:5px;
+                "
+            >
+                ◫
+            </span>
+
+            <small>
+                Análisis
+            </small>
+
+        </button>
+
+        <button
+            type="button"
+            data-route="ai"
+            aria-label="Atlas IA"
+        >
+
+            <span
+                aria-hidden="true"
+                style="
+                    display:block;
+                    font-size:24px;
+                    line-height:1;
+                    margin-bottom:5px;
+                "
+            >
+                ✦
+            </span>
+
+            <small>
+                IA
+            </small>
+
+        </button>
+
+    </nav>
+
+    <div
+        id="modal-root"
+        aria-live="polite"
+    ></div>
+
+    <div
+        id="toast-root"
+        aria-live="polite"
+    ></div>
+
+    <script src="js/data.js"></script>
+
+    <script src="js/storage.js"></script>
+
+    <script src="js/calculations.js"></script>
+
+    <script src="js/ui.js"></script>
+
+    <script src="js/setup.js"></script>
+
+    <script src="js/movements.js"></script>
+
+    <script src="js/settings.js"></script>
+
+    <script src="js/app.js"></script>
 
 </body>
+
 </html>
