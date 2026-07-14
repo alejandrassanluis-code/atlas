@@ -1,15 +1,13 @@
 /* ==========================================================
    ATLAS
    settings.js
-   Sprint 4.0 — Ajustes funcionales y saldos iniciales
+   Sprint 5.2 — Edición de presupuestos
 ========================================================== */
 
 const AtlasSettings = {
 
     data: null,
-
     onComplete: null,
-
     saving: false,
 
     open(
@@ -18,14 +16,9 @@ const AtlasSettings = {
         section = "menu"
     ) {
 
-        this.data =
-            data;
-
-        this.onComplete =
-            onComplete;
-
-        this.saving =
-            false;
+        this.data = data;
+        this.onComplete = onComplete;
+        this.saving = false;
 
         switch (section) {
 
@@ -38,6 +31,12 @@ const AtlasSettings = {
             case "goal":
 
                 this.renderSavingGoal();
+
+                break;
+
+            case "budgets":
+
+                this.renderBudgets();
 
                 break;
 
@@ -153,18 +152,17 @@ const AtlasSettings = {
             !year ||
             !month
         ) {
+
             return "";
+
         }
 
         const label =
             new Intl.DateTimeFormat(
                 "es-ES",
                 {
-                    month:
-                        "long",
-
-                    year:
-                        "numeric"
+                    month: "long",
+                    year: "numeric"
                 }
             ).format(
                 new Date(
@@ -187,17 +185,10 @@ const AtlasSettings = {
         return new Intl.NumberFormat(
             "es-ES",
             {
-                style:
-                    "currency",
-
-                currency:
-                    "EUR",
-
-                minimumFractionDigits:
-                    0,
-
-                maximumFractionDigits:
-                    2
+                style: "currency",
+                currency: "EUR",
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 2
             }
         ).format(
             this.number(value)
@@ -210,20 +201,17 @@ const AtlasSettings = {
         data = this.data
     ) {
 
-        return data.accounts
+        return (
+            data?.accounts || []
+        )
             .filter(
                 account =>
-                    account.group ===
-                    group
+                    account.group === group
             )
             .sort(
                 (a, b) =>
-                    this.number(
-                        a.order
-                    ) -
-                    this.number(
-                        b.order
-                    )
+                    this.number(a.order) -
+                    this.number(b.order)
             );
 
     },
@@ -261,6 +249,44 @@ const AtlasSettings = {
 
     },
 
+    expenseCategories() {
+
+        const categories =
+            this.data?.catalog
+                ?.categories
+                ?.expense;
+
+        return Array.isArray(categories)
+            ? categories
+            : [];
+
+    },
+
+    categoryBudgets() {
+
+        const budgets =
+            this.data?.catalog
+                ?.budgets
+                ?.categoryBudgets;
+
+        return Array.isArray(budgets)
+            ? budgets
+            : [];
+
+    },
+
+    findCategoryBudget(categoryId) {
+
+        return this
+            .categoryBudgets()
+            .find(
+                budget =>
+                    budget.categoryId ===
+                    categoryId
+            ) || null;
+
+    },
+
     styles() {
 
         return `
@@ -282,8 +308,7 @@ const AtlasSettings = {
                             18,
                             0.78
                         );
-                    backdrop-filter:
-                        blur(8px);
+                    backdrop-filter: blur(8px);
                     -webkit-backdrop-filter:
                         blur(8px);
                 }
@@ -296,6 +321,8 @@ const AtlasSettings = {
                     z-index: 3101;
                     max-height: 92vh;
                     overflow-y: auto;
+                    -webkit-overflow-scrolling:
+                        touch;
                     padding:
                         12px
                         22px
@@ -318,8 +345,7 @@ const AtlasSettings = {
                             202,
                             0.24
                         );
-                    background:
-                        #11192e;
+                    background: #11192e;
                     box-shadow:
                         0 -20px 60px
                         rgba(
@@ -330,8 +356,7 @@ const AtlasSettings = {
                         );
                     animation:
                         atlasSettingsUp
-                        0.24s
-                        ease;
+                        0.24s ease;
                 }
 
                 @keyframes atlasSettingsUp {
@@ -490,7 +515,8 @@ const AtlasSettings = {
                     font-weight: 700;
                 }
 
-                .atlas-settings-field input {
+                .atlas-settings-field input,
+                .atlas-settings-field select {
                     width: 100%;
                     min-height: 54px;
                     padding:
@@ -511,7 +537,8 @@ const AtlasSettings = {
                     font-size: 16px;
                 }
 
-                .atlas-settings-field input:focus {
+                .atlas-settings-field input:focus,
+                .atlas-settings-field select:focus {
                     border-color: #4da3ff;
                     box-shadow:
                         0 0 0 3px
@@ -594,6 +621,116 @@ const AtlasSettings = {
                     color: #98a2bb;
                 }
 
+                .atlas-budget-card {
+                    padding: 15px;
+                    border:
+                        1px solid
+                        rgba(
+                            145,
+                            164,
+                            202,
+                            0.17
+                        );
+                    border-radius: 19px;
+                    background:
+                        rgba(
+                            255,
+                            255,
+                            255,
+                            0.025
+                        );
+                }
+
+                .atlas-budget-head {
+                    display: flex;
+                    align-items: center;
+                    justify-content:
+                        space-between;
+                    gap: 14px;
+                    margin-bottom: 14px;
+                }
+
+                .atlas-budget-title {
+                    min-width: 0;
+                }
+
+                .atlas-budget-title strong {
+                    display: block;
+                    font-size: 16px;
+                }
+
+                .atlas-budget-title small {
+                    display: block;
+                    margin-top: 4px;
+                    color: #98a2bb;
+                    font-size: 12px;
+                }
+
+                .atlas-budget-fields {
+                    display: grid;
+                    grid-template-columns:
+                        minmax(0, 1fr)
+                        minmax(0, 1fr);
+                    gap: 10px;
+                }
+
+                .atlas-budget-toggle {
+                    position: relative;
+                    width: 52px;
+                    height: 30px;
+                    flex: 0 0 52px;
+                }
+
+                .atlas-budget-toggle input {
+                    position: absolute;
+                    opacity: 0;
+                    pointer-events: none;
+                }
+
+                .atlas-budget-toggle span {
+                    position: absolute;
+                    inset: 0;
+                    border-radius: 99px;
+                    background:
+                        rgba(
+                            145,
+                            164,
+                            202,
+                            0.24
+                        );
+                    transition:
+                        0.2s ease;
+                }
+
+                .atlas-budget-toggle span::after {
+                    content: "";
+                    position: absolute;
+                    top: 4px;
+                    left: 4px;
+                    width: 22px;
+                    height: 22px;
+                    border-radius: 50%;
+                    background: #ffffff;
+                    transition:
+                        0.2s ease;
+                }
+
+                .atlas-budget-toggle input:checked + span {
+                    background: #2879ed;
+                }
+
+                .atlas-budget-toggle input:checked + span::after {
+                    transform:
+                        translateX(22px);
+                }
+
+                .atlas-budget-recommended {
+                    margin-top: 11px;
+                    color: #98a2bb;
+                    font-size: 12px;
+                    line-height: 1.45;
+                }
+
                 .atlas-settings-primary,
                 .atlas-settings-secondary {
                     width: 100%;
@@ -660,7 +797,9 @@ const AtlasSettings = {
             this.root();
 
         if (!root) {
+
             return;
+
         }
 
         document.body.classList.add(
@@ -777,6 +916,13 @@ const AtlasSettings = {
                 )}
 
                 ${this.optionButton(
+                    "budgets",
+                    "📊",
+                    "Presupuestos",
+                    "Configura el límite mensual de cada categoría de gasto."
+                )}
+
+                ${this.optionButton(
                     "accounts",
                     "🏦",
                     "Nombres de cuentas",
@@ -798,25 +944,6 @@ const AtlasSettings = {
                 )}
 
             </div>
-
-            ${
-                !canEditInitialBalances
-                    ? `
-
-                        <p
-                            class="atlas-settings-warning"
-                            style="
-                                margin-top:14px;
-                            "
-                        >
-                            Los saldos iniciales ya no se pueden editar
-                            porque existen movimientos. Los saldos actuales
-                            se calculan automáticamente.
-                        </p>
-
-                    `
-                    : ""
-            }
 
             <button
                 class="atlas-settings-secondary"
@@ -974,30 +1101,283 @@ const AtlasSettings = {
 
     },
 
+    budgetCard(category) {
+
+        const budget =
+            this.findCategoryBudget(
+                category.id
+            ) || {};
+
+        const mode =
+            budget.mode ||
+            "percentage";
+
+        const active =
+            budget.active !== false;
+
+        const recommended =
+            this.number(
+                budget.recommendedPercent ??
+                category.recommendedPercent
+            );
+
+        const target =
+            this.number(
+                budget.targetPercent ??
+                recommended
+            );
+
+        const fixed =
+            this.number(
+                budget.fixedAmount
+            );
+
+        return `
+
+            <div
+                class="atlas-budget-card"
+                data-budget-card="${this.escape(
+                    category.id
+                )}"
+            >
+
+                <div class="atlas-budget-head">
+
+                    <div class="atlas-budget-title">
+
+                        <strong>
+                            ${this.escape(
+                                category.icon
+                            )}
+                            ${this.escape(
+                                category.name
+                            )}
+                        </strong>
+
+                        <small>
+                            Recomendado:
+                            ${recommended}%
+                        </small>
+
+                    </div>
+
+                    <label class="atlas-budget-toggle">
+
+                        <input
+                            name="budget_active_${this.escape(
+                                category.id
+                            )}"
+                            type="checkbox"
+                            ${
+                                active
+                                    ? "checked"
+                                    : ""
+                            }
+                        >
+
+                        <span></span>
+
+                    </label>
+
+                </div>
+
+                <div class="atlas-budget-fields">
+
+                    <label class="atlas-settings-field">
+
+                        <span>
+                            Tipo de límite
+                        </span>
+
+                        <select
+                            name="budget_mode_${this.escape(
+                                category.id
+                            )}"
+                            data-budget-mode="${this.escape(
+                                category.id
+                            )}"
+                        >
+
+                            <option
+                                value="percentage"
+                                ${
+                                    mode ===
+                                    "percentage"
+                                        ? "selected"
+                                        : ""
+                                }
+                            >
+                                Porcentaje
+                            </option>
+
+                            <option
+                                value="fixed"
+                                ${
+                                    mode ===
+                                        "fixed" ||
+                                    mode ===
+                                        "fixed_amount"
+                                        ? "selected"
+                                        : ""
+                                }
+                            >
+                                Importe fijo
+                            </option>
+
+                        </select>
+
+                    </label>
+
+                    <label class="atlas-settings-field">
+
+                        <span
+                            data-budget-value-label="${this.escape(
+                                category.id
+                            )}"
+                        >
+                            ${
+                                mode === "percentage"
+                                    ? "Porcentaje"
+                                    : "Importe mensual"
+                            }
+                        </span>
+
+                        <input
+                            name="budget_value_${this.escape(
+                                category.id
+                            )}"
+                            type="number"
+                            inputmode="decimal"
+                            min="0"
+                            step="0.5"
+                            value="${this.escape(
+                                mode === "percentage"
+                                    ? target
+                                    : fixed
+                            )}"
+                            required
+                        >
+
+                    </label>
+
+                </div>
+
+                <div class="atlas-budget-recommended">
+
+                    Con porcentaje, el límite cambia según
+                    los ingresos reales del mes. Con importe
+                    fijo, el límite se mantiene estable.
+
+                </div>
+
+            </div>
+
+        `;
+
+    },
+
+    renderBudgets() {
+
+        const categories =
+            this.expenseCategories()
+                .filter(
+                    category =>
+                        category.active !== false
+                )
+                .sort(
+                    (a, b) =>
+                        this.number(a.order) -
+                        this.number(b.order)
+                );
+
+        this.renderSheet(`
+
+            ${this.headerBlock(
+                "Presupuestos",
+                "Configura el límite mensual de cada categoría."
+            )}
+
+            <form
+                class="atlas-settings-form"
+                data-settings-form="budgets"
+            >
+
+                <p class="atlas-settings-warning">
+
+                    Los presupuestos solo sirven como guía.
+                    Atlas no bloqueará un gasto aunque se
+                    supere el límite.
+
+                </p>
+
+                ${categories
+                    .map(
+                        category =>
+                            this.budgetCard(
+                                category
+                            )
+                    )
+                    .join("")}
+
+                <button
+                    class="atlas-settings-secondary"
+                    type="button"
+                    data-settings-action="restoreBudgets"
+                    style="
+                        margin-top:0;
+                        border:
+                            1px solid
+                            rgba(
+                                145,
+                                164,
+                                202,
+                                0.16
+                            );
+                    "
+                >
+                    Restaurar recomendados
+                </button>
+
+                <button
+                    class="atlas-settings-primary"
+                    type="submit"
+                    data-settings-save
+                >
+                    Guardar presupuestos
+                </button>
+
+                <button
+                    class="atlas-settings-secondary"
+                    type="button"
+                    data-settings-action="close"
+                >
+                    Cancelar
+                </button>
+
+            </form>
+
+        `);
+
+    },
+
     renderAccountNames() {
 
         const groups = [
 
             {
-                title:
-                    "Liquidez",
-
+                title: "Liquidez",
                 accounts:
                     this.liquidityAccounts()
             },
 
             {
-                title:
-                    "Inversiones",
-
+                title: "Inversiones",
                 accounts:
                     this.investmentAccounts()
             },
 
             {
-                title:
-                    "Deudas",
-
+                title: "Deudas",
                 accounts:
                     this.debtAccounts()
             }
@@ -1502,7 +1882,9 @@ const AtlasSettings = {
             );
 
         if (!button) {
+
             return;
+
         }
 
         button.disabled =
@@ -1524,7 +1906,9 @@ const AtlasSettings = {
             );
 
         if (!button) {
+
             return;
+
         }
 
         button.disabled =
@@ -1637,6 +2021,222 @@ const AtlasSettings = {
         this.saveUpdatedData(
             updatedData,
             "Objetivo actualizado.",
+            form
+        );
+
+    },
+
+    saveBudgets(form) {
+
+        const values =
+            new FormData(form);
+
+        const updatedData =
+            this.cloneData();
+
+        const categories =
+            updatedData.catalog
+                ?.categories
+                ?.expense || [];
+
+        const budgets =
+            updatedData.catalog
+                ?.budgets;
+
+        if (!budgets) {
+
+            this.saving =
+                false;
+
+            this.restoreSaveButton(
+                form
+            );
+
+            AtlasUI.toast(
+                "No se encontró la configuración de presupuestos."
+            );
+
+            return;
+
+        }
+
+        if (
+            !Array.isArray(
+                budgets.categoryBudgets
+            )
+        ) {
+
+            budgets.categoryBudgets =
+                [];
+
+        }
+
+        let totalPercentage = 0;
+
+        for (
+            const category of
+            categories
+        ) {
+
+            let budget =
+                budgets.categoryBudgets
+                    .find(
+                        item =>
+                            item.categoryId ===
+                            category.id
+                    );
+
+            if (!budget) {
+
+                budget = {
+
+                    categoryId:
+                        category.id,
+
+                    mode:
+                        "percentage",
+
+                    recommendedPercent:
+                        this.number(
+                            category.recommendedPercent
+                        ),
+
+                    targetPercent:
+                        this.number(
+                            category.recommendedPercent
+                        ),
+
+                    fixedAmount:
+                        null,
+
+                    active:
+                        false,
+
+                    subcategories:
+                        []
+
+                };
+
+                budgets.categoryBudgets
+                    .push(budget);
+
+            }
+
+            const active =
+                values.has(
+                    `budget_active_${category.id}`
+                );
+
+            const mode =
+                String(
+                    values.get(
+                        `budget_mode_${category.id}`
+                    ) ||
+                    "percentage"
+                );
+
+            const value =
+                Number(
+                    values.get(
+                        `budget_value_${category.id}`
+                    )
+                );
+
+            if (
+                !Number.isFinite(value) ||
+                value < 0
+            ) {
+
+                this.saving =
+                    false;
+
+                this.restoreSaveButton(
+                    form
+                );
+
+                AtlasUI.toast(
+                    `Revisa el presupuesto de ${category.name}.`
+                );
+
+                return;
+
+            }
+
+            budget.active =
+                active;
+
+            if (
+                mode === "fixed"
+            ) {
+
+                budget.mode =
+                    "fixed";
+
+                budget.fixedAmount =
+                    value;
+
+            } else {
+
+                if (value > 100) {
+
+                    this.saving =
+                        false;
+
+                    this.restoreSaveButton(
+                        form
+                    );
+
+                    AtlasUI.toast(
+                        `El porcentaje de ${category.name} no puede superar el 100%.`
+                    );
+
+                    return;
+
+                }
+
+                budget.mode =
+                    "percentage";
+
+                budget.targetPercent =
+                    value;
+
+                if (active) {
+
+                    totalPercentage +=
+                        value;
+
+                }
+
+            }
+
+        }
+
+        if (
+            totalPercentage > 100
+        ) {
+
+            this.saving =
+                false;
+
+            this.restoreSaveButton(
+                form
+            );
+
+            AtlasUI.toast(
+                "La suma de los presupuestos porcentuales supera el 100%."
+            );
+
+            return;
+
+        }
+
+        updatedData.catalog.updatedAt =
+            new Date()
+                .toISOString();
+
+        this.saveUpdatedData(
+            updatedData,
+            "Presupuestos actualizados.",
             form
         );
 
@@ -1975,10 +2575,191 @@ const AtlasSettings = {
 
     },
 
+    restoreRecommendedBudgets() {
+
+        const updatedData =
+            this.cloneData();
+
+        const categories =
+            updatedData.catalog
+                ?.categories
+                ?.expense || [];
+
+        const budgets =
+            updatedData.catalog
+                ?.budgets;
+
+        if (!budgets) {
+
+            return;
+
+        }
+
+        budgets.categoryBudgets =
+            categories.map(
+                category => {
+
+                    const current =
+                        budgets.categoryBudgets
+                            ?.find(
+                                item =>
+                                    item.categoryId ===
+                                    category.id
+                            );
+
+                    return {
+
+                        categoryId:
+                            category.id,
+
+                        mode:
+                            "percentage",
+
+                        recommendedPercent:
+                            this.number(
+                                category.recommendedPercent
+                            ),
+
+                        targetPercent:
+                            this.number(
+                                category.recommendedPercent
+                            ),
+
+                        fixedAmount:
+                            null,
+
+                        active:
+                            this.number(
+                                category.recommendedPercent
+                            ) > 0,
+
+                        subcategories:
+                            Array.isArray(
+                                current?.subcategories
+                            )
+                                ? current.subcategories
+                                : []
+
+                    };
+
+                }
+            );
+
+        this.data =
+            updatedData;
+
+        this.renderBudgets();
+
+        AtlasUI.toast(
+            "Valores recomendados restaurados. Pulsa Guardar presupuestos."
+        );
+
+    },
+
+    updateBudgetMode(select) {
+
+        const categoryId =
+            select.dataset
+                .budgetMode;
+
+        const card =
+            select.closest(
+                "[data-budget-card]"
+            );
+
+        if (!card) {
+
+            return;
+
+        }
+
+        const label =
+            card.querySelector(
+                `[data-budget-value-label="${categoryId}"]`
+            );
+
+        const input =
+            card.querySelector(
+                `[name="budget_value_${categoryId}"]`
+            );
+
+        if (
+            !label ||
+            !input
+        ) {
+
+            return;
+
+        }
+
+        if (
+            select.value ===
+            "fixed"
+        ) {
+
+            label.textContent =
+                "Importe mensual";
+
+            input.step =
+                "0.01";
+
+            const currentValue =
+                Number(
+                    input.value
+                );
+
+            if (
+                !Number.isFinite(
+                    currentValue
+                )
+            ) {
+
+                input.value =
+                    "0";
+
+            }
+
+        } else {
+
+            label.textContent =
+                "Porcentaje";
+
+            input.step =
+                "0.5";
+
+            const category =
+                this.expenseCategories()
+                    .find(
+                        item =>
+                            item.id ===
+                            categoryId
+                    );
+
+            if (
+                Number(input.value) >
+                100
+            ) {
+
+                input.value =
+                    String(
+                        this.number(
+                            category
+                                ?.recommendedPercent
+                        )
+                    );
+
+            }
+
+        }
+
+    },
+
     submit(form) {
 
         if (this.saving) {
+
             return;
+
         }
 
         this.saving =
@@ -1997,6 +2778,12 @@ const AtlasSettings = {
             case "goal":
 
                 this.saveGoal(form);
+
+                break;
+
+            case "budgets":
+
+                this.saveBudgets(form);
 
                 break;
 
@@ -2041,7 +2828,9 @@ const AtlasSettings = {
             this.root();
 
         if (root) {
+
             root.innerHTML = "";
+
         }
 
         document.body.classList.remove(
@@ -2083,7 +2872,9 @@ const AtlasSettings = {
                     );
 
                 if (!actionButton) {
+
                     return;
+
                 }
 
                 const action =
@@ -2106,6 +2897,46 @@ const AtlasSettings = {
 
                     this.renderMenu();
 
+                    return;
+
+                }
+
+                if (
+                    action ===
+                    "restoreBudgets"
+                ) {
+
+                    const confirmed =
+                        window.confirm(
+                            "¿Restaurar todos los presupuestos recomendados?"
+                        );
+
+                    if (confirmed) {
+
+                        this.restoreRecommendedBudgets();
+
+                    }
+
+                }
+
+            }
+        );
+
+        document.addEventListener(
+            "change",
+            event => {
+
+                const budgetMode =
+                    event.target.closest(
+                        "[data-budget-mode]"
+                    );
+
+                if (budgetMode) {
+
+                    this.updateBudgetMode(
+                        budgetMode
+                    );
+
                 }
 
             }
@@ -2121,7 +2952,9 @@ const AtlasSettings = {
                     );
 
                 if (!form) {
+
                     return;
+
                 }
 
                 event.preventDefault();
