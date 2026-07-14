@@ -1,0 +1,48 @@
+:root{
+
+    /* Colores */
+
+    --background:#F6F7FB;
+    --surface:#FFFFFF;
+    --surface-secondary:#F1F3F6;
+
+    --text:#111827;
+    --text-secondary:#6B7280;
+
+    --primary:#2563EB;
+    --success:#16A34A;
+    --warning:#F59E0B;
+    --danger:#DC2626;
+
+    --border:#E5E7EB;
+
+    /* Sombras */
+
+    --shadow:
+        0 8px 30px rgba(0,0,0,.06);
+
+    /* Bordes */
+
+    --radius-small:10px;
+    --radius-medium:16px;
+    --radius-large:24px;
+
+    /* Espaciado */
+
+    --space-1:4px;
+    --space-2:8px;
+    --space-3:12px;
+    --space-4:16px;
+    --space-5:24px;
+    --space-6:32px;
+
+    /* Tipografía */
+
+    --font:
+        -apple-system,
+        BlinkMacSystemFont,
+        "SF Pro Display",
+        "Helvetica Neue",
+        sans-serif;
+
+}
