@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    movement-filters.js
-   Sprint 7.3 — Resumen y filtros avanzados
+   Atlas v1.0 — Movimientos con reembolsos
 ========================================================== */
 
 const AtlasMovementFilters = {
@@ -55,6 +55,17 @@ const AtlasMovementFilters = {
 
         }
 
+        if (
+            movement?.kind ===
+                "reimbursement" ||
+            movement?.type ===
+                "reimbursement"
+        ) {
+
+            return "reimbursement";
+
+        }
+
         return movement?.type || "";
 
     },
@@ -70,6 +81,9 @@ const AtlasMovementFilters = {
 
             income:
                 "Ingreso",
+
+            reimbursement:
+                "Reembolso",
 
             expense:
                 "Gasto",
@@ -100,7 +114,8 @@ const AtlasMovementFilters = {
             );
 
         if (
-            kind === "income"
+            kind === "income" ||
+            kind === "reimbursement"
         ) {
 
             return (
@@ -147,6 +162,15 @@ const AtlasMovementFilters = {
         }
 
         if (
+            kind ===
+            "reimbursement"
+        ) {
+
+            return "#5fd6c1";
+
+        }
+
+        if (
             kind === "transfer"
         ) {
 
@@ -177,6 +201,9 @@ const AtlasMovementFilters = {
 
             income:
                 "🟢",
+
+            reimbursement:
+                "↩️",
 
             expense:
                 "🔴",
@@ -284,7 +311,8 @@ const AtlasMovementFilters = {
 
         if (
             kind === "income" ||
-            kind === "expense"
+            kind === "expense" ||
+            kind === "reimbursement"
         ) {
 
             return this.accountName(
@@ -739,6 +767,14 @@ const AtlasMovementFilters = {
 
             {
                 value:
+                    "reimbursement",
+
+                label:
+                    "Reembolsos"
+            },
+
+            {
+                value:
                     "expense",
 
                 label:
@@ -1134,6 +1170,12 @@ const AtlasMovementFilters = {
             income:
                 0,
 
+            grossExpenses:
+                0,
+
+            reimbursements:
+                0,
+
             expenses:
                 0,
 
@@ -1144,6 +1186,9 @@ const AtlasMovementFilters = {
                 0,
 
             transfers:
+                0,
+
+            result:
                 0
 
         };
@@ -1173,10 +1218,22 @@ const AtlasMovementFilters = {
                 }
 
                 if (
+                    kind ===
+                    "reimbursement"
+                ) {
+
+                    summary.reimbursements +=
+                        amount;
+
+                    return;
+
+                }
+
+                if (
                     kind === "expense"
                 ) {
 
-                    summary.expenses +=
+                    summary.grossExpenses +=
                         amount;
 
                     return;
@@ -1217,6 +1274,10 @@ const AtlasMovementFilters = {
             }
         );
 
+        summary.expenses =
+            summary.grossExpenses -
+            summary.reimbursements;
+
         summary.result =
             summary.income -
             summary.expenses -
@@ -1230,7 +1291,8 @@ const AtlasMovementFilters = {
         icon,
         label,
         value,
-        color
+        color,
+        subtitle = ""
     ) {
 
         return `
@@ -1252,6 +1314,20 @@ const AtlasMovementFilters = {
                     )}
                 </strong>
 
+                ${
+                    subtitle
+                        ? `
+
+                            <span class="atlas-movement-summary-detail">
+                                ${this.escape(
+                                    subtitle
+                                )}
+                            </span>
+
+                        `
+                        : ""
+                }
+
             </article>
 
         `;
@@ -1270,6 +1346,21 @@ const AtlasMovementFilters = {
                 ? "var(--color-success)"
                 : "var(--color-danger)";
 
+        const expenseSubtitle =
+            summary.reimbursements > 0
+                ? (
+                    `Bruto ${
+                        AtlasUI.formatCurrency(
+                            summary.grossExpenses
+                        )
+                    } · Reemb. ${
+                        AtlasUI.formatCurrency(
+                            summary.reimbursements
+                        )
+                    }`
+                )
+                : "";
+
         return `
 
             <section class="atlas-movement-summary">
@@ -1283,9 +1374,10 @@ const AtlasMovementFilters = {
 
                 ${this.summaryCard(
                     "🔴",
-                    "Gastos",
+                    "Gastos netos",
                     summary.expenses,
-                    "var(--color-danger)"
+                    "var(--color-danger)",
+                    expenseSubtitle
                 )}
 
                 ${this.summaryCard(
@@ -1384,6 +1476,17 @@ const AtlasMovementFilters = {
                 movement
             );
 
+        const kind =
+            this.movementKind(
+                movement
+            );
+
+        const reimbursementDescription =
+            kind ===
+                "reimbursement"
+                ? "Reduce el gasto neto"
+                : "";
+
         return `
 
             <button
@@ -1438,6 +1541,20 @@ const AtlasMovementFilters = {
                                     ${this.escape(
                                         accountDescription
                                     )}
+                                </small>
+
+                            `
+                            : ""
+                    }
+
+                    ${
+                        reimbursementDescription
+                            ? `
+
+                                <small
+                                    class="atlas-movement-reimbursement-note"
+                                >
+                                    ${reimbursementDescription}
                                 </small>
 
                             `
@@ -1692,17 +1809,14 @@ const AtlasMovementFilters = {
 
     installStyles() {
 
-        if (
+        const previousStyle =
             document.getElementById(
                 "atlas-movement-filter-styles"
-            )
-        ) {
+            );
 
-            document
-                .getElementById(
-                    "atlas-movement-filter-styles"
-                )
-                .remove();
+        if (previousStyle) {
+
+            previousStyle.remove();
 
         }
 
@@ -1882,7 +1996,10 @@ const AtlasMovementFilters = {
                         --color-primary
                     );
                 box-shadow:
-                    0 0 0 3px
+                    0
+                    0
+                    0
+                    3px
                     rgba(
                         77,
                         163,
@@ -1949,7 +2066,9 @@ const AtlasMovementFilters = {
             .atlas-movement-advanced[open]
             summary::after {
                 transform:
-                    rotate(180deg);
+                    rotate(
+                        180deg
+                    );
             }
 
             .atlas-movement-advanced-content {
@@ -1975,7 +2094,9 @@ const AtlasMovementFilters = {
                 top: 50%;
                 right: 12px;
                 transform:
-                    translateY(-50%);
+                    translateY(
+                        -50%
+                    );
                 color:
                     var(
                         --color-text-muted
@@ -2039,6 +2160,7 @@ const AtlasMovementFilters = {
 
             .atlas-movement-summary-card {
                 min-width: 0;
+                min-height: 88px;
                 padding: 13px;
                 border:
                     1px solid
@@ -2058,7 +2180,7 @@ const AtlasMovementFilters = {
                     );
             }
 
-            .atlas-movement-summary-card small {
+            .atlas-movement-summary-card > small {
                 display: block;
                 color:
                     var(
@@ -2067,12 +2189,26 @@ const AtlasMovementFilters = {
                 font-size: 10px;
             }
 
-            .atlas-movement-summary-card strong {
+            .atlas-movement-summary-card > strong {
                 display: block;
                 margin-top: 7px;
                 overflow: hidden;
                 font-size: 19px;
                 line-height: 1.05;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .atlas-movement-summary-detail {
+                display: block;
+                margin-top: 6px;
+                overflow: hidden;
+                color:
+                    var(
+                        --color-text-muted
+                    );
+                font-size: 8px;
+                line-height: 1.3;
                 text-overflow: ellipsis;
                 white-space: nowrap;
             }
@@ -2114,6 +2250,11 @@ const AtlasMovementFilters = {
                 white-space: nowrap;
             }
 
+            .atlas-movement-reimbursement-note {
+                margin-top: 3px;
+                color: #5fd6c1 !important;
+            }
+
             .atlas-movement-note {
                 margin-top: 3px;
                 color:
@@ -2126,7 +2267,10 @@ const AtlasMovementFilters = {
             }
 
             .atlas-movement-row-amount {
-                flex: 0 0 auto;
+                flex:
+                    0
+                    0
+                    auto;
                 white-space: nowrap;
             }
 
@@ -2176,6 +2320,10 @@ const AtlasMovementFilters = {
                         1 / -1;
                     width: 100%;
                     margin-bottom: 8px;
+                }
+
+                .atlas-movement-summary-detail {
+                    font-size: 7px;
                 }
 
             }
