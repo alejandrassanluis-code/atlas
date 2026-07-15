@@ -1,12 +1,12 @@
 /* ==========================================================
    ATLAS
    catalog.js
-   Atlas v1.0 — Catálogo con reembolsos independientes
+   Atlas v1.0 — Recurrentes predefinidos y personalizados
 ========================================================== */
 
 const AtlasCatalog = {
 
-    version: 2,
+    version: 3,
 
     clone(value) {
 
@@ -25,6 +25,17 @@ const AtlasCatalog = {
                 .toString(36)
                 .slice(2, 8)
         ].join("_");
+
+    },
+
+    number(value) {
+
+        const result =
+            Number(value);
+
+        return Number.isFinite(result)
+            ? result
+            : 0;
 
     },
 
@@ -738,7 +749,8 @@ const AtlasCatalog = {
 
         return {
 
-            enabled: true,
+            enabled:
+                true,
 
             base:
                 "monthly_net_income",
@@ -783,44 +795,49 @@ const AtlasCatalog = {
                                 "percentage",
 
                             recommendedPercent:
-                                category.recommendedPercent,
+                                category
+                                    .recommendedPercent,
 
                             targetPercent:
-                                category.recommendedPercent,
+                                category
+                                    .recommendedPercent,
 
                             fixedAmount:
                                 null,
 
                             active:
-                                category.recommendedPercent > 0,
+                                category
+                                    .recommendedPercent > 0,
 
                             subcategories:
-                                category.subcategories.map(
-                                    subcategory => ({
+                                category
+                                    .subcategories
+                                    .map(
+                                        subcategory => ({
 
-                                        subcategoryId:
-                                            subcategory.id,
+                                            subcategoryId:
+                                                subcategory.id,
 
-                                        mode:
-                                            "percentage",
+                                            mode:
+                                                "percentage",
 
-                                        recommendedPercent:
-                                            subcategory
-                                                .recommendedPercent,
+                                            recommendedPercent:
+                                                subcategory
+                                                    .recommendedPercent,
 
-                                        targetPercent:
-                                            subcategory
-                                                .recommendedPercent,
+                                            targetPercent:
+                                                subcategory
+                                                    .recommendedPercent,
 
-                                        fixedAmount:
-                                            null,
+                                            fixedAmount:
+                                                null,
 
-                                        active:
-                                            subcategory
-                                                .recommendedPercent > 0
+                                            active:
+                                                subcategory
+                                                    .recommendedPercent > 0
 
-                                    })
-                                )
+                                        })
+                                    )
 
                         })
                     )
@@ -834,210 +851,357 @@ const AtlasCatalog = {
         return [
 
             {
-                id: "recurring_salary",
-                name: "Nómina",
-                type: "income",
-                categoryId: "work",
-                subcategoryId: "work_salary",
-                accountId: null,
-                recurrence: "monthly",
-                dueRule:
-                    "last_working_friday",
-                amountMode:
-                    "last_amount",
-                amount: null,
-                requiresConfirmation: true,
-                active: true
-            },
+                id:
+                    "recurring_salary",
 
-            {
-                id: "recurring_extra_pay",
-                name: "Paga extra",
-                type: "income",
-                categoryId: "work",
+                name:
+                    "Nómina",
+
+                type:
+                    "income",
+
+                kind:
+                    "income",
+
+                categoryId:
+                    "work",
+
                 subcategoryId:
-                    "work_extra_pay",
-                accountId: null,
+                    "work_salary",
+
+                accountId:
+                    null,
+
                 recurrence:
-                    "selected_months",
-                months: [
-                    8,
-                    12
-                ],
+                    "monthly",
+
                 dueRule:
                     "last_working_friday",
+
                 amountMode:
                     "last_amount",
-                amount: null,
-                requiresConfirmation: true,
-                active: true
+
+                amount:
+                    null,
+
+                requiresConfirmation:
+                    true,
+
+                active:
+                    true,
+
+                paused:
+                    false,
+
+                builtIn:
+                    true,
+
+                custom:
+                    false,
+
+                order:
+                    10
             },
 
             {
-                id: "recurring_rent",
-                name: "Alquiler",
-                type: "expense",
-                categoryId: "housing",
+                id:
+                    "recurring_rent",
+
+                name:
+                    "Alquiler",
+
+                type:
+                    "expense",
+
+                kind:
+                    "expense",
+
+                categoryId:
+                    "housing",
+
                 subcategoryId:
                     "housing_rent",
-                accountId: null,
-                recurrence: "monthly",
-                dueRule: "day_range",
-                dueDayFrom: 1,
-                dueDayTo: 7,
+
+                accountId:
+                    null,
+
+                recurrence:
+                    "monthly",
+
+                dueRule:
+                    "day_range",
+
+                dueDayFrom:
+                    1,
+
+                dueDayTo:
+                    7,
+
                 amountMode:
                     "last_amount",
-                amount: null,
-                requiresConfirmation: true,
-                active: true
+
+                amount:
+                    null,
+
+                requiresConfirmation:
+                    true,
+
+                active:
+                    true,
+
+                paused:
+                    false,
+
+                builtIn:
+                    true,
+
+                custom:
+                    false,
+
+                order:
+                    20
             },
 
             {
-                id: "recurring_utilities",
-                name: "Suministros",
-                type: "expense",
-                categoryId: "housing",
-                subcategoryId:
-                    "housing_utilities",
-                accountId: null,
-                recurrence: "monthly",
-                dueRule: "day_range",
-                dueDayFrom: 1,
-                dueDayTo: 7,
-                amountMode:
-                    "last_amount",
-                amount: null,
-                requiresConfirmation: true,
-                active: true
-            },
+                id:
+                    "recurring_gym",
 
-            {
-                id: "recurring_parking",
-                name: "Parking",
-                type: "expense",
-                categoryId: "transport",
-                subcategoryId:
-                    "transport_parking",
-                accountId: null,
-                recurrence: "monthly",
-                dueRule: "day_range",
-                dueDayFrom: 1,
-                dueDayTo: 7,
-                amountMode:
-                    "last_amount",
-                amount: null,
-                requiresConfirmation: true,
-                active: true
-            },
+                name:
+                    "Gimnasio",
 
-            {
-                id: "recurring_golf",
-                name: "Club de golf",
-                type: "expense",
-                categoryId: "sport",
-                subcategoryId:
-                    "sport_golf",
-                accountId: null,
-                recurrence: "monthly",
-                dueRule: "day_range",
-                dueDayFrom: 1,
-                dueDayTo: 7,
-                amountMode:
-                    "last_amount",
-                amount: null,
-                requiresConfirmation: true,
-                active: true
-            },
+                type:
+                    "expense",
 
-            {
-                id: "recurring_gym",
-                name: "Gimnasio",
-                type: "expense",
-                categoryId: "sport",
+                kind:
+                    "expense",
+
+                categoryId:
+                    "sport",
+
                 subcategoryId:
                     "sport_gym",
-                accountId: null,
-                recurrence: "monthly",
-                dueRule: "day_range",
-                dueDayFrom: 1,
-                dueDayTo: 7,
+
+                accountId:
+                    null,
+
+                recurrence:
+                    "monthly",
+
+                dueRule:
+                    "day_range",
+
+                dueDayFrom:
+                    1,
+
+                dueDayTo:
+                    7,
+
                 amountMode:
                     "last_amount",
-                amount: null,
-                requiresConfirmation: true,
-                active: true
+
+                amount:
+                    null,
+
+                requiresConfirmation:
+                    true,
+
+                active:
+                    true,
+
+                paused:
+                    false,
+
+                builtIn:
+                    true,
+
+                custom:
+                    false,
+
+                order:
+                    30
             },
 
             {
-                id: "recurring_motorbike_insurance",
-                name: "Seguro moto",
-                type: "expense",
-                categoryId: "transport",
+                id:
+                    "recurring_parking",
+
+                name:
+                    "Parking",
+
+                type:
+                    "expense",
+
+                kind:
+                    "expense",
+
+                categoryId:
+                    "transport",
+
                 subcategoryId:
-                    "transport_insurance",
-                accountId: null,
+                    "transport_parking",
+
+                accountId:
+                    null,
+
                 recurrence:
-                    "selected_months",
-                months: [
-                    7
-                ],
-                dueRule: "day_range",
-                dueDayFrom: 1,
-                dueDayTo: 31,
+                    "monthly",
+
+                dueRule:
+                    "day_range",
+
+                dueDayFrom:
+                    1,
+
+                dueDayTo:
+                    7,
+
                 amountMode:
                     "last_amount",
-                amount: null,
-                requiresConfirmation: true,
-                active: true
+
+                amount:
+                    null,
+
+                requiresConfirmation:
+                    true,
+
+                active:
+                    true,
+
+                paused:
+                    false,
+
+                builtIn:
+                    true,
+
+                custom:
+                    false,
+
+                order:
+                    40
             },
 
             {
-                id: "recurring_car_insurance",
-                name: "Seguro coche",
-                type: "expense",
-                categoryId: "transport",
+                id:
+                    "recurring_golf",
+
+                name:
+                    "Club de golf",
+
+                type:
+                    "expense",
+
+                kind:
+                    "expense",
+
+                categoryId:
+                    "sport",
+
                 subcategoryId:
-                    "transport_insurance",
-                accountId: null,
+                    "sport_golf",
+
+                accountId:
+                    null,
+
                 recurrence:
-                    "selected_months",
-                months: [
-                    8,
-                    9,
-                    10
-                ],
-                dueRule: "day_range",
-                dueDayFrom: 1,
-                dueDayTo: 31,
+                    "monthly",
+
+                dueRule:
+                    "day_range",
+
+                dueDayFrom:
+                    1,
+
+                dueDayTo:
+                    7,
+
                 amountMode:
-                    "by_month",
-                amount: null,
-                monthlyAmounts: {
-                    8: null,
-                    9: null,
-                    10: null
-                },
-                requiresConfirmation: true,
-                active: true
+                    "last_amount",
+
+                amount:
+                    null,
+
+                requiresConfirmation:
+                    true,
+
+                active:
+                    true,
+
+                paused:
+                    false,
+
+                builtIn:
+                    true,
+
+                custom:
+                    false,
+
+                order:
+                    50
             },
 
             {
-                id: "recurring_car_loan",
-                name: "Pago del coche",
-                type: "debt_payment",
-                categoryId: null,
-                subcategoryId: null,
-                accountId: null,
+                id:
+                    "recurring_car_loan",
+
+                name:
+                    "Pago de deuda del coche",
+
+                type:
+                    "debt_payment",
+
+                kind:
+                    "debt_payment",
+
+                categoryId:
+                    null,
+
+                subcategoryId:
+                    null,
+
+                accountId:
+                    null,
+
+                fromAccountId:
+                    null,
+
                 debtAccountId:
                     "loan_car",
-                recurrence: "monthly",
-                dueRule: "end_of_month",
-                daysBeforeEnd: 0,
+
+                toAccountId:
+                    "loan_car",
+
+                recurrence:
+                    "monthly",
+
+                dueRule:
+                    "end_of_month",
+
+                daysBeforeEnd:
+                    0,
+
                 amountMode:
                     "last_amount",
-                amount: null,
-                requiresConfirmation: true,
-                active: true
+
+                amount:
+                    null,
+
+                requiresConfirmation:
+                    true,
+
+                active:
+                    true,
+
+                paused:
+                    false,
+
+                builtIn:
+                    true,
+
+                custom:
+                    false,
+
+                order:
+                    60
             }
 
         ];
@@ -1048,7 +1212,8 @@ const AtlasCatalog = {
 
         return {
 
-            enabled: true,
+            enabled:
+                true,
 
             allowTripBudgets:
                 true,
@@ -1059,7 +1224,8 @@ const AtlasCatalog = {
             monthlyTravelFundCountsAsExpense:
                 false,
 
-            activeTrips: []
+            activeTrips:
+                []
 
         };
 
@@ -1095,10 +1261,12 @@ const AtlasCatalog = {
                 this.travelConfiguration(),
 
             createdAt:
-                new Date().toISOString(),
+                new Date()
+                    .toISOString(),
 
             updatedAt:
-                new Date().toISOString()
+                new Date()
+                    .toISOString()
 
         };
 
@@ -1222,16 +1390,18 @@ const AtlasCatalog = {
             )
         ) {
 
-            sport.subcategories = [];
+            sport.subcategories =
+                [];
 
         }
 
         const padelExists =
-            sport.subcategories.some(
-                subcategory =>
-                    subcategory.id ===
-                    "sport_padel"
-            );
+            sport.subcategories
+                .some(
+                    subcategory =>
+                        subcategory.id ===
+                        "sport_padel"
+                );
 
         if (!padelExists) {
 
@@ -1260,19 +1430,22 @@ const AtlasCatalog = {
         }
 
         const other =
-            sport.subcategories.find(
-                subcategory =>
-                    subcategory.id ===
-                    "sport_other"
-            );
+            sport.subcategories
+                .find(
+                    subcategory =>
+                        subcategory.id ===
+                        "sport_other"
+                );
 
         if (other) {
 
-            other.order = 40;
+            other.order =
+                40;
 
             if (
                 this.number(
-                    other.recommendedPercent
+                    other
+                        .recommendedPercent
                 ) === 1
             ) {
 
@@ -1310,7 +1483,8 @@ const AtlasCatalog = {
                 ? this.clone(
                     budgets
                 )
-                : this.budgetConfiguration();
+                : this
+                    .budgetConfiguration();
 
         if (
             !Array.isArray(
@@ -1398,7 +1572,8 @@ const AtlasCatalog = {
                                     .subcategories
                                     .some(
                                         item =>
-                                            item.subcategoryId ===
+                                            item
+                                                .subcategoryId ===
                                             subcategory.id
                                     );
 
@@ -1443,21 +1618,246 @@ const AtlasCatalog = {
 
     },
 
-    number(value) {
+    migrateRecurringRules(rules) {
 
-        const result =
-            Number(value);
+        const existingRules =
+            Array.isArray(rules)
+                ? this.clone(rules)
+                : [];
 
-        return Number.isFinite(result)
-            ? result
-            : 0;
+        const defaults =
+            this.recurringRules();
+
+        const retainedTemplateIds =
+            new Set(
+                defaults.map(
+                    rule =>
+                        rule.id
+                )
+            );
+
+        const obsoleteTemplateIds =
+            new Set([
+
+                "recurring_extra_pay",
+
+                "recurring_utilities",
+
+                "recurring_motorbike_insurance",
+
+                "recurring_car_insurance",
+
+                "recurring_phone"
+
+            ]);
+
+        const migratedDefaults =
+            defaults.map(
+                defaultRule => {
+
+                    const existing =
+                        existingRules.find(
+                            rule =>
+                                rule.id ===
+                                defaultRule.id
+                        );
+
+                    if (!existing) {
+
+                        return this.clone(
+                            defaultRule
+                        );
+
+                    }
+
+                    return {
+
+                        ...defaultRule,
+
+                        ...existing,
+
+                        id:
+                            defaultRule.id,
+
+                        builtIn:
+                            true,
+
+                        custom:
+                            false,
+
+                        order:
+                            defaultRule.order,
+
+                        type:
+                            existing.type ||
+                            existing.kind ||
+                            defaultRule.type,
+
+                        kind:
+                            existing.kind ||
+                            existing.type ||
+                            defaultRule.kind
+
+                    };
+
+                }
+            );
+
+        const customRules =
+            existingRules
+                .filter(
+                    rule => {
+
+                        if (
+                            !rule ||
+                            !rule.id
+                        ) {
+
+                            return false;
+
+                        }
+
+                        if (
+                            retainedTemplateIds
+                                .has(
+                                    rule.id
+                                )
+                        ) {
+
+                            return false;
+
+                        }
+
+                        if (
+                            obsoleteTemplateIds
+                                .has(
+                                    rule.id
+                                )
+                        ) {
+
+                            return false;
+
+                        }
+
+                        return (
+                            rule.custom ===
+                                true ||
+                            rule.builtIn ===
+                                false ||
+                            String(
+                                rule.id
+                            ).startsWith(
+                                "recurring_custom_"
+                            )
+                        );
+
+                    }
+                )
+                .map(
+                    (
+                        rule,
+                        index
+                    ) => ({
+
+                        active:
+                            true,
+
+                        paused:
+                            false,
+
+                        recurrence:
+                            "monthly",
+
+                        dueRule:
+                            "fixed_day",
+
+                        dueDay:
+                            1,
+
+                        amountMode:
+                            "fixed",
+
+                        amount:
+                            null,
+
+                        requiresConfirmation:
+                            true,
+
+                        categoryId:
+                            null,
+
+                        subcategoryId:
+                            null,
+
+                        accountId:
+                            null,
+
+                        fromAccountId:
+                            null,
+
+                        toAccountId:
+                            null,
+
+                        debtAccountId:
+                            null,
+
+                        ...rule,
+
+                        type:
+                            rule.type ||
+                            rule.kind ||
+                            "expense",
+
+                        kind:
+                            rule.kind ||
+                            rule.type ||
+                            "expense",
+
+                        builtIn:
+                            false,
+
+                        custom:
+                            true,
+
+                        order:
+                            this.number(
+                                rule.order
+                            ) ||
+                            (
+                                1000 +
+                                (
+                                    index *
+                                    10
+                                )
+                            )
+
+                    })
+                );
+
+        return [
+            ...migratedDefaults,
+            ...customRules
+        ].sort(
+            (
+                first,
+                second
+            ) =>
+                this.number(
+                    first.order
+                ) -
+                this.number(
+                    second.order
+                )
+        );
 
     },
 
     ensure(data) {
 
         const updatedData =
-            this.clone(data || {});
+            this.clone(
+                data || {}
+            );
 
         if (
             !updatedData.catalog ||
@@ -1487,6 +1887,32 @@ const AtlasCatalog = {
 
         }
 
+        if (
+            !Array.isArray(
+                updatedData.catalog
+                    .categories.expense
+            )
+        ) {
+
+            updatedData.catalog
+                .categories.expense =
+                this.expenseCategories();
+
+        }
+
+        if (
+            !Array.isArray(
+                updatedData.catalog
+                    .categories.income
+            )
+        ) {
+
+            updatedData.catalog
+                .categories.income =
+                this.incomeCategories();
+
+        }
+
         updatedData.catalog
             .categories.expense =
             this.migrateSportCategory(
@@ -1503,23 +1929,18 @@ const AtlasCatalog = {
 
         updatedData.catalog.budgets =
             this.migrateBudgetConfiguration(
-                updatedData.catalog.budgets,
+                updatedData.catalog
+                    .budgets,
                 updatedData.catalog
                     .categories.expense
             );
 
-        if (
-            !Array.isArray(
+        updatedData.catalog
+            .recurringRules =
+            this.migrateRecurringRules(
                 updatedData.catalog
                     .recurringRules
-            )
-        ) {
-
-            updatedData.catalog
-                .recurringRules =
-                this.recurringRules();
-
-        }
+            );
 
         if (
             !updatedData.catalog
@@ -1545,7 +1966,8 @@ const AtlasCatalog = {
             this.version;
 
         updatedData.catalog.updatedAt =
-            new Date().toISOString();
+            new Date()
+                .toISOString();
 
         return updatedData;
 
