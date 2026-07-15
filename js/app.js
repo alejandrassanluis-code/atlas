@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    app.js
-   Sprint 7.3 — Filtros avanzados de movimientos
+   Atlas v1.0 — Integración de movimientos recurrentes
 ========================================================== */
 
 const AtlasApp = {
@@ -70,6 +70,10 @@ const AtlasApp = {
 
         this.observeModals();
 
+        this.ensureRecurringMonth(
+            currentMonth
+        );
+
         this.render();
 
         if (
@@ -87,6 +91,10 @@ const AtlasApp = {
 
                     this.route =
                         "home";
+
+                    this.ensureRecurringMonth(
+                        this.currentMonthKey()
+                    );
 
                     this.render();
 
@@ -191,6 +199,129 @@ const AtlasApp = {
 
     },
 
+    ensureRecurringMonth(monthKey) {
+
+        if (
+            typeof AtlasRecurring ===
+                "undefined" ||
+            typeof AtlasRecurring
+                .generateMonth !==
+                "function"
+        ) {
+
+            return {
+
+                created:
+                    [],
+
+                skipped:
+                    null
+
+            };
+
+        }
+
+        const result =
+            AtlasRecurring.generateMonth(
+                this.data,
+                monthKey
+            );
+
+        if (
+            !result ||
+            !result.data
+        ) {
+
+            return {
+
+                created:
+                    [],
+
+                skipped:
+                    null
+
+            };
+
+        }
+
+        const created =
+            Array.isArray(
+                result.created
+            )
+                ? result.created
+                : [];
+
+        if (
+            created.length > 0
+        ) {
+
+            this.data =
+                result.data;
+
+            this.save();
+
+        }
+
+        return {
+
+            created,
+
+            skipped:
+                result.skipped ||
+                null
+
+        };
+
+    },
+
+    recurringPendingForMonth(
+        monthKey
+    ) {
+
+        if (
+            typeof AtlasRecurring ===
+                "undefined" ||
+            typeof AtlasRecurring
+                .pendingForMonth !==
+                "function"
+        ) {
+
+            return [];
+
+        }
+
+        return AtlasRecurring
+            .pendingForMonth(
+                this.data,
+                monthKey
+            );
+
+    },
+
+    recurringEstimateForMonth(
+        monthKey
+    ) {
+
+        if (
+            typeof AtlasRecurring ===
+                "undefined" ||
+            typeof AtlasRecurring
+                .estimatedMonth !==
+                "function"
+        ) {
+
+            return null;
+
+        }
+
+        return AtlasRecurring
+            .estimatedMonth(
+                this.data,
+                monthKey
+            );
+
+    },
+
     resetMovementFiltersState() {
 
         this.movementSearch =
@@ -262,6 +393,8 @@ const AtlasApp = {
             "all",
 
             "income",
+
+            "reimbursement",
 
             "expense",
 
@@ -565,7 +698,9 @@ const AtlasApp = {
                     );
 
                 if (!actionButton) {
+
                     return;
+
                 }
 
                 const action =
@@ -594,6 +729,10 @@ const AtlasApp = {
 
                         this.route =
                             "analysis";
+
+                        this.ensureRecurringMonth(
+                            this.analysisMonth
+                        );
 
                         this.render();
 
@@ -641,6 +780,10 @@ const AtlasApp = {
                         this.route =
                             "analysis";
 
+                        this.ensureRecurringMonth(
+                            this.analysisMonth
+                        );
+
                         this.render();
 
                         break;
@@ -662,6 +805,10 @@ const AtlasApp = {
                         this.route =
                             "analysis";
 
+                        this.ensureRecurringMonth(
+                            this.analysisMonth
+                        );
+
                         this.render();
 
                         break;
@@ -676,6 +823,10 @@ const AtlasApp = {
 
                         this.route =
                             "movements";
+
+                        this.ensureRecurringMonth(
+                            this.movementsMonth
+                        );
 
                         this.render();
 
@@ -694,6 +845,10 @@ const AtlasApp = {
 
                         this.route =
                             "movements";
+
+                        this.ensureRecurringMonth(
+                            this.movementsMonth
+                        );
 
                         this.render();
 
@@ -865,7 +1020,9 @@ const AtlasApp = {
             );
 
         if (!modalRoot) {
+
             return;
+
         }
 
         if (this.modalObserver) {
@@ -886,11 +1043,13 @@ const AtlasApp = {
         this.modalObserver.observe(
             modalRoot,
             {
+
                 childList:
                     true,
 
                 subtree:
                     true
+
             }
         );
 
@@ -929,6 +1088,10 @@ const AtlasApp = {
                     this.budgetMonth =
                         movementMonth;
 
+                    this.ensureRecurringMonth(
+                        movementMonth
+                    );
+
                 }
 
                 this.route =
@@ -959,6 +1122,21 @@ const AtlasApp = {
                         this.movementAccountFilter
                     );
 
+                this.ensureRecurringMonth(
+                    this.currentMonthKey()
+                );
+
+                if (
+                    this.movementsMonth !==
+                    this.currentMonthKey()
+                ) {
+
+                    this.ensureRecurringMonth(
+                        this.movementsMonth
+                    );
+
+                }
+
                 this.render();
 
             }
@@ -973,7 +1151,9 @@ const AtlasApp = {
         if (
             this.isCurrentAnalysisMonth()
         ) {
+
             return;
+
         }
 
         this.analysisMonth =
@@ -998,6 +1178,10 @@ const AtlasApp = {
         this.route =
             "analysis";
 
+        this.ensureRecurringMonth(
+            this.analysisMonth
+        );
+
         this.render();
 
     },
@@ -1007,7 +1191,9 @@ const AtlasApp = {
         if (
             this.isCurrentMovementsMonth()
         ) {
+
             return;
+
         }
 
         this.movementsMonth =
@@ -1029,6 +1215,10 @@ const AtlasApp = {
         this.route =
             "movements";
 
+        this.ensureRecurringMonth(
+            this.movementsMonth
+        );
+
         this.render();
 
     },
@@ -1038,7 +1228,9 @@ const AtlasApp = {
         if (
             this.isCurrentBudgetMonth()
         ) {
+
             return;
+
         }
 
         this.budgetMonth =
@@ -1067,12 +1259,18 @@ const AtlasApp = {
     setTrendsPeriod(value) {
 
         const period =
-            Number(value);
+            Number(
+                value
+            );
 
         const allowedPeriods = [
+
             3,
+
             6,
+
             12
+
         ];
 
         if (
@@ -1080,7 +1278,9 @@ const AtlasApp = {
                 period
             )
         ) {
+
             return;
+
         }
 
         this.trendsPeriod =
@@ -1125,7 +1325,9 @@ const AtlasApp = {
                 metric
             )
         ) {
+
             return;
+
         }
 
         this.trendMetric =
@@ -1164,11 +1366,40 @@ const AtlasApp = {
                 ? route
                 : "home";
 
+        if (
+            this.route ===
+            "movements"
+        ) {
+
+            this.ensureRecurringMonth(
+                this.movementsMonth
+            );
+
+        }
+
+        if (
+            this.route ===
+                "analysis" &&
+            this.analysisView ===
+                "monthly"
+        ) {
+
+            this.ensureRecurringMonth(
+                this.analysisMonth
+            );
+
+        }
+
         this.render();
 
         window.scrollTo({
-            top: 0,
-            behavior: "smooth"
+
+            top:
+                0,
+
+            behavior:
+                "smooth"
+
         });
 
     },
@@ -1179,7 +1410,9 @@ const AtlasApp = {
             this.route !==
             "home"
         ) {
+
             return;
+
         }
 
         const app =
@@ -1188,7 +1421,9 @@ const AtlasApp = {
             );
 
         if (!app) {
+
             return;
+
         }
 
         const insight =
@@ -1217,7 +1452,9 @@ const AtlasApp = {
             );
 
         if (!dashboard) {
+
             return;
+
         }
 
         const lastVisibleElement =
@@ -1317,7 +1554,9 @@ const AtlasApp = {
             );
 
         if (!modalRoot) {
+
             return;
+
         }
 
         modalRoot
@@ -1377,6 +1616,26 @@ const AtlasApp = {
 
     render() {
 
+        const movementsPending =
+            this.recurringPendingForMonth(
+                this.movementsMonth
+            );
+
+        const analysisPending =
+            this.recurringPendingForMonth(
+                this.analysisMonth
+            );
+
+        const movementsEstimate =
+            this.recurringEstimateForMonth(
+                this.movementsMonth
+            );
+
+        const analysisEstimate =
+            this.recurringEstimateForMonth(
+                this.analysisMonth
+            );
+
         AtlasUI.render(
             this.route,
             this.data,
@@ -1423,6 +1682,24 @@ const AtlasApp = {
 
                 movementDateTo:
                     this.movementDateTo,
+
+                recurringPending:
+                    movementsPending,
+
+                recurringPendingCount:
+                    movementsPending.length,
+
+                recurringEstimate:
+                    movementsEstimate,
+
+                analysisRecurringPending:
+                    analysisPending,
+
+                analysisRecurringPendingCount:
+                    analysisPending.length,
+
+                analysisRecurringEstimate:
+                    analysisEstimate,
 
                 movementFilters: {
 
@@ -1496,7 +1773,9 @@ const AtlasApp = {
             );
 
         if (!confirmed) {
+
             return;
+
         }
 
         this.data =
@@ -1528,6 +1807,10 @@ const AtlasApp = {
 
         this.resetMovementFiltersState();
 
+        this.ensureRecurringMonth(
+            currentMonth
+        );
+
         this.render();
 
         AtlasSetup.open(
@@ -1539,6 +1822,10 @@ const AtlasApp = {
 
                 this.route =
                     "home";
+
+                this.ensureRecurringMonth(
+                    currentMonth
+                );
 
                 this.render();
 
