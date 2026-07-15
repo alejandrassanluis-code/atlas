@@ -1,19 +1,16 @@
 /* ==========================================================
    ATLAS
    overview.js
-   Sprint 5.4 — Tarjetas globales interactivas
+   Atlas v1.0 — Inicio mensual dinámico
 ========================================================== */
 
 const AtlasOverviewCards = {
 
     expandedCard: null,
 
-    data: null,
+    selectedMonth: null,
 
-    originalDashboard:
-        AtlasUI.dashboard.bind(
-            AtlasUI
-        ),
+    data: null,
 
     number(value) {
 
@@ -42,6 +39,177 @@ const AtlasOverviewCards = {
 
     },
 
+    currentMonthKey() {
+
+        return AtlasCalculations
+            .monthKey();
+
+    },
+
+    shiftMonth(
+        monthKey,
+        difference
+    ) {
+
+        return AtlasCalculations
+            .shiftMonthKey(
+                monthKey,
+                difference
+            );
+
+    },
+
+    ensureSelectedMonth() {
+
+        const currentMonth =
+            this.currentMonthKey();
+
+        if (
+            !this.selectedMonth ||
+            !/^\d{4}-\d{2}$/.test(
+                this.selectedMonth
+            )
+        ) {
+
+            this.selectedMonth =
+                globalThis.AtlasApp
+                    ?.analysisMonth ||
+                currentMonth;
+
+        }
+
+        if (
+            this.selectedMonth >
+            currentMonth
+        ) {
+
+            this.selectedMonth =
+                currentMonth;
+
+        }
+
+    },
+
+    isCurrentSelectedMonth() {
+
+        return (
+            this.selectedMonth ===
+            this.currentMonthKey()
+        );
+
+    },
+
+    synchronizeSelectedMonth() {
+
+        if (
+            !globalThis.AtlasApp
+        ) {
+
+            return;
+
+        }
+
+        AtlasApp.analysisMonth =
+            this.selectedMonth;
+
+        AtlasApp.movementsMonth =
+            this.selectedMonth;
+
+        AtlasApp.budgetMonth =
+            this.selectedMonth;
+
+    },
+
+    selectPreviousMonth() {
+
+        this.ensureSelectedMonth();
+
+        this.selectedMonth =
+            this.shiftMonth(
+                this.selectedMonth,
+                -1
+            );
+
+        this.synchronizeSelectedMonth();
+
+        this.renderDashboard();
+
+    },
+
+    selectNextMonth() {
+
+        this.ensureSelectedMonth();
+
+        if (
+            this.isCurrentSelectedMonth()
+        ) {
+
+            return;
+
+        }
+
+        const nextMonth =
+            this.shiftMonth(
+                this.selectedMonth,
+                1
+            );
+
+        this.selectedMonth =
+            nextMonth >
+                this.currentMonthKey()
+                ? this.currentMonthKey()
+                : nextMonth;
+
+        this.synchronizeSelectedMonth();
+
+        this.renderDashboard();
+
+    },
+
+    selectCurrentMonth() {
+
+        this.selectedMonth =
+            this.currentMonthKey();
+
+        this.synchronizeSelectedMonth();
+
+        this.renderDashboard();
+
+    },
+
+    openSelectedMonthAnalysis() {
+
+        this.ensureSelectedMonth();
+
+        this.synchronizeSelectedMonth();
+
+        if (
+            !globalThis.AtlasApp
+        ) {
+
+            return;
+
+        }
+
+        AtlasApp.analysisView =
+            "monthly";
+
+        AtlasApp.route =
+            "analysis";
+
+        AtlasApp.render();
+
+        window.scrollTo({
+
+            top: 0,
+
+            behavior:
+                "smooth"
+
+        });
+
+    },
+
     accountsByGroup(
         data,
         group
@@ -52,26 +220,32 @@ const AtlasOverviewCards = {
         )
             .filter(
                 account =>
-                    account.group === group &&
-                    account.active !== false
+                    account.group ===
+                        group &&
+                    account.active !==
+                        false
             )
             .sort(
-                (a, b) => {
+                (
+                    first,
+                    second
+                ) => {
 
                     const balanceDifference =
                         Math.abs(
                             this.number(
-                                b.balance
+                                second.balance
                             )
                         ) -
                         Math.abs(
                             this.number(
-                                a.balance
+                                first.balance
                             )
                         );
 
                     if (
-                        balanceDifference !== 0
+                        balanceDifference !==
+                        0
                     ) {
 
                         return balanceDifference;
@@ -80,10 +254,10 @@ const AtlasOverviewCards = {
 
                     return (
                         this.number(
-                            a.order
+                            first.order
                         ) -
                         this.number(
-                            b.order
+                            second.order
                         )
                     );
 
@@ -181,7 +355,10 @@ const AtlasOverviewCards = {
 
             rows:
                 accounts
-                    .slice(0, 3)
+                    .slice(
+                        0,
+                        3
+                    )
                     .map(
                         account => ({
 
@@ -221,7 +398,10 @@ const AtlasOverviewCards = {
 
         const totalValue =
             accounts.reduce(
-                (total, account) =>
+                (
+                    total,
+                    account
+                ) =>
                     total +
                     this.number(
                         account.balance
@@ -231,7 +411,10 @@ const AtlasOverviewCards = {
 
         const totalInvested =
             accounts.reduce(
-                (total, account) =>
+                (
+                    total,
+                    account
+                ) =>
                     total +
                     this.number(
                         account.invested
@@ -247,7 +430,10 @@ const AtlasOverviewCards = {
 
             rows:
                 accounts
-                    .slice(0, 3)
+                    .slice(
+                        0,
+                        3
+                    )
                     .map(
                         account => ({
 
@@ -282,7 +468,9 @@ const AtlasOverviewCards = {
                             ? "Ganancia"
                             : "Pérdida"
                     } ${this.currency(
-                        Math.abs(gain)
+                        Math.abs(
+                            gain
+                        )
                     )}`
                     : ""
 
@@ -304,8 +492,10 @@ const AtlasOverviewCards = {
         }
 
         if (
-            account.type === "loan" ||
-            account.kind === "loan"
+            account.type ===
+                "loan" ||
+            account.kind ===
+                "loan"
         ) {
 
             return "Préstamo";
@@ -327,7 +517,10 @@ const AtlasOverviewCards = {
 
             rows:
                 accounts
-                    .slice(0, 3)
+                    .slice(
+                        0,
+                        3
+                    )
                     .map(
                         account => ({
 
@@ -393,7 +586,9 @@ const AtlasOverviewCards = {
                 return {
 
                     rows: [],
+
                     hiddenCount: 0,
+
                     footer: ""
 
                 };
@@ -405,7 +600,8 @@ const AtlasOverviewCards = {
     detailRows(details) {
 
         if (
-            details.rows.length === 0
+            details.rows.length ===
+            0
         ) {
 
             return `
@@ -467,14 +663,16 @@ const AtlasOverviewCards = {
                     .join("")}
 
                 ${
-                    details.hiddenCount > 0
+                    details.hiddenCount >
+                    0
                         ? `
 
                             <small class="atlas-overview-more">
 
                                 +${details.hiddenCount}
                                 ${
-                                    details.hiddenCount === 1
+                                    details.hiddenCount ===
+                                    1
                                         ? "cuenta más"
                                         : "cuentas más"
                                 }
@@ -506,15 +704,22 @@ const AtlasOverviewCards = {
     },
 
     interactiveCard({
+
         type,
+
         icon,
+
         label,
+
         value,
+
         data
+
     }) {
 
         const expanded =
-            this.expandedCard === type;
+            this.expandedCard ===
+            type;
 
         const details =
             this.detailsFor(
@@ -583,10 +788,259 @@ const AtlasOverviewCards = {
 
     },
 
+    monthlyKpi({
+
+        label,
+
+        value,
+
+        color,
+
+        subtitle = ""
+
+    }) {
+
+        return `
+
+            <div class="atlas-home-month-kpi">
+
+                <small class="note">
+                    ${label}
+                </small>
+
+                <strong
+                    style="
+                        color:${color};
+                    "
+                >
+                    ${this.currency(
+                        value
+                    )}
+                </strong>
+
+                ${
+                    subtitle
+                        ? `
+
+                            <small class="atlas-home-month-kpi-subtitle">
+                                ${subtitle}
+                            </small>
+
+                        `
+                        : ""
+                }
+
+            </div>
+
+        `;
+
+    },
+
+    monthlyPanel(data) {
+
+        this.ensureSelectedMonth();
+
+        const currentMonth =
+            this.currentMonthKey();
+
+        const isCurrentMonth =
+            this.selectedMonth ===
+            currentMonth;
+
+        const summary =
+            AtlasCalculations
+                .financialSummary(
+                    data,
+                    this.selectedMonth
+                );
+
+        const income =
+            this.number(
+                summary.monthlyIncome
+            );
+
+        const expenses =
+            this.number(
+                summary.monthlyExpenses
+            );
+
+        const invested =
+            this.number(
+                summary.monthlyInvested
+            );
+
+        const savings =
+            this.number(
+                summary.monthlySavings
+            );
+
+        const savingRate =
+            income > 0
+                ? (
+                    savings /
+                    income
+                ) * 100
+                : 0;
+
+        return `
+
+            <section class="panel atlas-home-month">
+
+                <div class="atlas-home-month-navigation">
+
+                    <button
+                        class="atlas-home-month-arrow"
+                        type="button"
+                        data-overview-month-action="previous"
+                        aria-label="Mes anterior"
+                    >
+                        ‹
+                    </button>
+
+                    <button
+                        class="atlas-home-month-title"
+                        type="button"
+                        data-overview-month-action="analysis"
+                        aria-label="Abrir análisis de ${
+                            this.escape(
+                                AtlasUI.formatMonthKey(
+                                    this.selectedMonth
+                                )
+                            )
+                        }"
+                    >
+
+                        <small class="label">
+                            Mes
+                        </small>
+
+                        <strong>
+                            ${this.escape(
+                                AtlasUI.formatMonthKey(
+                                    this.selectedMonth
+                                )
+                            )}
+                        </strong>
+
+                        <span>
+                            ${
+                                isCurrentMonth
+                                    ? "Mes actual"
+                                    : "Histórico mensual"
+                            }
+                        </span>
+
+                    </button>
+
+                    <button
+                        class="atlas-home-month-arrow"
+                        type="button"
+                        data-overview-month-action="next"
+                        aria-label="Mes siguiente"
+                        ${
+                            isCurrentMonth
+                                ? "disabled"
+                                : ""
+                        }
+                    >
+                        ›
+                    </button>
+
+                </div>
+
+                ${
+                    !isCurrentMonth
+                        ? `
+
+                            <button
+                                class="atlas-home-month-current"
+                                type="button"
+                                data-overview-month-action="current"
+                            >
+                                Volver al mes actual
+                            </button>
+
+                        `
+                        : ""
+                }
+
+                <div class="atlas-home-month-grid">
+
+                    ${this.monthlyKpi({
+
+                        label:
+                            "Ingresos",
+
+                        value:
+                            income,
+
+                        color:
+                            "var(--color-success)"
+
+                    })}
+
+                    ${this.monthlyKpi({
+
+                        label:
+                            "Gastos",
+
+                        value:
+                            expenses,
+
+                        color:
+                            "var(--color-danger)"
+
+                    })}
+
+                    ${this.monthlyKpi({
+
+                        label:
+                            "Invertido",
+
+                        value:
+                            invested,
+
+                        color:
+                            "var(--color-primary)"
+
+                    })}
+
+                    ${this.monthlyKpi({
+
+                        label:
+                            "Ahorro",
+
+                        value:
+                            savings,
+
+                        color:
+                            savings >= 0
+                                ? "var(--color-success)"
+                                : "var(--color-danger)",
+
+                        subtitle:
+                            income > 0
+                                ? `${AtlasUI.formatPercent(
+                                    savingRate
+                                )}`
+                                : ""
+
+                    })}
+
+                </div>
+
+            </section>
+
+        `;
+
+    },
+
     dashboard(data) {
 
         this.data =
             data;
+
+        this.ensureSelectedMonth();
 
         const summary =
             AtlasCalculations
@@ -598,39 +1052,6 @@ const AtlasOverviewCards = {
             AtlasUI.cumulativeSavings(
                 data
             );
-
-        const income =
-            this.number(
-                summary.income
-            );
-
-        const expenses =
-            this.number(
-                summary.expenses
-            );
-
-        const invested =
-            this.number(
-                summary.invested
-            );
-
-        const monthlySavings =
-            this.number(
-                summary.monthlySavings
-            );
-
-        const monthlySavingRate =
-            income > 0
-                ? (
-                    monthlySavings /
-                    income
-                ) * 100
-                : 0;
-
-        const monthlySavingColor =
-            monthlySavings >= 0
-                ? "var(--color-success)"
-                : "var(--color-danger)";
 
         return `
 
@@ -782,123 +1203,9 @@ const AtlasOverviewCards = {
 
                 </div>
 
-                <button
-                    class="panel atlas-home-month"
-                    type="button"
-                    data-route="analysis"
-                >
-
-                    <div class="atlas-home-month-head">
-
-                        <div>
-
-                            <div class="label">
-                                Este mes
-                            </div>
-
-                            <strong>
-                                ${AtlasUI.currentMonth()}
-                            </strong>
-
-                        </div>
-
-                        <div class="atlas-home-month-result">
-
-                            <strong
-                                style="
-                                    color:
-                                        ${monthlySavingColor};
-                                "
-                            >
-                                ${this.currency(
-                                    monthlySavings
-                                )}
-                            </strong>
-
-                            <small class="note">
-
-                                ${
-                                    income > 0
-                                        ? `${AtlasUI.formatPercent(
-                                            monthlySavingRate
-                                        )} de ahorro`
-                                        : "Ahorro mensual"
-                                }
-
-                            </small>
-
-                        </div>
-
-                    </div>
-
-                    <div class="atlas-home-month-grid">
-
-                        <div>
-
-                            <small class="note">
-                                Ingresos
-                            </small>
-
-                            <strong
-                                style="
-                                    color:
-                                        var(
-                                            --color-success
-                                        );
-                                "
-                            >
-                                ${this.currency(
-                                    income
-                                )}
-                            </strong>
-
-                        </div>
-
-                        <div>
-
-                            <small class="note">
-                                Gastos
-                            </small>
-
-                            <strong
-                                style="
-                                    color:
-                                        var(
-                                            --color-danger
-                                        );
-                                "
-                            >
-                                ${this.currency(
-                                    expenses
-                                )}
-                            </strong>
-
-                        </div>
-
-                        <div>
-
-                            <small class="note">
-                                Invertido
-                            </small>
-
-                            <strong
-                                style="
-                                    color:
-                                        var(
-                                            --color-primary
-                                        );
-                                "
-                            >
-                                ${this.currency(
-                                    invested
-                                )}
-                            </strong>
-
-                        </div>
-
-                    </div>
-
-                </button>
+                ${this.monthlyPanel(
+                    data
+                )}
 
             </div>
 
@@ -952,13 +1259,14 @@ const AtlasOverviewCards = {
 
     installStyles() {
 
-        if (
+        const previousStyle =
             document.getElementById(
                 "atlas-overview-styles"
-            )
-        ) {
+            );
 
-            return;
+        if (previousStyle) {
+
+            previousStyle.remove();
 
         }
 
@@ -1045,9 +1353,12 @@ const AtlasOverviewCards = {
             }
 
             .atlas-overview-card-expanded {
-                grid-column: 1 / -1;
+                grid-column:
+                    1 / -1;
                 min-height: 142px;
-                padding: 13px 14px;
+                padding:
+                    13px
+                    14px;
             }
 
             .atlas-overview-head {
@@ -1180,7 +1491,10 @@ const AtlasOverviewCards = {
             }
 
             .atlas-overview-empty {
-                padding: 12px 0 4px;
+                padding:
+                    12px
+                    0
+                    4px;
                 color:
                     var(
                         --color-text-muted
@@ -1189,74 +1503,165 @@ const AtlasOverviewCards = {
             }
 
             .atlas-home-month {
-                display: block;
                 width: 100%;
                 margin: 0;
-                padding: 11px 13px;
+                padding:
+                    11px
+                    13px
+                    13px;
                 color: inherit;
-                text-align: left;
             }
 
-            .atlas-home-month-head {
+            .atlas-home-month-navigation {
+                display: grid;
+                grid-template-columns:
+                    42px
+                    minmax(0, 1fr)
+                    42px;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .atlas-home-month-arrow {
+                width: 42px;
+                height: 42px;
                 display: flex;
                 align-items: center;
-                justify-content:
-                    space-between;
-                gap: 10px;
-                margin-bottom: 8px;
+                justify-content: center;
+                border:
+                    1px solid
+                    rgba(
+                        145,
+                        164,
+                        202,
+                        0.14
+                    );
+                border-radius: 14px;
+                color: #f7f8fc;
+                background:
+                    rgba(
+                        255,
+                        255,
+                        255,
+                        0.04
+                    );
+                font-size: 28px;
+                line-height: 1;
             }
 
-            .atlas-home-month-head .label {
-                font-size: 10px;
+            .atlas-home-month-arrow:disabled {
+                opacity: 0.28;
             }
 
-            .atlas-home-month-head > div > strong {
-                display: block;
-                margin-top: 1px;
-                font-size: 13px;
+            .atlas-home-month-title {
+                min-width: 0;
+                min-height: 46px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                padding:
+                    2px
+                    8px;
+                color: inherit;
+                background: transparent;
+                text-align: center;
             }
 
-            .atlas-home-month-result {
-                text-align: right;
-            }
-
-            .atlas-home-month-result strong {
-                display: block;
-                font-size: 16px;
-            }
-
-            .atlas-home-month-result small {
-                display: block;
-                margin-top: 1px;
+            .atlas-home-month-title .label {
                 font-size: 9px;
+            }
+
+            .atlas-home-month-title strong {
+                display: block;
+                max-width: 100%;
+                margin-top: 1px;
+                overflow: hidden;
+                font-size: 14px;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .atlas-home-month-title span {
+                display: block;
+                margin-top: 2px;
+                color:
+                    var(
+                        --color-text-muted
+                    );
+                font-size: 9px;
+            }
+
+            .atlas-home-month-current {
+                width: 100%;
+                min-height: 32px;
+                margin-top: 5px;
+                border-radius: 11px;
+                color:
+                    var(
+                        --color-primary
+                    );
+                background:
+                    rgba(
+                        77,
+                        163,
+                        255,
+                        0.08
+                    );
+                font-size: 10px;
+                font-weight: 750;
             }
 
             .atlas-home-month-grid {
                 display: grid;
                 grid-template-columns:
                     repeat(
-                        3,
+                        4,
                         minmax(0, 1fr)
                     );
-                gap: 7px;
+                gap: 5px;
+                margin-top: 9px;
+                padding-top: 9px;
+                border-top:
+                    1px solid
+                    rgba(
+                        145,
+                        164,
+                        202,
+                        0.1
+                    );
             }
 
-            .atlas-home-month-grid > div {
+            .atlas-home-month-kpi {
                 min-width: 0;
+                text-align: center;
             }
 
-            .atlas-home-month-grid small {
+            .atlas-home-month-kpi > small {
                 display: block;
-                font-size: 9px;
-            }
-
-            .atlas-home-month-grid strong {
-                display: block;
-                margin-top: 2px;
                 overflow: hidden;
-                font-size: 13px;
+                font-size: 8px;
                 text-overflow: ellipsis;
                 white-space: nowrap;
+            }
+
+            .atlas-home-month-kpi > strong {
+                display: block;
+                margin-top: 3px;
+                overflow: hidden;
+                font-size: 11px;
+                line-height: 1.1;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .atlas-home-month-kpi-subtitle {
+                margin-top: 2px;
+                color:
+                    var(
+                        --color-text-muted
+                    );
+                font-size: 7px !important;
             }
 
             .atlas-overview-dashboard-expanded {
@@ -1282,6 +1687,40 @@ const AtlasOverviewCards = {
                     ) !important;
             }
 
+            @media (
+                max-width: 360px
+            ) {
+
+                .atlas-home-month {
+                    padding:
+                        10px
+                        10px
+                        12px;
+                }
+
+                .atlas-home-month-navigation {
+                    grid-template-columns:
+                        38px
+                        minmax(0, 1fr)
+                        38px;
+                    gap: 5px;
+                }
+
+                .atlas-home-month-arrow {
+                    width: 38px;
+                    height: 38px;
+                }
+
+                .atlas-home-month-grid {
+                    gap: 3px;
+                }
+
+                .atlas-home-month-kpi > strong {
+                    font-size: 10px;
+                }
+
+            }
+
         `;
 
         document.head.appendChild(
@@ -1295,6 +1734,65 @@ const AtlasOverviewCards = {
         document.addEventListener(
             "click",
             event => {
+
+                const monthActionButton =
+                    event.target.closest(
+                        "[data-overview-month-action]"
+                    );
+
+                if (monthActionButton) {
+
+                    event.preventDefault();
+
+                    const action =
+                        monthActionButton.dataset
+                            .overviewMonthAction;
+
+                    if (
+                        action ===
+                        "previous"
+                    ) {
+
+                        this.selectPreviousMonth();
+
+                        return;
+
+                    }
+
+                    if (
+                        action ===
+                        "next"
+                    ) {
+
+                        this.selectNextMonth();
+
+                        return;
+
+                    }
+
+                    if (
+                        action ===
+                        "current"
+                    ) {
+
+                        this.selectCurrentMonth();
+
+                        return;
+
+                    }
+
+                    if (
+                        action ===
+                        "analysis"
+                    ) {
+
+                        this.openSelectedMonthAnalysis();
+
+                        return;
+
+                    }
+
+                }
 
                 const card =
                     event.target.closest(
@@ -1314,7 +1812,8 @@ const AtlasOverviewCards = {
                         .overviewCard;
 
                 this.expandedCard =
-                    this.expandedCard === type
+                    this.expandedCard ===
+                        type
                         ? null
                         : type;
 
