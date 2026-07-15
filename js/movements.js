@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    movements.js
-   Sprint 4.3 — Límite de pagos de deuda
+   Atlas v1.0 — Reembolsos y gastos compartidos
 ========================================================== */
 
 const AtlasMovements = {
@@ -86,7 +86,8 @@ const AtlasMovements = {
 
     today() {
 
-        const now = new Date();
+        const now =
+            new Date();
 
         const year =
             now.getFullYear();
@@ -113,12 +114,29 @@ const AtlasMovements = {
 
     escape(value) {
 
-        return String(value ?? "")
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
+        return String(
+            value ?? ""
+        )
+            .replace(
+                /&/g,
+                "&amp;"
+            )
+            .replace(
+                /</g,
+                "&lt;"
+            )
+            .replace(
+                />/g,
+                "&gt;"
+            )
+            .replace(
+                /"/g,
+                "&quot;"
+            )
+            .replace(
+                /'/g,
+                "&#039;"
+            );
 
     },
 
@@ -138,10 +156,17 @@ const AtlasMovements = {
         return new Intl.NumberFormat(
             "es-ES",
             {
-                style: "currency",
-                currency: "EUR",
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 2
+                style:
+                    "currency",
+
+                currency:
+                    "EUR",
+
+                minimumFractionDigits:
+                    0,
+
+                maximumFractionDigits:
+                    2
             }
         ).format(
             this.number(value)
@@ -149,14 +174,61 @@ const AtlasMovements = {
 
     },
 
-    findMovement(id) {
+    formatDate(value) {
+
+        const [
+            year,
+            month,
+            day
+        ] = String(
+            value || ""
+        )
+            .split("-")
+            .map(Number);
+
+        if (
+            !year ||
+            !month ||
+            !day
+        ) {
+
+            return "";
+
+        }
+
+        return new Intl.DateTimeFormat(
+            "es-ES",
+            {
+                day:
+                    "2-digit",
+
+                month:
+                    "short",
+
+                year:
+                    "numeric"
+            }
+        ).format(
+            new Date(
+                year,
+                month - 1,
+                day
+            )
+        );
+
+    },
+
+    findMovement(
+        id,
+        data = this.data
+    ) {
 
         return (
-            this.data?.movements || []
+            data?.movements || []
         ).find(
             movement =>
                 movement.id === id
-        );
+        ) || null;
 
     },
 
@@ -170,7 +242,7 @@ const AtlasMovements = {
         ).find(
             account =>
                 account.id === id
-        );
+        ) || null;
 
     },
 
@@ -185,7 +257,151 @@ const AtlasMovements = {
 
         }
 
+        if (
+            movement?.kind ===
+                "reimbursement" ||
+            movement?.type ===
+                "reimbursement"
+        ) {
+
+            return "reimbursement";
+
+        }
+
         return movement?.type || "";
+
+    },
+
+    isExpenseMovement(movement) {
+
+        return (
+            this.getMovementKind(
+                movement
+            ) ===
+            "expense"
+        );
+
+    },
+
+    expenseMovements(
+        excludedId = null
+    ) {
+
+        return (
+            this.data?.movements || []
+        )
+            .filter(
+                movement =>
+                    this.isExpenseMovement(
+                        movement
+                    ) &&
+                    movement.id !==
+                        excludedId
+            )
+            .sort(
+                (
+                    first,
+                    second
+                ) => {
+
+                    const dateDifference =
+                        String(
+                            second.date || ""
+                        ).localeCompare(
+                            String(
+                                first.date || ""
+                            )
+                        );
+
+                    if (
+                        dateDifference !==
+                        0
+                    ) {
+
+                        return dateDifference;
+
+                    }
+
+                    return String(
+                        second.createdAt ||
+                        ""
+                    ).localeCompare(
+                        String(
+                            first.createdAt ||
+                            ""
+                        )
+                    );
+
+                }
+            );
+
+    },
+
+    linkedExpenseOptions(
+        selectedId = ""
+    ) {
+
+        const options =
+            this.expenseMovements(
+                this.editingId
+            )
+                .map(
+                    movement => {
+
+                        const category =
+                            movement.category ||
+                            "Gasto";
+
+                        const note =
+                            movement.note
+                                ? ` · ${movement.note}`
+                                : "";
+
+                        const date =
+                            this.formatDate(
+                                movement.date
+                            );
+
+                        const label =
+                            `${date} · ` +
+                            `${this.formatCurrency(
+                                movement.amount
+                            )} · ` +
+                            `${category}${note}`;
+
+                        return `
+
+                            <option
+                                value="${this.escape(
+                                    movement.id
+                                )}"
+                                ${
+                                    movement.id ===
+                                    selectedId
+                                        ? "selected"
+                                        : ""
+                                }
+                            >
+                                ${this.escape(
+                                    label
+                                )}
+                            </option>
+
+                        `;
+
+                    }
+                )
+                .join("");
+
+        return `
+
+            <option value="">
+                Sin vincular a un gasto
+            </option>
+
+            ${options}
+
+        `;
 
     },
 
@@ -209,12 +425,6 @@ const AtlasMovements = {
                     debtAccount.balance
                 )
             );
-
-        /*
-         * Al editar un pago existente, el saldo actual
-         * ya incluye ese pago. Sumamos de nuevo el importe
-         * original cuando se mantiene la misma deuda.
-         */
 
         if (this.editingId) {
 
@@ -253,7 +463,9 @@ const AtlasMovements = {
                 ?.categories?.[type];
 
         if (
-            !Array.isArray(categories)
+            !Array.isArray(
+                categories
+            )
         ) {
 
             return [];
@@ -263,12 +475,20 @@ const AtlasMovements = {
         return categories
             .filter(
                 category =>
-                    category.active !== false
+                    category.active !==
+                    false
             )
             .sort(
-                (a, b) =>
-                    this.number(a.order) -
-                    this.number(b.order)
+                (
+                    first,
+                    second
+                ) =>
+                    this.number(
+                        first.order
+                    ) -
+                    this.number(
+                        second.order
+                    )
             );
 
     },
@@ -332,16 +552,26 @@ const AtlasMovements = {
             .filter(filter)
             .filter(
                 account =>
-                    account.active !== false &&
+                    account.active !==
+                        false &&
                     (
-                        account.archived !== true ||
-                        account.id === selectedId
+                        account.archived !==
+                            true ||
+                        account.id ===
+                            selectedId
                     )
             )
             .sort(
-                (a, b) =>
-                    this.number(a.order) -
-                    this.number(b.order)
+                (
+                    first,
+                    second
+                ) =>
+                    this.number(
+                        first.order
+                    ) -
+                    this.number(
+                        second.order
+                    )
             );
 
     },
@@ -429,7 +659,8 @@ const AtlasMovements = {
                             account.id
                         )}"
                         ${
-                            account.id === selectedId
+                            account.id ===
+                            selectedId
                                 ? "selected"
                                 : ""
                         }
@@ -460,7 +691,8 @@ const AtlasMovements = {
                             category.id
                         )}"
                         ${
-                            category.id === selectedId
+                            category.id ===
+                            selectedId
                                 ? "selected"
                                 : ""
                         }
@@ -505,12 +737,20 @@ const AtlasMovements = {
         return category.subcategories
             .filter(
                 subcategory =>
-                    subcategory.active !== false
+                    subcategory.active !==
+                    false
             )
             .sort(
-                (a, b) =>
-                    this.number(a.order) -
-                    this.number(b.order)
+                (
+                    first,
+                    second
+                ) =>
+                    this.number(
+                        first.order
+                    ) -
+                    this.number(
+                        second.order
+                    )
             )
             .map(
                 subcategory => `
@@ -520,7 +760,8 @@ const AtlasMovements = {
                             subcategory.id
                         )}"
                         ${
-                            subcategory.id === selectedId
+                            subcategory.id ===
+                            selectedId
                                 ? "selected"
                                 : ""
                         }
@@ -544,7 +785,9 @@ const AtlasMovements = {
         movement
     ) {
 
-        if (movement?.categoryId) {
+        if (
+            movement?.categoryId
+        ) {
 
             return {
 
@@ -556,6 +799,36 @@ const AtlasMovements = {
                     ""
 
             };
+
+        }
+
+        if (
+            type ===
+                "expense" &&
+            movement?.linkedMovementId
+        ) {
+
+            const linkedExpense =
+                this.findMovement(
+                    movement.linkedMovementId
+                );
+
+            if (
+                linkedExpense?.categoryId
+            ) {
+
+                return {
+
+                    categoryId:
+                        linkedExpense.categoryId,
+
+                    subcategoryId:
+                        linkedExpense.subcategoryId ||
+                        ""
+
+                };
+
+            }
 
         }
 
@@ -572,9 +845,11 @@ const AtlasMovements = {
 
             subcategoryId:
                 firstCategory
-                    ?.subcategories?.find(
+                    ?.subcategories
+                    ?.find(
                         subcategory =>
-                            subcategory.active !== false
+                            subcategory.active !==
+                            false
                     )
                     ?.id ||
                 ""
@@ -624,7 +899,8 @@ const AtlasMovements = {
 
         }
 
-        return type === "income"
+        return type ===
+            "income"
             ? "Ingreso"
             : "Gasto";
 
@@ -651,7 +927,8 @@ const AtlasMovements = {
                             18,
                             0.78
                         );
-                    backdrop-filter: blur(8px);
+                    backdrop-filter:
+                        blur(8px);
                     -webkit-backdrop-filter:
                         blur(8px);
                 }
@@ -750,7 +1027,10 @@ const AtlasMovements = {
                 }
 
                 .movement-header p {
-                    margin: 7px 0 0;
+                    margin:
+                        7px
+                        0
+                        0;
                     color: #98a2bb;
                     line-height: 1.45;
                 }
@@ -758,7 +1038,10 @@ const AtlasMovements = {
                 .movement-back {
                     width: 42px;
                     height: 42px;
-                    flex: 0 0 42px;
+                    flex:
+                        0
+                        0
+                        42px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -802,13 +1085,19 @@ const AtlasMovements = {
                 }
 
                 .movement-type:active {
-                    transform: scale(0.985);
+                    transform:
+                        scale(
+                            0.985
+                        );
                 }
 
                 .movement-type-icon {
                     width: 48px;
                     height: 48px;
-                    flex: 0 0 48px;
+                    flex:
+                        0
+                        0
+                        48px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -858,7 +1147,9 @@ const AtlasMovements = {
                 .movement-field select {
                     width: 100%;
                     min-height: 54px;
-                    padding: 0 15px;
+                    padding:
+                        0
+                        15px;
                     border:
                         1px solid
                         rgba(
@@ -878,13 +1169,23 @@ const AtlasMovements = {
                 .movement-field select:focus {
                     border-color: #4da3ff;
                     box-shadow:
-                        0 0 0 3px
+                        0
+                        0
+                        0
+                        3px
                         rgba(
                             77,
                             163,
                             255,
                             0.13
                         );
+                }
+
+                .movement-field-hint {
+                    display: block;
+                    color: #98a2bb;
+                    font-size: 11px;
+                    line-height: 1.45;
                 }
 
                 .movement-amount {
@@ -905,6 +1206,29 @@ const AtlasMovements = {
                         translateY(-50%);
                     color: #98a2bb;
                     font-size: 19px;
+                }
+
+                .movement-info {
+                    padding: 13px 15px;
+                    border:
+                        1px solid
+                        rgba(
+                            77,
+                            163,
+                            255,
+                            0.16
+                        );
+                    border-radius: 16px;
+                    color: #aeb9d0;
+                    background:
+                        rgba(
+                            77,
+                            163,
+                            255,
+                            0.07
+                        );
+                    font-size: 12px;
+                    line-height: 1.5;
                 }
 
                 .movement-primary,
@@ -969,7 +1293,9 @@ const AtlasMovements = {
             this.root();
 
         if (!root) {
+
             return;
+
         }
 
         document.body.classList.add(
@@ -1068,7 +1394,14 @@ const AtlasMovements = {
                     "income",
                     "🟢",
                     "Ingreso",
-                    "Nómina, Bizum, reembolso u otros ingresos."
+                    "Nómina, intereses, ventas u otros ingresos reales."
+                )}
+
+                ${this.typeButton(
+                    "reimbursement",
+                    "↩️",
+                    "Reembolso",
+                    "Dinero recuperado de un gasto compartido o devuelto."
                 )}
 
                 ${this.typeButton(
@@ -1120,6 +1453,9 @@ const AtlasMovements = {
 
             income:
                 "Registrar ingreso",
+
+            reimbursement:
+                "Registrar reembolso",
 
             expense:
                 "Registrar gasto",
@@ -1280,6 +1616,74 @@ const AtlasMovements = {
 
     },
 
+    reimbursementFields(movement) {
+
+        return `
+
+            ${this.amountField(
+                movement?.amount ||
+                ""
+            )}
+
+            <div class="movement-info">
+                El reembolso aumenta tu liquidez y reduce el gasto neto, pero no cuenta como ingreso.
+            </div>
+
+            <label class="movement-field">
+
+                <span>
+                    Gasto original opcional
+                </span>
+
+                <select
+                    name="linkedMovementId"
+                    data-reimbursement-linked-expense
+                >
+                    ${this.linkedExpenseOptions(
+                        movement?.linkedMovementId ||
+                        ""
+                    )}
+                </select>
+
+                <small class="movement-field-hint">
+                    Al vincular un gasto se copiarán automáticamente su categoría y subcategoría.
+                </small>
+
+            </label>
+
+            ${this.categoryFields(
+                "expense",
+                movement
+            )}
+
+            <label class="movement-field">
+
+                <span>
+                    Cuenta que recibe el dinero
+                </span>
+
+                <select
+                    name="accountId"
+                    required
+                >
+                    ${this.accountOptions(
+                        this.liquidityAccounts(
+                            movement?.accountId
+                        ),
+                        movement?.accountId
+                    )}
+                </select>
+
+            </label>
+
+            ${this.commonFields(
+                movement
+            )}
+
+        `;
+
+    },
+
     formFields(
         type,
         movement = null
@@ -1294,11 +1698,16 @@ const AtlasMovements = {
                 movement
             );
 
-        if (type === "income") {
+        if (
+            type ===
+            "income"
+        ) {
 
             return `
 
-                ${this.amountField(amount)}
+                ${this.amountField(
+                    amount
+                )}
 
                 ${this.categoryFields(
                     "income",
@@ -1331,11 +1740,27 @@ const AtlasMovements = {
 
         }
 
-        if (type === "expense") {
+        if (
+            type ===
+            "reimbursement"
+        ) {
+
+            return this.reimbursementFields(
+                movement
+            );
+
+        }
+
+        if (
+            type ===
+            "expense"
+        ) {
 
             return `
 
-                ${this.amountField(amount)}
+                ${this.amountField(
+                    amount
+                )}
 
                 ${this.categoryFields(
                     "expense",
@@ -1368,11 +1793,16 @@ const AtlasMovements = {
 
         }
 
-        if (type === "transfer") {
+        if (
+            type ===
+            "transfer"
+        ) {
 
             return `
 
-                ${this.amountField(amount)}
+                ${this.amountField(
+                    amount
+                )}
 
                 <label class="movement-field">
 
@@ -1420,11 +1850,16 @@ const AtlasMovements = {
 
         }
 
-        if (type === "investment") {
+        if (
+            type ===
+            "investment"
+        ) {
 
             return `
 
-                ${this.amountField(amount)}
+                ${this.amountField(
+                    amount
+                )}
 
                 <label class="movement-field">
 
@@ -1524,7 +1959,9 @@ const AtlasMovements = {
 
         return `
 
-            ${this.amountField(amount)}
+            ${this.amountField(
+                amount
+            )}
 
             <label class="movement-field">
 
@@ -1672,7 +2109,8 @@ const AtlasMovements = {
     },
 
     updateSubcategorySelect(
-        categorySelect
+        categorySelect,
+        selectedSubcategoryId = ""
     ) {
 
         const form =
@@ -1681,7 +2119,9 @@ const AtlasMovements = {
             );
 
         if (!form) {
+
             return;
+
         }
 
         const subcategorySelect =
@@ -1690,7 +2130,9 @@ const AtlasMovements = {
             );
 
         if (!subcategorySelect) {
+
             return;
+
         }
 
         const type =
@@ -1700,8 +2142,95 @@ const AtlasMovements = {
         subcategorySelect.innerHTML =
             this.subcategoryOptions(
                 type,
-                categorySelect.value
+                categorySelect.value,
+                selectedSubcategoryId
             );
+
+    },
+
+    applyLinkedExpenseToForm(
+        linkedExpenseSelect
+    ) {
+
+        const form =
+            linkedExpenseSelect.closest(
+                "[data-movement-form]"
+            );
+
+        if (!form) {
+
+            return;
+
+        }
+
+        const linkedMovementId =
+            linkedExpenseSelect.value;
+
+        if (!linkedMovementId) {
+
+            return;
+
+        }
+
+        const expense =
+            this.findMovement(
+                linkedMovementId
+            );
+
+        if (
+            !expense ||
+            !this.isExpenseMovement(
+                expense
+            )
+        ) {
+
+            return;
+
+        }
+
+        const categorySelect =
+            form.querySelector(
+                "[data-movement-category]"
+            );
+
+        const subcategorySelect =
+            form.querySelector(
+                "[data-movement-subcategory]"
+            );
+
+        if (
+            !categorySelect ||
+            !subcategorySelect
+        ) {
+
+            return;
+
+        }
+
+        const categoryId =
+            expense.categoryId ||
+            "";
+
+        const subcategoryId =
+            expense.subcategoryId ||
+            "";
+
+        if (!categoryId) {
+
+            return;
+
+        }
+
+        categorySelect.value =
+            categoryId;
+
+        this.updateSubcategorySelect(
+            categorySelect,
+            subcategoryId
+        );
+
+        subcategorySelect.value =
+            subcategoryId;
 
     },
 
@@ -1728,15 +2257,12 @@ const AtlasMovements = {
 
             type:
                 type ===
-                "debt_payment"
+                    "debt_payment"
                     ? "expense"
                     : type,
 
             kind:
-                type ===
-                "debt_payment"
-                    ? "debt_payment"
-                    : type,
+                type,
 
             amount:
                 Number(
@@ -1782,8 +2308,12 @@ const AtlasMovements = {
         };
 
         if (
-            type === "income" ||
-            type === "expense"
+            type ===
+                "income" ||
+            type ===
+                "expense" ||
+            type ===
+                "reimbursement"
         ) {
 
             movement.accountId =
@@ -1809,7 +2339,10 @@ const AtlasMovements = {
 
             movement.category =
                 this.categoryDisplayName(
-                    type,
+                    type ===
+                        "income"
+                        ? "income"
+                        : "expense",
                     movement.categoryId,
                     movement.subcategoryId
                 );
@@ -1817,9 +2350,29 @@ const AtlasMovements = {
         }
 
         if (
-            type === "transfer" ||
-            type === "investment" ||
-            type === "debt_payment"
+            type ===
+            "reimbursement"
+        ) {
+
+            movement.linkedMovementId =
+                String(
+                    values.get(
+                        "linkedMovementId"
+                    ) || ""
+                ) || null;
+
+            movement.incomeBehavior =
+                "reimbursement";
+
+        }
+
+        if (
+            type ===
+                "transfer" ||
+            type ===
+                "investment" ||
+            type ===
+                "debt_payment"
         ) {
 
             movement.fromAccountId =
@@ -1838,7 +2391,10 @@ const AtlasMovements = {
 
         }
 
-        if (type === "investment") {
+        if (
+            type ===
+            "investment"
+        ) {
 
             movement.category =
                 String(
@@ -1848,32 +2404,50 @@ const AtlasMovements = {
                     "Aportación periódica"
                 );
 
-            movement.categoryId = null;
-            movement.subcategoryId = null;
+            movement.categoryId =
+                null;
+
+            movement.subcategoryId =
+                null;
 
         }
 
-        if (type === "transfer") {
+        if (
+            type ===
+            "transfer"
+        ) {
 
             movement.category =
                 "Traspaso";
 
-            movement.categoryId = null;
-            movement.subcategoryId = null;
+            movement.categoryId =
+                null;
+
+            movement.subcategoryId =
+                null;
 
         }
 
-        if (type === "debt_payment") {
+        if (
+            type ===
+            "debt_payment"
+        ) {
 
             movement.category =
                 "Pago de deuda";
 
-            movement.categoryId = null;
-            movement.subcategoryId = null;
+            movement.categoryId =
+                null;
+
+            movement.subcategoryId =
+                null;
 
         }
 
-        if (type === "income") {
+        if (
+            type ===
+            "income"
+        ) {
 
             const subcategory =
                 this.findSubcategory(
@@ -1927,8 +2501,12 @@ const AtlasMovements = {
 
         if (
             (
-                kind === "income" ||
-                kind === "expense"
+                kind ===
+                    "income" ||
+                kind ===
+                    "expense" ||
+                kind ===
+                    "reimbursement"
             ) &&
             (
                 !movement.categoryId ||
@@ -1942,8 +2520,12 @@ const AtlasMovements = {
 
         if (
             (
-                kind === "income" ||
-                kind === "expense"
+                kind ===
+                    "income" ||
+                kind ===
+                    "expense" ||
+                kind ===
+                    "reimbursement"
             ) &&
             !movement.accountId
         ) {
@@ -1954,9 +2536,12 @@ const AtlasMovements = {
 
         if (
             (
-                kind === "transfer" ||
-                kind === "investment" ||
-                kind === "debt_payment"
+                kind ===
+                    "transfer" ||
+                kind ===
+                    "investment" ||
+                kind ===
+                    "debt_payment"
             ) &&
             (
                 !movement.fromAccountId ||
@@ -2000,7 +2585,60 @@ const AtlasMovements = {
         }
 
         if (
-            kind === "debt_payment"
+            kind ===
+            "reimbursement"
+        ) {
+
+            const account =
+                this.findAccount(
+                    movement.accountId
+                );
+
+            if (
+                account?.group !==
+                "liquidity"
+            ) {
+
+                return "El reembolso debe recibirse en una cuenta de liquidez.";
+
+            }
+
+            if (
+                movement.linkedMovementId
+            ) {
+
+                const linkedExpense =
+                    this.findMovement(
+                        movement.linkedMovementId
+                    );
+
+                if (
+                    !linkedExpense ||
+                    !this.isExpenseMovement(
+                        linkedExpense
+                    )
+                ) {
+
+                    return "El gasto original vinculado ya no existe.";
+
+                }
+
+                if (
+                    linkedExpense.id ===
+                    movement.id
+                ) {
+
+                    return "Un movimiento no puede vincularse a sí mismo.";
+
+                }
+
+            }
+
+        }
+
+        if (
+            kind ===
+            "debt_payment"
         ) {
 
             const fromAccount =
@@ -2072,14 +2710,18 @@ const AtlasMovements = {
     ) {
 
         if (!account) {
+
             return;
+
         }
 
         account.balance =
             this.number(
                 account.balance
             ) +
-            this.number(amount);
+            this.number(
+                amount
+            );
 
         account.updatedAt =
             new Date()
@@ -2093,14 +2735,18 @@ const AtlasMovements = {
     ) {
 
         if (!account) {
+
             return;
+
         }
 
         account.invested =
             this.number(
                 account.invested
             ) +
-            this.number(amount);
+            this.number(
+                amount
+            );
 
         account.updatedAt =
             new Date()
@@ -2125,7 +2771,10 @@ const AtlasMovements = {
                 movement
             );
 
-        if (kind === "income") {
+        if (
+            kind ===
+            "income"
+        ) {
 
             this.changeBalance(
                 this.findAccount(
@@ -2139,7 +2788,27 @@ const AtlasMovements = {
 
         }
 
-        if (kind === "expense") {
+        if (
+            kind ===
+            "reimbursement"
+        ) {
+
+            this.changeBalance(
+                this.findAccount(
+                    movement.accountId,
+                    data
+                ),
+                amount
+            );
+
+            return;
+
+        }
+
+        if (
+            kind ===
+            "expense"
+        ) {
 
             const account =
                 this.findAccount(
@@ -2148,7 +2817,9 @@ const AtlasMovements = {
                 );
 
             if (!account) {
+
                 return;
+
             }
 
             if (
@@ -2174,7 +2845,10 @@ const AtlasMovements = {
 
         }
 
-        if (kind === "transfer") {
+        if (
+            kind ===
+            "transfer"
+        ) {
 
             const fromAccount =
                 this.findAccount(
@@ -2190,14 +2864,16 @@ const AtlasMovements = {
 
             this.changeBalance(
                 fromAccount,
-                fromAccount?.group === "debt"
+                fromAccount?.group ===
+                    "debt"
                     ? amount
                     : -amount
             );
 
             this.changeBalance(
                 toAccount,
-                toAccount?.group === "debt"
+                toAccount?.group ===
+                    "debt"
                     ? -amount
                     : amount
             );
@@ -2206,7 +2882,10 @@ const AtlasMovements = {
 
         }
 
-        if (kind === "investment") {
+        if (
+            kind ===
+            "investment"
+        ) {
 
             const fromAccount =
                 this.findAccount(
@@ -2239,7 +2918,10 @@ const AtlasMovements = {
 
         }
 
-        if (kind === "debt_payment") {
+        if (
+            kind ===
+            "debt_payment"
+        ) {
 
             const fromAccount =
                 this.findAccount(
@@ -2273,7 +2955,9 @@ const AtlasMovements = {
     ) {
 
         if (!saveButton) {
+
             return;
+
         }
 
         saveButton.disabled =
@@ -2319,7 +3003,8 @@ const AtlasMovements = {
 
         }
 
-        this.saving = true;
+        this.saving =
+            true;
 
         const saveButton =
             form.querySelector(
@@ -2328,7 +3013,8 @@ const AtlasMovements = {
 
         if (saveButton) {
 
-            saveButton.disabled = true;
+            saveButton.disabled =
+                true;
 
             saveButton.textContent =
                 "Guardando…";
@@ -2344,7 +3030,8 @@ const AtlasMovements = {
             )
         ) {
 
-            updatedData.movements = [];
+            updatedData.movements =
+                [];
 
         }
 
@@ -2358,9 +3045,13 @@ const AtlasMovements = {
                             this.editingId
                     );
 
-            if (oldIndex === -1) {
+            if (
+                oldIndex ===
+                -1
+            ) {
 
-                this.saving = false;
+                this.saving =
+                    false;
 
                 this.restoreSaveButton(
                     saveButton,
@@ -2417,7 +3108,8 @@ const AtlasMovements = {
 
         if (!saved) {
 
-            this.saving = false;
+            this.saving =
+                false;
 
             this.restoreSaveButton(
                 saveButton,
@@ -2434,7 +3126,8 @@ const AtlasMovements = {
 
         }
 
-        this.data = updatedData;
+        this.data =
+            updatedData;
 
         const callback =
             this.onComplete;
@@ -2466,16 +3159,58 @@ const AtlasMovements = {
 
         }
 
+        const linkedReimbursements =
+            (
+                this.data?.movements ||
+                []
+            ).filter(
+                movement =>
+                    this.getMovementKind(
+                        movement
+                    ) ===
+                        "reimbursement" &&
+                    movement.linkedMovementId ===
+                        this.editingId
+            );
+
+        let message =
+            "¿Eliminar este movimiento?\n\nLos saldos se corregirán automáticamente.";
+
+        if (
+            linkedReimbursements.length >
+            0
+        ) {
+
+            message +=
+                `\n\nTiene ${
+                    linkedReimbursements.length
+                } reembolso${
+                    linkedReimbursements.length ===
+                    1
+                        ? ""
+                        : "s"
+                } vinculado${
+                    linkedReimbursements.length ===
+                    1
+                        ? ""
+                        : "s"
+                }. Los reembolsos se conservarán, pero quedarán sin vincular.`;
+
+        }
+
         const confirmed =
             window.confirm(
-                "¿Eliminar este movimiento?\n\nLos saldos se corregirán automáticamente."
+                message
             );
 
         if (!confirmed) {
+
             return;
+
         }
 
-        this.saving = true;
+        this.saving =
+            true;
 
         const updatedData =
             this.cloneData();
@@ -2488,9 +3223,13 @@ const AtlasMovements = {
                         this.editingId
                 );
 
-        if (index === -1) {
+        if (
+            index ===
+            -1
+        ) {
 
-            this.saving = false;
+            this.saving =
+                false;
 
             AtlasUI.toast(
                 "No se pudo eliminar el movimiento."
@@ -2516,6 +3255,27 @@ const AtlasMovements = {
             1
         );
 
+        updatedData.movements
+            .forEach(
+                item => {
+
+                    if (
+                        item.linkedMovementId ===
+                        movement.id
+                    ) {
+
+                        item.linkedMovementId =
+                            null;
+
+                        item.updatedAt =
+                            new Date()
+                                .toISOString();
+
+                    }
+
+                }
+            );
+
         const saved =
             AtlasStorage.save(
                 updatedData
@@ -2523,7 +3283,8 @@ const AtlasMovements = {
 
         if (!saved) {
 
-            this.saving = false;
+            this.saving =
+                false;
 
             AtlasUI.toast(
                 "No se pudo eliminar el movimiento."
@@ -2533,7 +3294,8 @@ const AtlasMovements = {
 
         }
 
-        this.data = updatedData;
+        this.data =
+            updatedData;
 
         const callback =
             this.onComplete;
@@ -2564,15 +3326,21 @@ const AtlasMovements = {
             this.root();
 
         if (root) {
-            root.innerHTML = "";
+
+            root.innerHTML =
+                "";
+
         }
 
         document.body.classList.remove(
             "atlas-modal-open"
         );
 
-        this.editingId = null;
-        this.saving = false;
+        this.editingId =
+            null;
+
+        this.saving =
+            false;
 
     },
 
@@ -2633,7 +3401,9 @@ const AtlasMovements = {
                     );
 
                 if (!actionButton) {
+
                     return;
+
                 }
 
                 event.preventDefault();
@@ -2642,7 +3412,10 @@ const AtlasMovements = {
                     actionButton.dataset
                         .movementAction;
 
-                if (action === "save") {
+                if (
+                    action ===
+                    "save"
+                ) {
 
                     const form =
                         actionButton.closest(
@@ -2669,7 +3442,10 @@ const AtlasMovements = {
 
                 }
 
-                if (action === "close") {
+                if (
+                    action ===
+                    "close"
+                ) {
 
                     this.close();
 
@@ -2677,9 +3453,14 @@ const AtlasMovements = {
 
                 }
 
-                if (action === "types") {
+                if (
+                    action ===
+                    "types"
+                ) {
 
-                    if (this.editingId) {
+                    if (
+                        this.editingId
+                    ) {
 
                         this.close();
 
@@ -2693,7 +3474,10 @@ const AtlasMovements = {
 
                 }
 
-                if (action === "delete") {
+                if (
+                    action ===
+                    "delete"
+                ) {
 
                     this.deleteMovement();
 
@@ -2706,13 +3490,34 @@ const AtlasMovements = {
             "change",
             event => {
 
+                const linkedExpenseSelect =
+                    event.target.closest(
+                        "[data-reimbursement-linked-expense]"
+                    );
+
+                if (
+                    linkedExpenseSelect
+                ) {
+
+                    this.applyLinkedExpenseToForm(
+                        linkedExpenseSelect
+                    );
+
+                    return;
+
+                }
+
                 const categorySelect =
                     event.target.closest(
                         "[data-movement-category]"
                     );
 
-                if (!categorySelect) {
+                if (
+                    !categorySelect
+                ) {
+
                     return;
+
                 }
 
                 this.updateSubcategorySelect(
@@ -2732,7 +3537,9 @@ const AtlasMovements = {
                     );
 
                 if (!form) {
+
                     return;
+
                 }
 
                 event.preventDefault();
