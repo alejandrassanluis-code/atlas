@@ -1,10 +1,13 @@
 /* ==========================================================
    ATLAS
    movement-filters.js
-   Atlas v1.0 — Movimientos con reembolsos
+   Atlas v1.0 — Registrados y pendientes recurrentes
 ========================================================== */
 
 const AtlasMovementFilters = {
+
+    activeView:
+        "registered",
 
     number(value) {
 
@@ -66,7 +69,11 @@ const AtlasMovementFilters = {
 
         }
 
-        return movement?.type || "";
+        return (
+            movement?.kind ||
+            movement?.type ||
+            ""
+        );
 
     },
 
@@ -273,7 +280,9 @@ const AtlasMovementFilters = {
 
             movement?.fromAccountId,
 
-            movement?.toAccountId
+            movement?.toAccountId,
+
+            movement?.debtAccountId
 
         ].filter(Boolean);
 
@@ -325,13 +334,15 @@ const AtlasMovementFilters = {
         const fromName =
             this.accountName(
                 data,
-                movement.fromAccountId
+                movement.fromAccountId ||
+                movement.accountId
             );
 
         const toName =
             this.accountName(
                 data,
-                movement.toAccountId
+                movement.toAccountId ||
+                movement.debtAccountId
             );
 
         if (
@@ -1230,8 +1241,7 @@ const AtlasMovementFilters = {
                 }
 
                 if (
-                    kind ===
-                    "expense"
+                    kind === "expense"
                 ) {
 
                     summary.grossExpenses +=
@@ -1242,8 +1252,7 @@ const AtlasMovementFilters = {
                 }
 
                 if (
-                    kind ===
-                    "investment"
+                    kind === "investment"
                 ) {
 
                     summary.invested +=
@@ -1266,8 +1275,7 @@ const AtlasMovementFilters = {
                 }
 
                 if (
-                    kind ===
-                    "transfer"
+                    kind === "transfer"
                 ) {
 
                     summary.transfers +=
@@ -1578,6 +1586,893 @@ const AtlasMovementFilters = {
 
     },
 
+    recurringRules(data) {
+
+        return Array.isArray(
+            data?.catalog
+                ?.recurringRules
+        )
+            ? data.catalog
+                .recurringRules
+            : [];
+
+    },
+
+    findRecurringRule(
+        data,
+        ruleId
+    ) {
+
+        return this
+            .recurringRules(
+                data
+            )
+            .find(
+                rule =>
+                    rule.id ===
+                    ruleId
+            ) || null;
+
+    },
+
+    expenseCategories(data) {
+
+        return Array.isArray(
+            data?.catalog
+                ?.categories
+                ?.expense
+        )
+            ? data.catalog
+                .categories
+                .expense
+            : [];
+
+    },
+
+    incomeCategories(data) {
+
+        return Array.isArray(
+            data?.catalog
+                ?.categories
+                ?.income
+        )
+            ? data.catalog
+                .categories
+                .income
+            : [];
+
+    },
+
+    categoryCollection(
+        data,
+        kind
+    ) {
+
+        return kind === "income"
+            ? this.incomeCategories(
+                data
+            )
+            : this.expenseCategories(
+                data
+            );
+
+    },
+
+    findCategory(
+        data,
+        kind,
+        categoryId
+    ) {
+
+        return this
+            .categoryCollection(
+                data,
+                kind
+            )
+            .find(
+                category =>
+                    category.id ===
+                    categoryId
+            ) || null;
+
+    },
+
+    findSubcategory(
+        category,
+        subcategoryId
+    ) {
+
+        return (
+            Array.isArray(
+                category?.subcategories
+            )
+                ? category.subcategories
+                : []
+        ).find(
+            subcategory =>
+                subcategory.id ===
+                subcategoryId
+        ) || null;
+
+    },
+
+    occurrenceTitle(
+        data,
+        occurrence
+    ) {
+
+        const rule =
+            this.findRecurringRule(
+                data,
+                occurrence.ruleId
+            );
+
+        if (
+            rule?.name
+        ) {
+
+            return rule.name;
+
+        }
+
+        const kind =
+            this.movementKind(
+                occurrence
+            );
+
+        const category =
+            this.findCategory(
+                data,
+                kind,
+                occurrence.categoryId
+            );
+
+        const subcategory =
+            this.findSubcategory(
+                category,
+                occurrence.subcategoryId
+            );
+
+        return (
+            subcategory?.name ||
+            category?.name ||
+            this.movementLabel(
+                occurrence
+            )
+        );
+
+    },
+
+    occurrenceCategoryDescription(
+        data,
+        occurrence
+    ) {
+
+        const kind =
+            this.movementKind(
+                occurrence
+            );
+
+        const category =
+            this.findCategory(
+                data,
+                kind,
+                occurrence.categoryId
+            );
+
+        const subcategory =
+            this.findSubcategory(
+                category,
+                occurrence.subcategoryId
+            );
+
+        if (
+            category &&
+            subcategory
+        ) {
+
+            return (
+                `${category.name} · ${subcategory.name}`
+            );
+
+        }
+
+        return (
+            subcategory?.name ||
+            category?.name ||
+            this.movementLabel(
+                occurrence
+            )
+        );
+
+    },
+
+    occurrenceDateLabel(
+        occurrence
+    ) {
+
+        const date =
+            occurrence.expectedDate;
+
+        if (!date) {
+
+            return "Fecha por revisar";
+
+        }
+
+        return AtlasUI
+            .formatMovementDate(
+                date
+            );
+
+    },
+
+    occurrenceAccountDescription(
+        data,
+        occurrence
+    ) {
+
+        return this
+            .movementAccountDescription(
+                data,
+                occurrence
+            );
+    },
+
+    occurrenceAmount(
+        occurrence
+    ) {
+
+        const amount =
+            this.number(
+                occurrence.expectedAmount
+            );
+
+        const kind =
+            this.movementKind(
+                occurrence
+            );
+
+        if (
+            kind === "income" ||
+            kind === "reimbursement"
+        ) {
+
+            return (
+                "+" +
+                AtlasUI.formatCurrency(
+                    amount
+                )
+            );
+
+        }
+
+        if (
+            kind === "transfer"
+        ) {
+
+            return AtlasUI
+                .formatCurrency(
+                    amount
+                );
+
+        }
+
+        return (
+            "−" +
+            AtlasUI.formatCurrency(
+                amount
+            )
+        );
+
+    },
+
+    occurrenceStatus(
+        occurrence
+    ) {
+
+        if (
+            occurrence.status ===
+            "possible_duplicate"
+        ) {
+
+            return {
+
+                label:
+                    "Posiblemente registrado",
+
+                color:
+                    "#f4b95e",
+
+                icon:
+                    "⚠️"
+
+            };
+
+        }
+
+        return {
+
+            label:
+                "Pendiente",
+
+            color:
+                "var(--color-primary)",
+
+            icon:
+                "⏳"
+
+        };
+
+    },
+
+    pendingSummary(pending) {
+
+        const summary = {
+
+            income:
+                0,
+
+            expenses:
+                0,
+
+            invested:
+                0,
+
+            debtPayments:
+                0,
+
+            count:
+                pending.length
+
+        };
+
+        pending.forEach(
+            occurrence => {
+
+                const amount =
+                    this.number(
+                        occurrence
+                            .expectedAmount
+                    );
+
+                const kind =
+                    this.movementKind(
+                        occurrence
+                    );
+
+                if (
+                    kind === "income"
+                ) {
+
+                    summary.income +=
+                        amount;
+
+                    return;
+
+                }
+
+                if (
+                    kind === "expense"
+                ) {
+
+                    summary.expenses +=
+                        amount;
+
+                    return;
+
+                }
+
+                if (
+                    kind === "investment"
+                ) {
+
+                    summary.invested +=
+                        amount;
+
+                    return;
+
+                }
+
+                if (
+                    kind ===
+                    "debt_payment"
+                ) {
+
+                    summary.debtPayments +=
+                        amount;
+
+                }
+
+            }
+        );
+
+        return summary;
+
+    },
+
+    pendingSummaryPanel(pending) {
+
+        const summary =
+            this.pendingSummary(
+                pending
+            );
+
+        return `
+
+            <section class="atlas-pending-summary">
+
+                <div>
+
+                    <small>
+                        Gastos previstos
+                    </small>
+
+                    <strong
+                        style="
+                            color:
+                                var(
+                                    --color-danger
+                                );
+                        "
+                    >
+                        ${AtlasUI.formatCurrency(
+                            summary.expenses
+                        )}
+                    </strong>
+
+                </div>
+
+                <div>
+
+                    <small>
+                        Ingresos previstos
+                    </small>
+
+                    <strong
+                        style="
+                            color:
+                                var(
+                                    --color-success
+                                );
+                        "
+                    >
+                        ${AtlasUI.formatCurrency(
+                            summary.income
+                        )}
+                    </strong>
+
+                </div>
+
+                <div>
+
+                    <small>
+                        Inversión prevista
+                    </small>
+
+                    <strong
+                        style="
+                            color:#9d8cff;
+                        "
+                    >
+                        ${AtlasUI.formatCurrency(
+                            summary.invested
+                        )}
+                    </strong>
+
+                </div>
+
+            </section>
+
+        `;
+
+    },
+
+    pendingTabs(pendingCount) {
+
+        return `
+
+            <div
+                class="atlas-movement-tabs"
+                role="tablist"
+                aria-label="Vista de movimientos"
+            >
+
+                <button
+                    type="button"
+                    role="tab"
+                    data-action="showRegisteredMovements"
+                    class="${
+                        this.activeView ===
+                        "registered"
+                            ? "active"
+                            : ""
+                    }"
+                    aria-selected="${
+                        this.activeView ===
+                        "registered"
+                            ? "true"
+                            : "false"
+                    }"
+                >
+                    Registrados
+                </button>
+
+                <button
+                    type="button"
+                    role="tab"
+                    data-action="showPendingMovements"
+                    class="${
+                        this.activeView ===
+                        "pending"
+                            ? "active"
+                            : ""
+                    }"
+                    aria-selected="${
+                        this.activeView ===
+                        "pending"
+                            ? "true"
+                            : "false"
+                    }"
+                >
+                    Pendientes
+
+                    ${
+                        pendingCount > 0
+                            ? `
+
+                                <span>
+                                    ${pendingCount}
+                                </span>
+
+                            `
+                            : ""
+                    }
+
+                </button>
+
+            </div>
+
+        `;
+
+    },
+
+    pendingRow(
+        data,
+        occurrence
+    ) {
+
+        const status =
+            this.occurrenceStatus(
+                occurrence
+            );
+
+        const account =
+            this
+                .occurrenceAccountDescription(
+                    data,
+                    occurrence
+                );
+
+        const category =
+            this
+                .occurrenceCategoryDescription(
+                    data,
+                    occurrence
+                );
+
+        return `
+
+            <article
+                class="atlas-pending-card"
+                data-recurring-occurrence-id="${this.escape(
+                    occurrence.id
+                )}"
+            >
+
+                <div class="atlas-pending-card-head">
+
+                    <div class="atlas-pending-card-title">
+
+                        <span
+                            class="atlas-pending-icon"
+                            aria-hidden="true"
+                        >
+                            ${this.movementIcon(
+                                occurrence
+                            )}
+                        </span>
+
+                        <div>
+
+                            <strong>
+                                ${this.escape(
+                                    this.occurrenceTitle(
+                                        data,
+                                        occurrence
+                                    )
+                                )}
+                            </strong>
+
+                            <small>
+                                ${this.escape(
+                                    category
+                                )}
+                            </small>
+
+                        </div>
+
+                    </div>
+
+                    <strong
+                        class="atlas-pending-amount"
+                        style="
+                            color:
+                                ${this.movementColor(
+                                    occurrence
+                                )};
+                        "
+                    >
+                        ${this.occurrenceAmount(
+                            occurrence
+                        )}
+                    </strong>
+
+                </div>
+
+                <div class="atlas-pending-meta">
+
+                    <span>
+                        📅
+                        ${this.escape(
+                            this.occurrenceDateLabel(
+                                occurrence
+                            )
+                        )}
+                    </span>
+
+                    ${
+                        account
+                            ? `
+
+                                <span>
+                                    🏦
+                                    ${this.escape(
+                                        account
+                                    )}
+                                </span>
+
+                            `
+                            : ""
+                    }
+
+                </div>
+
+                <div
+                    class="atlas-pending-status"
+                    style="
+                        color:
+                            ${status.color};
+                    "
+                >
+                    <span>
+                        ${status.icon}
+                    </span>
+
+                    <span>
+                        ${status.label}
+                    </span>
+
+                    ${
+                        occurrence.status ===
+                        "possible_duplicate"
+                            ? `
+
+                                <small>
+                                    Revisa si ya registraste
+                                    este movimiento.
+                                </small>
+
+                            `
+                            : ""
+                    }
+
+                </div>
+
+                <div class="atlas-pending-actions">
+
+                    <button
+                        type="button"
+                        class="secondary"
+                        data-action="reviewRecurringOccurrence"
+                        data-occurrence-id="${this.escape(
+                            occurrence.id
+                        )}"
+                    >
+                        Revisar
+                    </button>
+
+                    <button
+                        type="button"
+                        class="atlas-pending-confirm"
+                        data-action="confirmRecurringOccurrence"
+                        data-occurrence-id="${this.escape(
+                            occurrence.id
+                        )}"
+                    >
+                        Confirmar
+                    </button>
+
+                    <button
+                        type="button"
+                        class="atlas-pending-omit"
+                        data-action="omitRecurringOccurrence"
+                        data-occurrence-id="${this.escape(
+                            occurrence.id
+                        )}"
+                    >
+                        Omitir
+                    </button>
+
+                </div>
+
+            </article>
+
+        `;
+
+    },
+
+    pendingEmptyState(monthKey) {
+
+        return `
+
+            <section class="panel atlas-pending-empty">
+
+                <div>
+                    ✅
+                </div>
+
+                <strong>
+                    No hay pendientes
+                </strong>
+
+                <p class="note">
+                    No existen movimientos recurrentes
+                    pendientes en
+                    ${AtlasUI.formatMonthKey(
+                        monthKey
+                    )}.
+                </p>
+
+                <p class="note">
+                    Las reglas se configurarán desde
+                    Ajustes y nunca modificarán tus
+                    cifras hasta que las confirmes.
+                </p>
+
+            </section>
+
+        `;
+
+    },
+
+    registeredView(
+        data,
+        filters,
+        list,
+        allMonthlyMovements,
+        movementsMonth,
+        filtersActive
+    ) {
+
+        return `
+
+            ${this.filtersPanel(
+                data,
+                filters,
+                list.length,
+                allMonthlyMovements.length,
+                movementsMonth
+            )}
+
+            ${this.summaryPanel(
+                list
+            )}
+
+            <section class="panel atlas-movement-list-panel">
+
+                ${
+                    list.length === 0
+                        ? this.emptyState(
+                            movementsMonth,
+                            filtersActive
+                        )
+                        : `
+
+                            <div class="list">
+
+                                ${list
+                                    .map(
+                                        movement =>
+                                            this.movementRow(
+                                                data,
+                                                movement
+                                            )
+                                    )
+                                    .join("")}
+
+                            </div>
+
+                        `
+                }
+
+            </section>
+
+            <button
+                class="primary"
+                type="button"
+                data-action="newMovement"
+            >
+                Nuevo movimiento
+            </button>
+
+        `;
+
+    },
+
+    pendingView(
+        data,
+        pending,
+        movementsMonth
+    ) {
+
+        if (
+            pending.length === 0
+        ) {
+
+            return this.pendingEmptyState(
+                movementsMonth
+            );
+
+        }
+
+        return `
+
+            <div class="atlas-pending-introduction">
+
+                <strong>
+                    Previsión del mes
+                </strong>
+
+                <p class="note">
+                    Estas propuestas todavía no afectan
+                    a saldos, gastos, presupuestos ni análisis.
+                </p>
+
+            </div>
+
+            ${this.pendingSummaryPanel(
+                pending
+            )}
+
+            <section class="atlas-pending-list">
+
+                ${pending
+                    .map(
+                        occurrence =>
+                            this.pendingRow(
+                                data,
+                                occurrence
+                            )
+                    )
+                    .join("")}
+
+            </section>
+
+        `;
+
+    },
+
     render(
         data,
         options = {}
@@ -1594,6 +2489,25 @@ const AtlasMovementFilters = {
         const isCurrentMonth =
             movementsMonth ===
             currentMonth;
+
+        const pending =
+            Array.isArray(
+                options.recurringPending
+            )
+                ? options.recurringPending
+                : (
+                    typeof AtlasRecurring !==
+                        "undefined" &&
+                    typeof AtlasRecurring
+                        .pendingForMonth ===
+                        "function"
+                        ? AtlasRecurring
+                            .pendingForMonth(
+                                data,
+                                movementsMonth
+                            )
+                        : []
+                );
 
         const filters = {
 
@@ -1702,7 +2616,8 @@ const AtlasMovementFilters = {
                 </h1>
 
                 <p class="subtitle">
-                    Consulta, filtra y edita las operaciones de cada mes.
+                    Consulta operaciones reales y revisa
+                    las propuestas recurrentes.
                 </p>
 
                 ${AtlasUI.monthSelector({
@@ -1725,60 +2640,38 @@ const AtlasMovementFilters = {
                         `${allMonthlyMovements.length} ${
                             allMonthlyMovements.length ===
                             1
-                                ? "movimiento"
-                                : "movimientos"
+                                ? "registrado"
+                                : "registrados"
+                        } · ${pending.length} ${
+                            pending.length ===
+                            1
+                                ? "pendiente"
+                                : "pendientes"
                         }`
 
                 })}
 
-                ${this.filtersPanel(
-                    data,
-                    filters,
-                    list.length,
-                    allMonthlyMovements.length,
-                    movementsMonth
+                ${this.pendingTabs(
+                    pending.length
                 )}
 
-                ${this.summaryPanel(
-                    list
-                )}
-
-                <section class="panel atlas-movement-list-panel">
-
-                    ${
-                        list.length === 0
-                            ? this.emptyState(
-                                movementsMonth,
-                                filtersActive
-                            )
-                            : `
-
-                                <div class="list">
-
-                                    ${list
-                                        .map(
-                                            movement =>
-                                                this.movementRow(
-                                                    data,
-                                                    movement
-                                                )
-                                        )
-                                        .join("")}
-
-                                </div>
-
-                            `
-                    }
-
-                </section>
-
-                <button
-                    class="primary"
-                    type="button"
-                    data-action="newMovement"
-                >
-                    Nuevo movimiento
-                </button>
+                ${
+                    this.activeView ===
+                    "pending"
+                        ? this.pendingView(
+                            data,
+                            pending,
+                            movementsMonth
+                        )
+                        : this.registeredView(
+                            data,
+                            filters,
+                            list,
+                            allMonthlyMovements,
+                            movementsMonth,
+                            filtersActive
+                        )
+                }
 
             </div>
 
@@ -1817,6 +2710,88 @@ const AtlasMovementFilters = {
                             safe-area-inset-bottom
                         )
                     );
+            }
+
+            .atlas-movement-tabs {
+                display: grid;
+                grid-template-columns:
+                    repeat(
+                        2,
+                        minmax(0, 1fr)
+                    );
+                gap: 8px;
+                margin-bottom: 14px;
+                padding: 5px;
+                border:
+                    1px solid
+                    rgba(
+                        145,
+                        164,
+                        202,
+                        0.14
+                    );
+                border-radius: 18px;
+                background:
+                    rgba(
+                        255,
+                        255,
+                        255,
+                        0.04
+                    );
+            }
+
+            .atlas-movement-tabs button {
+                min-width: 0;
+                min-height: 44px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 7px;
+                border-radius: 14px;
+                color:
+                    var(
+                        --color-text-muted
+                    );
+                background: transparent;
+                font-size: 13px;
+                font-weight: 750;
+            }
+
+            .atlas-movement-tabs button.active {
+                color: #ffffff;
+                border:
+                    1px solid
+                    rgba(
+                        77,
+                        163,
+                        255,
+                        0.28
+                    );
+                background:
+                    rgba(
+                        77,
+                        163,
+                        255,
+                        0.17
+                    );
+            }
+
+            .atlas-movement-tabs button span {
+                min-width: 20px;
+                min-height: 20px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                padding:
+                    0
+                    6px;
+                border-radius: 99px;
+                color: #ffffff;
+                background:
+                    var(
+                        --color-primary
+                    );
+                font-size: 10px;
             }
 
             .atlas-movement-filters {
@@ -2270,6 +3245,259 @@ const AtlasMovementFilters = {
                 margin-top: 17px;
             }
 
+            .atlas-pending-introduction {
+                margin-bottom: 12px;
+                padding:
+                    0
+                    3px;
+            }
+
+            .atlas-pending-introduction p {
+                margin-top: 5px;
+                line-height: 1.45;
+            }
+
+            .atlas-pending-summary {
+                display: grid;
+                grid-template-columns:
+                    repeat(
+                        3,
+                        minmax(0, 1fr)
+                    );
+                gap: 8px;
+                margin-bottom: 14px;
+                padding: 13px;
+                border:
+                    1px solid
+                    rgba(
+                        145,
+                        164,
+                        202,
+                        0.14
+                    );
+                border-radius: 18px;
+                background:
+                    rgba(
+                        255,
+                        255,
+                        255,
+                        0.028
+                    );
+            }
+
+            .atlas-pending-summary div {
+                min-width: 0;
+                text-align: center;
+            }
+
+            .atlas-pending-summary small,
+            .atlas-pending-summary strong {
+                display: block;
+            }
+
+            .atlas-pending-summary small {
+                min-height: 24px;
+                color:
+                    var(
+                        --color-text-muted
+                    );
+                font-size: 8px;
+                line-height: 1.3;
+            }
+
+            .atlas-pending-summary strong {
+                margin-top: 6px;
+                overflow: hidden;
+                font-size: 14px;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .atlas-pending-list {
+                display: flex;
+                flex-direction: column;
+                gap: 11px;
+            }
+
+            .atlas-pending-card {
+                padding: 15px;
+                border:
+                    1px solid
+                    rgba(
+                        145,
+                        164,
+                        202,
+                        0.15
+                    );
+                border-radius: 19px;
+                background:
+                    rgba(
+                        255,
+                        255,
+                        255,
+                        0.03
+                    );
+            }
+
+            .atlas-pending-card-head {
+                display: flex;
+                align-items: flex-start;
+                justify-content:
+                    space-between;
+                gap: 12px;
+            }
+
+            .atlas-pending-card-title {
+                min-width: 0;
+                display: flex;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .atlas-pending-card-title div {
+                min-width: 0;
+            }
+
+            .atlas-pending-card-title strong,
+            .atlas-pending-card-title small {
+                display: block;
+            }
+
+            .atlas-pending-card-title strong {
+                overflow: hidden;
+                font-size: 14px;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .atlas-pending-card-title small {
+                margin-top: 4px;
+                color:
+                    var(
+                        --color-text-muted
+                    );
+                font-size: 10px;
+            }
+
+            .atlas-pending-icon {
+                flex:
+                    0
+                    0
+                    auto;
+                font-size: 16px;
+            }
+
+            .atlas-pending-amount {
+                flex:
+                    0
+                    0
+                    auto;
+                font-size: 15px;
+                white-space: nowrap;
+            }
+
+            .atlas-pending-meta {
+                display: flex;
+                flex-wrap: wrap;
+                gap:
+                    6px
+                    12px;
+                margin-top: 12px;
+                color:
+                    var(
+                        --color-text-muted
+                    );
+                font-size: 10px;
+            }
+
+            .atlas-pending-status {
+                display: flex;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 5px;
+                margin-top: 11px;
+                font-size: 10px;
+                font-weight: 700;
+            }
+
+            .atlas-pending-status small {
+                width: 100%;
+                padding-left: 21px;
+                color:
+                    var(
+                        --color-text-muted
+                    );
+                font-size: 9px;
+                font-weight: 500;
+            }
+
+            .atlas-pending-actions {
+                display: grid;
+                grid-template-columns:
+                    repeat(
+                        3,
+                        minmax(0, 1fr)
+                    );
+                gap: 7px;
+                margin-top: 13px;
+            }
+
+            .atlas-pending-actions button {
+                min-width: 0;
+                min-height: 40px;
+                padding:
+                    0
+                    7px;
+                border-radius: 12px;
+                font-size: 10px;
+                font-weight: 750;
+            }
+
+            .atlas-pending-confirm {
+                color: #ffffff;
+                background:
+                    var(
+                        --color-primary
+                    );
+            }
+
+            .atlas-pending-omit {
+                color:
+                    var(
+                        --color-text-muted
+                    );
+                border:
+                    1px solid
+                    rgba(
+                        145,
+                        164,
+                        202,
+                        0.18
+                    );
+                background: transparent;
+            }
+
+            .atlas-pending-empty {
+                padding:
+                    34px
+                    18px;
+                text-align: center;
+            }
+
+            .atlas-pending-empty > div {
+                margin-bottom: 10px;
+                font-size: 30px;
+            }
+
+            .atlas-pending-empty p {
+                margin:
+                    8px
+                    auto
+                    0;
+                max-width: 310px;
+                line-height: 1.5;
+            }
+
             @media (
                 max-width: 360px
             ) {
@@ -2297,6 +3525,15 @@ const AtlasMovementFilters = {
                     font-size: 7px;
                 }
 
+                .atlas-pending-summary {
+                    grid-template-columns:
+                        minmax(0, 1fr);
+                }
+
+                .atlas-pending-summary small {
+                    min-height: 0;
+                }
+
             }
 
         `;
@@ -2307,9 +3544,90 @@ const AtlasMovementFilters = {
 
     },
 
+    bindViewEvents() {
+
+        if (
+            this.eventsBound
+        ) {
+
+            return;
+
+        }
+
+        this.eventsBound =
+            true;
+
+        document.addEventListener(
+            "click",
+            event => {
+
+                const registeredButton =
+                    event.target.closest(
+                        '[data-action="showRegisteredMovements"]'
+                    );
+
+                if (registeredButton) {
+
+                    event.preventDefault();
+
+                    event.stopPropagation();
+
+                    this.activeView =
+                        "registered";
+
+                    if (
+                        typeof AtlasApp !==
+                            "undefined" &&
+                        typeof AtlasApp.render ===
+                            "function"
+                    ) {
+
+                        AtlasApp.render();
+
+                    }
+
+                    return;
+
+                }
+
+                const pendingButton =
+                    event.target.closest(
+                        '[data-action="showPendingMovements"]'
+                    );
+
+                if (pendingButton) {
+
+                    event.preventDefault();
+
+                    event.stopPropagation();
+
+                    this.activeView =
+                        "pending";
+
+                    if (
+                        typeof AtlasApp !==
+                            "undefined" &&
+                        typeof AtlasApp.render ===
+                            "function"
+                    ) {
+
+                        AtlasApp.render();
+
+                    }
+
+                }
+
+            },
+            true
+        );
+
+    },
+
     init() {
 
         this.installStyles();
+
+        this.bindViewEvents();
 
         AtlasUI.movements = (
             data,
