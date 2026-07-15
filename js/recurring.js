@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    recurring.js
-   Atlas v1.0 — Motor de movimientos recurrentes
+   Atlas v1.0 — Motor de movimientos recurrentes sincronizado
 ========================================================== */
 
 const AtlasRecurring = {
@@ -9,7 +9,9 @@ const AtlasRecurring = {
     clone(value) {
 
         return JSON.parse(
-            JSON.stringify(value)
+            JSON.stringify(
+                value
+            )
         );
 
     },
@@ -59,24 +61,18 @@ const AtlasRecurring = {
 
     currentMonthKey() {
 
-        if (
-            typeof AtlasCalculations !==
-                "undefined" &&
-            typeof AtlasCalculations.monthKey ===
-                "function"
-        ) {
+        const now =
+            new Date();
 
-            return AtlasCalculations
-                .monthKey();
-
-        }
-
-        return new Date()
-            .toISOString()
-            .slice(
-                0,
-                7
-            );
+        return [
+            now.getFullYear(),
+            String(
+                now.getMonth() + 1
+            ).padStart(
+                2,
+                "0"
+            )
+        ].join("-");
 
     },
 
@@ -96,7 +92,7 @@ const AtlasRecurring = {
             this.validMonthKey(
                 monthKey
             )
-                ? monthKey
+                ? String(monthKey)
                 : this.currentMonthKey();
 
         const [
@@ -153,13 +149,16 @@ const AtlasRecurring = {
         requestedDay
     ) {
 
+        const maximumDay =
+            this.daysInMonth(
+                monthKey
+            );
+
         const day =
             Math.max(
                 1,
                 Math.min(
-                    this.daysInMonth(
-                        monthKey
-                    ),
+                    maximumDay,
                     this.number(
                         requestedDay
                     ) || 1
@@ -168,9 +167,7 @@ const AtlasRecurring = {
 
         return (
             `${monthKey}-` +
-            this.padDay(
-                day
-            )
+            this.padDay(day)
         );
 
     },
@@ -227,16 +224,13 @@ const AtlasRecurring = {
                 monthKey
             );
 
-        const lastDay =
-            this.daysInMonth(
-                monthKey
-            );
-
         const date =
             new Date(
                 year,
                 month - 1,
-                lastDay
+                this.daysInMonth(
+                    monthKey
+                )
             );
 
         while (
@@ -272,10 +266,9 @@ const AtlasRecurring = {
             "last_working_friday"
         ) {
 
-            return this
-                .lastWorkingFriday(
-                    monthKey
-                );
+            return this.lastWorkingFriday(
+                monthKey
+            );
 
         }
 
@@ -287,8 +280,11 @@ const AtlasRecurring = {
             const daysBeforeEnd =
                 Math.max(
                     0,
-                    this.number(
-                        rule.daysBeforeEnd
+                    Math.min(
+                        30,
+                        this.number(
+                            rule.daysBeforeEnd
+                        )
                     )
                 );
 
@@ -308,27 +304,36 @@ const AtlasRecurring = {
         ) {
 
             const firstDay =
-                this.number(
-                    rule.dueDayFrom
-                ) || 1;
+                Math.max(
+                    1,
+                    Math.min(
+                        31,
+                        this.number(
+                            rule.dueDayFrom
+                        ) || 1
+                    )
+                );
 
             const lastDay =
-                this.number(
-                    rule.dueDayTo
-                ) || firstDay;
+                Math.max(
+                    firstDay,
+                    Math.min(
+                        31,
+                        this.number(
+                            rule.dueDayTo
+                        ) || firstDay
+                    )
+                );
 
-            const estimatedDay =
+            return this.dateForDay(
+                monthKey,
                 Math.round(
                     (
                         firstDay +
                         lastDay
                     ) /
                     2
-                );
-
-            return this.dateForDay(
-                monthKey,
-                estimatedDay
+                )
             );
 
         }
@@ -378,7 +383,9 @@ const AtlasRecurring = {
 
         if (
             movement?.kind ===
-            "debt_payment"
+                "debt_payment" ||
+            movement?.type ===
+                "debt_payment"
         ) {
 
             return "debt_payment";
@@ -409,6 +416,16 @@ const AtlasRecurring = {
         return (
             rule?.kind ||
             rule?.type ||
+            ""
+        );
+
+    },
+
+    occurrenceRuleId(occurrence) {
+
+        return (
+            occurrence?.ruleId ||
+            occurrence?.recurringRuleId ||
             ""
         );
 
@@ -486,6 +503,9 @@ const AtlasRecurring = {
                 null &&
             rule.maximumOccurrences !==
                 undefined &&
+            this.number(
+                rule.maximumOccurrences
+            ) > 0 &&
             this.number(
                 rule.confirmedOccurrences
             ) >=
@@ -613,9 +633,7 @@ const AtlasRecurring = {
     ) {
 
         return this
-            .movements(
-                data
-            )
+            .movements(data)
             .filter(
                 movement =>
                     this.movementMatchesRule(
@@ -759,9 +777,7 @@ const AtlasRecurring = {
                     month
                 ] ??
                 rule.monthlyAmounts?.[
-                    String(
-                        month
-                    )
+                    String(month)
                 ];
 
             const result =
@@ -769,8 +785,21 @@ const AtlasRecurring = {
                     monthlyAmount
                 );
 
-            return result > 0
-                ? result
+            if (
+                result > 0
+            ) {
+
+                return result;
+
+            }
+
+            const fallback =
+                this.number(
+                    rule.amount
+                );
+
+            return fallback > 0
+                ? fallback
                 : null;
 
         }
@@ -869,31 +898,79 @@ const AtlasRecurring = {
                 monthKey
             );
 
+        const kind =
+            this.ruleKind(
+                rule
+            );
+
+        let accountId =
+            rule.accountId ||
+            previousMovement?.accountId ||
+            null;
+
+        let fromAccountId =
+            rule.fromAccountId ||
+            previousMovement
+                ?.fromAccountId ||
+            null;
+
+        let toAccountId =
+            rule.toAccountId ||
+            previousMovement
+                ?.toAccountId ||
+            null;
+
+        let debtAccountId =
+            rule.debtAccountId ||
+            previousMovement
+                ?.debtAccountId ||
+            null;
+
+        if (
+            kind ===
+            "debt_payment"
+        ) {
+
+            fromAccountId =
+                fromAccountId ||
+                accountId;
+
+            accountId =
+                accountId ||
+                fromAccountId;
+
+            debtAccountId =
+                debtAccountId ||
+                toAccountId;
+
+            toAccountId =
+                toAccountId ||
+                debtAccountId;
+
+        }
+
+        if (
+            kind ===
+                "investment" ||
+            kind ===
+                "transfer"
+        ) {
+
+            fromAccountId =
+                fromAccountId ||
+                accountId;
+
+        }
+
         return {
 
-            accountId:
-                rule.accountId ||
-                previousMovement
-                    ?.accountId ||
-                null,
+            accountId,
 
-            fromAccountId:
-                rule.fromAccountId ||
-                previousMovement
-                    ?.fromAccountId ||
-                null,
+            fromAccountId,
 
-            toAccountId:
-                rule.toAccountId ||
-                previousMovement
-                    ?.toAccountId ||
-                null,
+            toAccountId,
 
-            debtAccountId:
-                rule.debtAccountId ||
-                previousMovement
-                    ?.debtAccountId ||
-                null
+            debtAccountId
 
         };
 
@@ -940,7 +1017,8 @@ const AtlasRecurring = {
         ) {
 
             return Boolean(
-                accounts.accountId
+                accounts.accountId ||
+                accounts.fromAccountId
             );
 
         }
@@ -974,7 +1052,7 @@ const AtlasRecurring = {
 
         }
 
-        return true;
+        return false;
 
     },
 
@@ -985,16 +1063,34 @@ const AtlasRecurring = {
     ) {
 
         return this
-            .occurrences(
-                data
-            )
+            .occurrences(data)
             .find(
                 occurrence =>
-                    occurrence.ruleId ===
-                        ruleId &&
+                    this.occurrenceRuleId(
+                        occurrence
+                    ) === ruleId &&
                     occurrence.monthKey ===
                         monthKey
             ) || null;
+
+    },
+
+    occurrenceIndexForRuleAndMonth(
+        data,
+        ruleId,
+        monthKey
+    ) {
+
+        return this
+            .occurrences(data)
+            .findIndex(
+                occurrence =>
+                    this.occurrenceRuleId(
+                        occurrence
+                    ) === ruleId &&
+                    occurrence.monthKey ===
+                        monthKey
+            );
 
     },
 
@@ -1071,9 +1167,7 @@ const AtlasRecurring = {
             );
 
         const candidates =
-            this.movements(
-                data
-            )
+            this.movements(data)
                 .filter(
                     movement =>
                         this.dateWithinMonth(
@@ -1116,11 +1210,10 @@ const AtlasRecurring = {
                     movement => {
 
                         const amountDifference =
-                            this
-                                .amountDifferencePercent(
-                                    movement.amount,
-                                    expectedAmount
-                                );
+                            this.amountDifferencePercent(
+                                movement.amount,
+                                expectedAmount
+                            );
 
                         const movementDay =
                             this.dayFromDate(
@@ -1191,11 +1284,12 @@ const AtlasRecurring = {
                         first.confidence
                 );
 
-        return ranked[0] || null;
+        return ranked[0] ||
+            null;
 
     },
 
-    createOccurrence(
+    occurrenceValues(
         data,
         rule,
         monthKey
@@ -1230,17 +1324,12 @@ const AtlasRecurring = {
                 expectedDate
             );
 
-        const createdAt =
-            this.now();
-
         return {
 
-            id:
-                this.createId(
-                    "occurrence"
-                ),
-
             ruleId:
+                rule.id,
+
+            recurringRuleId:
                 rule.id,
 
             monthKey,
@@ -1260,6 +1349,10 @@ const AtlasRecurring = {
                 this.ruleKind(
                     rule
                 ),
+
+            name:
+                rule.name ||
+                "",
 
             categoryId:
                 rule.categoryId ||
@@ -1283,16 +1376,7 @@ const AtlasRecurring = {
 
             expectedAmount,
 
-            confirmedAmount:
-                null,
-
             expectedDate,
-
-            confirmedDate:
-                null,
-
-            movementId:
-                null,
 
             possibleDuplicateMovementId:
                 duplicate
@@ -1309,7 +1393,42 @@ const AtlasRecurring = {
                 rule.source ===
                     "detected"
                     ? "detected_rule"
-                    : "configured_rule",
+                    : "configured_rule"
+
+        };
+
+    },
+
+    createOccurrence(
+        data,
+        rule,
+        monthKey
+    ) {
+
+        const createdAt =
+            this.now();
+
+        return {
+
+            id:
+                this.createId(
+                    "occurrence"
+                ),
+
+            ...this.occurrenceValues(
+                data,
+                rule,
+                monthKey
+            ),
+
+            confirmedAmount:
+                null,
+
+            confirmedDate:
+                null,
+
+            movementId:
+                null,
 
             note:
                 "",
@@ -1338,6 +1457,94 @@ const AtlasRecurring = {
 
     },
 
+    updatePendingOccurrence(
+        data,
+        occurrence,
+        rule,
+        monthKey
+    ) {
+
+        const currentStatus =
+            occurrence.status;
+
+        const values =
+            this.occurrenceValues(
+                data,
+                rule,
+                monthKey
+            );
+
+        return {
+
+            ...occurrence,
+
+            ...values,
+
+            id:
+                occurrence.id,
+
+            status:
+                [
+                    "pending",
+                    "possible_duplicate"
+                ].includes(
+                    currentStatus
+                )
+                    ? values.status
+                    : currentStatus,
+
+            confirmedAmount:
+                occurrence
+                    .confirmedAmount ??
+                null,
+
+            confirmedDate:
+                occurrence
+                    .confirmedDate ??
+                null,
+
+            movementId:
+                occurrence
+                    .movementId ??
+                null,
+
+            note:
+                occurrence.note ||
+                "",
+
+            omittedReason:
+                occurrence
+                    .omittedReason ||
+                "",
+
+            generatedAt:
+                occurrence.generatedAt ||
+                occurrence.createdAt ||
+                this.now(),
+
+            reviewedAt:
+                occurrence.reviewedAt ||
+                null,
+
+            confirmedAt:
+                occurrence.confirmedAt ||
+                null,
+
+            omittedAt:
+                occurrence.omittedAt ||
+                null,
+
+            createdAt:
+                occurrence.createdAt ||
+                this.now(),
+
+            updatedAt:
+                this.now()
+
+        };
+
+    },
+
     generateMonth(
         sourceData,
         selectedMonthKey = null
@@ -1352,7 +1559,9 @@ const AtlasRecurring = {
             this.validMonthKey(
                 selectedMonthKey
             )
-                ? selectedMonthKey
+                ? String(
+                    selectedMonthKey
+                )
                 : this.currentMonthKey();
 
         if (
@@ -1366,8 +1575,9 @@ const AtlasRecurring = {
 
         }
 
-        const created =
-            [];
+        const created = [];
+        const updated = [];
+        const removed = [];
 
         const skipped = {
 
@@ -1381,106 +1591,226 @@ const AtlasRecurring = {
                 [],
 
             needsConfiguration:
+                [],
+
+            completed:
                 []
 
         };
 
-        this.rules(
-            data
-        ).forEach(
-            rule => {
+        this.rules(data)
+            .forEach(
+                rule => {
 
-                if (
-                    !rule ||
-                    rule.active === false
-                ) {
+                    if (
+                        !rule ||
+                        !rule.id
+                    ) {
 
-                    skipped.inactive.push(
-                        rule?.id ||
-                        null
-                    );
+                        return;
 
-                    return;
+                    }
 
-                }
-
-                if (
-                    !this.ruleAppliesToMonth(
-                        rule,
-                        monthKey
-                    )
-                ) {
-
-                    skipped
-                        .notApplicable
-                        .push(
-                            rule.id
-                        );
-
-                    return;
-
-                }
-
-                const existing =
-                    this
-                        .occurrenceForRuleAndMonth(
+                    const existingIndex =
+                        this.occurrenceIndexForRuleAndMonth(
                             data,
                             rule.id,
                             monthKey
                         );
 
-                if (existing) {
+                    const existing =
+                        existingIndex >= 0
+                            ? data
+                                .recurringOccurrences[
+                                    existingIndex
+                                ]
+                            : null;
 
-                    skipped
-                        .alreadyGenerated
-                        .push(
-                            rule.id
+                    const applies =
+                        this.ruleAppliesToMonth(
+                            rule,
+                            monthKey
                         );
 
-                    return;
-
-                }
-
-                if (
-                    !this.ruleIsReady(
-                        data,
-                        rule,
-                        monthKey
-                    )
-                ) {
-
-                    skipped
-                        .needsConfiguration
-                        .push(
-                            rule.id
+                    const ready =
+                        applies &&
+                        this.ruleIsReady(
+                            data,
+                            rule,
+                            monthKey
                         );
 
-                    return;
+                    if (
+                        !applies ||
+                        !ready
+                    ) {
 
-                }
+                        if (
+                            existing &&
+                            [
+                                "pending",
+                                "possible_duplicate"
+                            ].includes(
+                                existing.status
+                            )
+                        ) {
 
-                const occurrence =
-                    this.createOccurrence(
-                        data,
-                        rule,
-                        monthKey
-                    );
+                            removed.push(
+                                existing
+                            );
 
-                data
-                    .recurringOccurrences
-                    .push(
+                            data
+                                .recurringOccurrences
+                                .splice(
+                                    existingIndex,
+                                    1
+                                );
+
+                        }
+
+                        if (
+                            rule.active === false
+                        ) {
+
+                            skipped.inactive
+                                .push(
+                                    rule.id
+                                );
+
+                        } else if (!applies) {
+
+                            skipped
+                                .notApplicable
+                                .push(
+                                    rule.id
+                                );
+
+                        } else {
+
+                            skipped
+                                .needsConfiguration
+                                .push(
+                                    rule.id
+                                );
+
+                        }
+
+                        return;
+
+                    }
+
+                    if (existing) {
+
+                        if (
+                            [
+                                "confirmed",
+                                "omitted",
+                                "dismissed"
+                            ].includes(
+                                existing.status
+                            )
+                        ) {
+
+                            skipped.completed
+                                .push(
+                                    rule.id
+                                );
+
+                            return;
+
+                        }
+
+                        const synchronized =
+                            this.updatePendingOccurrence(
+                                data,
+                                existing,
+                                rule,
+                                monthKey
+                            );
+
+                        data
+                            .recurringOccurrences[
+                                existingIndex
+                            ] = synchronized;
+
+                        updated.push(
+                            synchronized
+                        );
+
+                        return;
+
+                    }
+
+                    const occurrence =
+                        this.createOccurrence(
+                            data,
+                            rule,
+                            monthKey
+                        );
+
+                    data
+                        .recurringOccurrences
+                        .push(
+                            occurrence
+                        );
+
+                    created.push(
                         occurrence
                     );
 
-                created.push(
-                    occurrence
-                );
+                }
+            );
 
-            }
-        );
+        data.recurringOccurrences
+            .sort(
+                (
+                    first,
+                    second
+                ) => {
 
-        data.updatedAt =
-            this.now();
+                    const monthComparison =
+                        String(
+                            first.monthKey ||
+                            ""
+                        ).localeCompare(
+                            String(
+                                second.monthKey ||
+                                ""
+                            )
+                        );
+
+                    if (
+                        monthComparison !== 0
+                    ) {
+
+                        return monthComparison;
+
+                    }
+
+                    return String(
+                        first.expectedDate ||
+                        ""
+                    ).localeCompare(
+                        String(
+                            second.expectedDate ||
+                            ""
+                        )
+                    );
+
+                }
+            );
+
+        const changed =
+            created.length > 0 ||
+            updated.length > 0 ||
+            removed.length > 0;
+
+        if (changed) {
+
+            data.updatedAt =
+                this.now();
+
+        }
 
         return {
 
@@ -1489,6 +1819,12 @@ const AtlasRecurring = {
             monthKey,
 
             created,
+
+            updated,
+
+            removed,
+
+            changed,
 
             skipped
 
@@ -1508,15 +1844,11 @@ const AtlasRecurring = {
             )
                 ? statuses
                 : statuses
-                    ? [
-                        statuses
-                    ]
+                    ? [statuses]
                     : null;
 
         return this
-            .occurrences(
-                data
-            )
+            .occurrences(data)
             .filter(
                 occurrence =>
                     occurrence.monthKey ===
@@ -1552,15 +1884,14 @@ const AtlasRecurring = {
         monthKey
     ) {
 
-        return this
-            .occurrencesForMonth(
-                data,
-                monthKey,
-                [
-                    "pending",
-                    "possible_duplicate"
-                ]
-            );
+        return this.occurrencesForMonth(
+            data,
+            monthKey,
+            [
+                "pending",
+                "possible_duplicate"
+            ]
+        );
 
     },
 
@@ -1569,12 +1900,11 @@ const AtlasRecurring = {
         monthKey
     ) {
 
-        return this
-            .occurrencesForMonth(
-                data,
-                monthKey,
-                "confirmed"
-            );
+        return this.occurrencesForMonth(
+            data,
+            monthKey,
+            "confirmed"
+        );
 
     },
 
@@ -1583,15 +1913,14 @@ const AtlasRecurring = {
         monthKey
     ) {
 
-        return this
-            .occurrencesForMonth(
-                data,
-                monthKey,
-                [
-                    "omitted",
-                    "dismissed"
-                ]
-            );
+        return this.occurrencesForMonth(
+            data,
+            monthKey,
+            [
+                "omitted",
+                "dismissed"
+            ]
+        );
 
     },
 
