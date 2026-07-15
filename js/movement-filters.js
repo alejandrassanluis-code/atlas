@@ -9,6 +9,9 @@ const AtlasMovementFilters = {
     activeView:
         "registered",
 
+    eventsBound:
+        false,
+
     number(value) {
 
         const result =
@@ -51,7 +54,9 @@ const AtlasMovementFilters = {
 
         if (
             movement?.kind ===
-            "debt_payment"
+                "debt_payment" ||
+            movement?.type ===
+                "debt_payment"
         ) {
 
             return "debt_payment";
@@ -1598,6 +1603,16 @@ const AtlasMovementFilters = {
 
     },
 
+    occurrenceRuleId(occurrence) {
+
+        return (
+            occurrence?.ruleId ||
+            occurrence?.recurringRuleId ||
+            ""
+        );
+
+    },
+
     findRecurringRule(
         data,
         ruleId
@@ -1704,7 +1719,9 @@ const AtlasMovementFilters = {
         const rule =
             this.findRecurringRule(
                 data,
-                occurrence.ruleId
+                this.occurrenceRuleId(
+                    occurrence
+                )
             );
 
         if (
@@ -1712,6 +1729,14 @@ const AtlasMovementFilters = {
         ) {
 
             return rule.name;
+
+        }
+
+        if (
+            occurrence?.name
+        ) {
+
+            return occurrence.name;
 
         }
 
@@ -1817,6 +1842,7 @@ const AtlasMovementFilters = {
                 data,
                 occurrence
             );
+
     },
 
     occurrenceAmount(
@@ -3544,6 +3570,144 @@ const AtlasMovementFilters = {
 
     },
 
+    refreshAfterRecurringAction(
+        updatedData
+    ) {
+
+        if (
+            typeof AtlasApp ===
+                "undefined"
+        ) {
+
+            return;
+
+        }
+
+        AtlasApp.data =
+            updatedData;
+
+        this.activeView =
+            "pending";
+
+        if (
+            typeof AtlasApp.render ===
+            "function"
+        ) {
+
+            AtlasApp.render();
+
+        }
+
+    },
+
+    reviewOccurrence(
+        occurrenceId
+    ) {
+
+        if (
+            typeof AtlasMovements ===
+                "undefined" ||
+            typeof AtlasMovements
+                .openRecurringOccurrence !==
+                "function"
+        ) {
+
+            AtlasUI.toast(
+                "No se pudo abrir la propuesta."
+            );
+
+            return;
+
+        }
+
+        AtlasMovements
+            .openRecurringOccurrence(
+                AtlasApp.data,
+                updatedData => {
+
+                    this
+                        .refreshAfterRecurringAction(
+                            updatedData
+                        );
+
+                },
+                occurrenceId
+            );
+
+    },
+
+    confirmOccurrence(
+        occurrenceId
+    ) {
+
+        if (
+            typeof AtlasMovements ===
+                "undefined" ||
+            typeof AtlasMovements
+                .confirmRecurringOccurrence !==
+                "function"
+        ) {
+
+            AtlasUI.toast(
+                "No se pudo confirmar la propuesta."
+            );
+
+            return;
+
+        }
+
+        AtlasMovements
+            .confirmRecurringOccurrence(
+                AtlasApp.data,
+                updatedData => {
+
+                    this
+                        .refreshAfterRecurringAction(
+                            updatedData
+                        );
+
+                },
+                occurrenceId
+            );
+
+    },
+
+    omitOccurrence(
+        occurrenceId
+    ) {
+
+        if (
+            typeof AtlasMovements ===
+                "undefined" ||
+            typeof AtlasMovements
+                .omitRecurringOccurrence !==
+                "function"
+        ) {
+
+            AtlasUI.toast(
+                "No se pudo omitir la propuesta."
+            );
+
+            return;
+
+        }
+
+        AtlasMovements
+            .omitRecurringOccurrence(
+                AtlasApp.data,
+                updatedData => {
+
+                    this
+                        .refreshAfterRecurringAction(
+                            updatedData
+                        );
+
+                },
+                occurrenceId
+            );
+
+    },
+
     bindViewEvents() {
 
         if (
@@ -3561,6 +3725,63 @@ const AtlasMovementFilters = {
             "click",
             event => {
 
+                const reviewButton =
+                    event.target.closest(
+                        '[data-action="reviewRecurringOccurrence"]'
+                    );
+
+                if (reviewButton) {
+
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    this.reviewOccurrence(
+                        reviewButton.dataset
+                            .occurrenceId
+                    );
+
+                    return;
+
+                }
+
+                const confirmButton =
+                    event.target.closest(
+                        '[data-action="confirmRecurringOccurrence"]'
+                    );
+
+                if (confirmButton) {
+
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    this.confirmOccurrence(
+                        confirmButton.dataset
+                            .occurrenceId
+                    );
+
+                    return;
+
+                }
+
+                const omitButton =
+                    event.target.closest(
+                        '[data-action="omitRecurringOccurrence"]'
+                    );
+
+                if (omitButton) {
+
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    this.omitOccurrence(
+                        omitButton.dataset
+                            .occurrenceId
+                    );
+
+                    return;
+
+                }
+
                 const registeredButton =
                     event.target.closest(
                         '[data-action="showRegisteredMovements"]'
@@ -3569,7 +3790,6 @@ const AtlasMovementFilters = {
                 if (registeredButton) {
 
                     event.preventDefault();
-
                     event.stopPropagation();
 
                     this.activeView =
@@ -3598,7 +3818,6 @@ const AtlasMovementFilters = {
                 if (pendingButton) {
 
                     event.preventDefault();
-
                     event.stopPropagation();
 
                     this.activeView =
