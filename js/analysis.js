@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    analysis.js
-   Sprint 6.0 — Análisis financiero avanzado
+   Atlas v1.0 — Análisis con gasto neto y reembolsos
 ========================================================== */
 
 const AtlasAnalysisUI = {
@@ -93,7 +93,8 @@ const AtlasAnalysisUI = {
 
             return {
 
-                icon: "•",
+                icon:
+                    "•",
 
                 label:
                     "Sin cambios",
@@ -196,7 +197,8 @@ const AtlasAnalysisUI = {
                     type="button"
                     data-action="showMonthlyAnalysis"
                     class="${
-                        activeView === "monthly"
+                        activeView ===
+                        "monthly"
                             ? "active"
                             : ""
                     }"
@@ -208,7 +210,8 @@ const AtlasAnalysisUI = {
                     type="button"
                     data-action="showTrendsAnalysis"
                     class="${
-                        activeView === "trends"
+                        activeView ===
+                        "trends"
                             ? "active"
                             : ""
                     }"
@@ -226,7 +229,8 @@ const AtlasAnalysisUI = {
         title,
         icon,
         comparison,
-        positiveIsGood = true
+        positiveIsGood = true,
+        detail = ""
     ) {
 
         const information =
@@ -259,6 +263,20 @@ const AtlasAnalysisUI = {
                     ${information.icon}
                     ${information.label}
                 </small>
+
+                ${
+                    detail
+                        ? `
+
+                            <span class="atlas-analysis-metric-detail">
+                                ${this.escape(
+                                    detail
+                                )}
+                            </span>
+
+                        `
+                        : ""
+                }
 
             </article>
 
@@ -344,7 +362,36 @@ const AtlasAnalysisUI = {
 
     },
 
-    monthlyMetrics(comparison) {
+    expenseDetail(summary) {
+
+        const reimbursements =
+            this.number(
+                summary.monthlyReimbursements
+            );
+
+        if (
+            reimbursements <= 0
+        ) {
+
+            return "";
+
+        }
+
+        return (
+            `Bruto ${this.currency(
+                summary.monthlyGrossExpenses
+            )} · ` +
+            `Reembolsos ${this.currency(
+                reimbursements
+            )}`
+        );
+
+    },
+
+    monthlyMetrics(
+        comparison,
+        summary
+    ) {
 
         return `
 
@@ -364,7 +411,10 @@ const AtlasAnalysisUI = {
                     "Gastos",
                     "🔴",
                     comparison.expenses,
-                    false
+                    false,
+                    this.expenseDetail(
+                        summary
+                    )
                 )}
 
                 ${this.comparisonCard(
@@ -470,6 +520,17 @@ const AtlasAnalysisUI = {
                     )
                 );
 
+        const reimbursementDetail =
+            this.number(
+                summary.totalReimbursements
+            ) > 0
+                ? `Bruto ${this.currency(
+                    summary.totalGrossSpent
+                )} · Reembolsos ${this.currency(
+                    summary.totalReimbursements
+                )}`
+                : "";
+
         return `
 
             <section class="panel atlas-analysis-panel">
@@ -483,7 +544,7 @@ const AtlasAnalysisUI = {
                         </h2>
 
                         <p class="note">
-                            Gasto real frente al límite mensual
+                            Gasto neto frente al límite mensual
                         </p>
 
                     </div>
@@ -495,7 +556,8 @@ const AtlasAnalysisUI = {
                         "
                     >
                         ${
-                            summary.usedPercent === null
+                            summary.usedPercent ===
+                            null
                                 ? "—"
                                 : this.percent(
                                     summary.usedPercent
@@ -559,6 +621,20 @@ const AtlasAnalysisUI = {
 
                 </div>
 
+                ${
+                    reimbursementDetail
+                        ? `
+
+                            <small class="atlas-analysis-budget-detail">
+                                ${this.escape(
+                                    reimbursementDetail
+                                )}
+                            </small>
+
+                        `
+                        : ""
+                }
+
                 <div class="atlas-analysis-progress">
 
                     <i
@@ -587,10 +663,38 @@ const AtlasAnalysisUI = {
 
     },
 
+    categoryDetail(category) {
+
+        const reimbursements =
+            this.number(
+                category.reimbursements
+            );
+
+        if (
+            reimbursements <= 0
+        ) {
+
+            return "";
+
+        }
+
+        return (
+            `Bruto ${this.currency(
+                category.grossAmount
+            )} · ` +
+            `Reembolsos ${this.currency(
+                reimbursements
+            )}`
+        );
+
+    },
+
     categoryRows(categories) {
 
         if (
-            !Array.isArray(categories) ||
+            !Array.isArray(
+                categories
+            ) ||
             categories.length === 0
         ) {
 
@@ -637,15 +741,23 @@ const AtlasAnalysisUI = {
                     .map(
                         category => {
 
+                            const amount =
+                                this.number(
+                                    category.amount
+                                );
+
                             const percentage =
                                 total > 0
                                     ? (
-                                        this.number(
-                                            category.amount
-                                        ) /
+                                        amount /
                                         total
                                     ) * 100
                                     : 0;
+
+                            const detail =
+                                this.categoryDetail(
+                                    category
+                                );
 
                             return `
 
@@ -662,15 +774,31 @@ const AtlasAnalysisUI = {
                                             </strong>
 
                                             <small class="note">
-                                                ${percentage.toFixed(0)}%
+                                                ${percentage.toFixed(
+                                                    0
+                                                )}%
                                                 del gasto
                                             </small>
+
+                                            ${
+                                                detail
+                                                    ? `
+
+                                                        <small class="atlas-analysis-category-detail">
+                                                            ${this.escape(
+                                                                detail
+                                                            )}
+                                                        </small>
+
+                                                    `
+                                                    : ""
+                                            }
 
                                         </div>
 
                                         <strong>
                                             ${this.currency(
-                                                category.amount
+                                                amount
                                             )}
                                         </strong>
 
@@ -683,7 +811,10 @@ const AtlasAnalysisUI = {
                                                 width:
                                                     ${Math.min(
                                                         100,
-                                                        percentage
+                                                        Math.max(
+                                                            0,
+                                                            percentage
+                                                        )
                                                     )}%;
                                             "
                                         ></i>
@@ -745,6 +876,11 @@ const AtlasAnalysisUI = {
                     analysisMonth
                 );
 
+        const hasReimbursements =
+            this.number(
+                summary.monthlyReimbursements
+            ) > 0;
+
         return `
 
             ${this.monthSelector(
@@ -758,7 +894,8 @@ const AtlasAnalysisUI = {
             )}
 
             ${this.monthlyMetrics(
-                comparison
+                comparison,
+                summary
             )}
 
             ${this.budgetProgress(
@@ -776,7 +913,7 @@ const AtlasAnalysisUI = {
                         </h2>
 
                         <p class="note">
-                            Distribución del gasto real
+                            Distribución del gasto neto
                         </p>
 
                     </div>
@@ -788,6 +925,45 @@ const AtlasAnalysisUI = {
                     </strong>
 
                 </div>
+
+                ${
+                    hasReimbursements
+                        ? `
+
+                            <div class="atlas-analysis-expense-breakdown">
+
+                                <span>
+                                    Gasto bruto
+                                    <strong>
+                                        ${this.currency(
+                                            summary.monthlyGrossExpenses
+                                        )}
+                                    </strong>
+                                </span>
+
+                                <span>
+                                    Reembolsos
+                                    <strong>
+                                        −${this.currency(
+                                            summary.monthlyReimbursements
+                                        )}
+                                    </strong>
+                                </span>
+
+                                <span>
+                                    Gasto neto
+                                    <strong>
+                                        ${this.currency(
+                                            summary.monthlyExpenses
+                                        )}
+                                    </strong>
+                                </span>
+
+                            </div>
+
+                        `
+                        : ""
+                }
 
                 ${this.categoryRows(
                     comparison.categories
@@ -861,10 +1037,37 @@ const AtlasAnalysisUI = {
 
                     </div>
 
+                    ${
+                        hasReimbursements
+                            ? `
+
+                                <div>
+
+                                    <span>
+                                        Reembolsos
+                                    </span>
+
+                                    <strong
+                                        style="
+                                            color:
+                                                #5fd6c1;
+                                        "
+                                    >
+                                        ${this.currency(
+                                            summary.monthlyReimbursements
+                                        )}
+                                    </strong>
+
+                                </div>
+
+                            `
+                            : ""
+                    }
+
                     <div>
 
                         <span>
-                            Aportaciones
+                            Invertido
                         </span>
 
                         <strong
@@ -877,6 +1080,20 @@ const AtlasAnalysisUI = {
                         >
                             ${this.currency(
                                 summary.monthlyInvested
+                            )}
+                        </strong>
+
+                    </div>
+
+                    <div>
+
+                        <span>
+                            Salidas de caja
+                        </span>
+
+                        <strong>
+                            ${this.currency(
+                                summary.monthlyCashOutflow
                             )}
                         </strong>
 
@@ -909,7 +1126,8 @@ const AtlasAnalysisUI = {
                                 data-action="setTrendsPeriod"
                                 data-period="${period}"
                                 class="${
-                                    activePeriod === period
+                                    activePeriod ===
+                                    period
                                         ? "active"
                                         : ""
                                 }"
@@ -973,7 +1191,7 @@ const AtlasAnalysisUI = {
             invested: {
 
                 label:
-                    "Aportaciones",
+                    "Invertido",
 
                 property:
                     "invested",
@@ -1027,7 +1245,8 @@ const AtlasAnalysisUI = {
                                 <option
                                     value="${key}"
                                     ${
-                                        key === activeMetric
+                                        key ===
+                                        activeMetric
                                             ? "selected"
                                             : ""
                                     }
@@ -1097,7 +1316,8 @@ const AtlasAnalysisUI = {
 
                             const height =
                                 Math.max(
-                                    item.value === 0
+                                    item.value ===
+                                        0
                                         ? 5
                                         : 18,
                                     (
@@ -1137,7 +1357,8 @@ const AtlasAnalysisUI = {
                                             height:${height}px;
                                             background:${color};
                                             opacity:${
-                                                item.value === 0
+                                                item.value ===
+                                                0
                                                     ? "0.25"
                                                     : "0.85"
                                             };
@@ -1332,7 +1553,8 @@ const AtlasAnalysisUI = {
             options.trendMetric ||
             "savings";
 
-        const currentMonth =
+        const endMonth =
+            options.analysisMonth ||
             options.currentMonth ||
             AtlasCalculations.monthKey();
 
@@ -1341,7 +1563,7 @@ const AtlasAnalysisUI = {
                 .trendSummary(
                     data,
                     period,
-                    currentMonth
+                    endMonth
                 );
 
         const definition =
@@ -1350,6 +1572,11 @@ const AtlasAnalysisUI = {
             ] ||
             this.metricDefinitions()
                 .savings;
+
+        const hasReimbursements =
+            this.number(
+                trend.totals.reimbursements
+            ) > 0;
 
         return `
 
@@ -1409,7 +1636,7 @@ const AtlasAnalysisUI = {
                         </h2>
 
                         <p class="note">
-                            Gastos acumulados
+                            Gastos netos acumulados
                         </p>
 
                     </div>
@@ -1421,6 +1648,45 @@ const AtlasAnalysisUI = {
                     </strong>
 
                 </div>
+
+                ${
+                    hasReimbursements
+                        ? `
+
+                            <div class="atlas-analysis-expense-breakdown">
+
+                                <span>
+                                    Gasto bruto
+                                    <strong>
+                                        ${this.currency(
+                                            trend.totals.grossExpenses
+                                        )}
+                                    </strong>
+                                </span>
+
+                                <span>
+                                    Reembolsos
+                                    <strong>
+                                        −${this.currency(
+                                            trend.totals.reimbursements
+                                        )}
+                                    </strong>
+                                </span>
+
+                                <span>
+                                    Gasto neto
+                                    <strong>
+                                        ${this.currency(
+                                            trend.totals.expenses
+                                        )}
+                                    </strong>
+                                </span>
+
+                            </div>
+
+                        `
+                        : ""
+                }
 
                 ${this.categoryRows(
                     trend.categories
@@ -1460,7 +1726,8 @@ const AtlasAnalysisUI = {
                 )}
 
                 ${
-                    activeView === "trends"
+                    activeView ===
+                    "trends"
                         ? this.trendsView(
                             data,
                             options
@@ -1479,13 +1746,14 @@ const AtlasAnalysisUI = {
 
     installStyles() {
 
-        if (
+        const previousStyle =
             document.getElementById(
                 "atlas-analysis-styles"
-            )
-        ) {
+            );
 
-            return;
+        if (previousStyle) {
+
+            previousStyle.remove();
 
         }
 
@@ -1699,6 +1967,17 @@ const AtlasAnalysisUI = {
                 font-size: 10px;
             }
 
+            .atlas-analysis-metric-detail {
+                display: block;
+                margin-top: 6px;
+                color:
+                    var(
+                        --color-text-muted
+                    );
+                font-size: 8px;
+                line-height: 1.35;
+            }
+
             .atlas-analysis-panel {
                 margin-bottom: 14px;
             }
@@ -1735,6 +2014,16 @@ const AtlasAnalysisUI = {
                 white-space: nowrap;
             }
 
+            .atlas-analysis-budget-detail {
+                display: block;
+                margin-top: 10px;
+                color:
+                    var(
+                        --color-text-muted
+                    );
+                font-size: 10px;
+            }
+
             .atlas-analysis-progress {
                 height: 7px;
                 margin-top: 12px;
@@ -1763,6 +2052,59 @@ const AtlasAnalysisUI = {
                 display: block;
                 margin-top: 8px;
                 font-size: 11px;
+            }
+
+            .atlas-analysis-expense-breakdown {
+                display: grid;
+                grid-template-columns:
+                    repeat(
+                        3,
+                        minmax(0, 1fr)
+                    );
+                gap: 8px;
+                margin:
+                    14px
+                    0
+                    4px;
+                padding:
+                    10px
+                    0;
+                border-top:
+                    1px solid
+                    rgba(
+                        145,
+                        164,
+                        202,
+                        0.1
+                    );
+                border-bottom:
+                    1px solid
+                    rgba(
+                        145,
+                        164,
+                        202,
+                        0.1
+                    );
+            }
+
+            .atlas-analysis-expense-breakdown span {
+                min-width: 0;
+                color:
+                    var(
+                        --color-text-muted
+                    );
+                font-size: 8px;
+                text-align: center;
+            }
+
+            .atlas-analysis-expense-breakdown strong {
+                display: block;
+                margin-top: 4px;
+                overflow: hidden;
+                color: #f7f8fc;
+                font-size: 11px;
+                text-overflow: ellipsis;
+                white-space: nowrap;
             }
 
             .atlas-analysis-categories {
@@ -1801,6 +2143,11 @@ const AtlasAnalysisUI = {
                 display: block;
                 margin-top: 4px;
                 font-size: 10px;
+            }
+
+            .atlas-analysis-category-detail {
+                color: #5fd6c1 !important;
+                font-size: 9px !important;
             }
 
             .atlas-analysis-category-head
@@ -1876,7 +2223,9 @@ const AtlasAnalysisUI = {
             .atlas-analysis-selector select {
                 width: 100%;
                 min-height: 52px;
-                padding: 0 15px;
+                padding:
+                    0
+                    15px;
                 border:
                     1px solid
                     rgba(
@@ -1943,6 +2292,24 @@ const AtlasAnalysisUI = {
                     4px;
             }
 
+            @media (
+                max-width: 360px
+            ) {
+
+                .atlas-analysis-expense-breakdown {
+                    gap: 4px;
+                }
+
+                .atlas-analysis-expense-breakdown span {
+                    font-size: 7px;
+                }
+
+                .atlas-analysis-expense-breakdown strong {
+                    font-size: 10px;
+                }
+
+            }
+
         `;
 
         document.head.appendChild(
@@ -1990,6 +2357,7 @@ const AtlasAnalysisUI = {
                 );
 
                 button.click();
+
                 button.remove();
 
             }
@@ -2013,7 +2381,8 @@ const AtlasAnalysisUI = {
         ) => {
 
             if (
-                route !== "analysis"
+                route !==
+                "analysis"
             ) {
 
                 previousRender(
