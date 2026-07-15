@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    settings.js
-   Sprint 5.3 — Presupuestos por subcategoría
+   Atlas v1.0 — Ajustes con movimientos recurrentes
 ========================================================== */
 
 const AtlasSettings = {
@@ -32,6 +32,10 @@ const AtlasSettings = {
 
             case "budgets":
                 this.renderBudgets();
+                break;
+
+            case "recurring":
+                this.renderRecurringRules();
                 break;
 
             case "accounts":
@@ -92,11 +96,45 @@ const AtlasSettings = {
 
     },
 
+    nullableNumber(value) {
+
+        const text =
+            String(
+                value ?? ""
+            ).trim();
+
+        if (!text) {
+
+            return null;
+
+        }
+
+        const number =
+            Number(
+                text.replace(
+                    ",",
+                    "."
+                )
+            );
+
+        return Number.isFinite(number)
+            ? number
+            : null;
+
+    },
+
     round(value) {
 
         return Math.round(
             this.number(value) * 100
         ) / 100;
+
+    },
+
+    now() {
+
+        return new Date()
+            .toISOString();
 
     },
 
@@ -268,6 +306,20 @@ const AtlasSettings = {
 
         return Array.isArray(budgets)
             ? budgets
+            : [];
+
+    },
+
+    recurringRules(
+        data = this.data
+    ) {
+
+        const rules =
+            data?.catalog
+                ?.recurringRules;
+
+        return Array.isArray(rules)
+            ? rules
             : [];
 
     },
@@ -576,7 +628,8 @@ const AtlasSettings = {
                 }
 
                 .atlas-settings-account,
-                .atlas-budget-card {
+                .atlas-budget-card,
+                .atlas-recurring-card {
                     padding: 15px;
                     border:
                         1px solid
@@ -597,7 +650,8 @@ const AtlasSettings = {
                 }
 
                 .atlas-settings-account-head,
-                .atlas-budget-head {
+                .atlas-budget-head,
+                .atlas-recurring-head {
                     display: flex;
                     justify-content:
                         space-between;
@@ -648,20 +702,24 @@ const AtlasSettings = {
                     color: #98a2bb;
                 }
 
-                .atlas-budget-title {
+                .atlas-budget-title,
+                .atlas-recurring-title {
                     min-width: 0;
                 }
 
-                .atlas-budget-title strong {
+                .atlas-budget-title strong,
+                .atlas-recurring-title strong {
                     display: block;
                     font-size: 16px;
                 }
 
-                .atlas-budget-title small {
+                .atlas-budget-title small,
+                .atlas-recurring-title small {
                     display: block;
                     margin-top: 4px;
                     color: #98a2bb;
                     font-size: 12px;
+                    line-height: 1.4;
                 }
 
                 .atlas-budget-toggle {
@@ -714,7 +772,8 @@ const AtlasSettings = {
                         translateX(22px);
                 }
 
-                .atlas-budget-fields {
+                .atlas-budget-fields,
+                .atlas-recurring-fields {
                     display: grid;
                     grid-template-columns:
                         repeat(
@@ -803,11 +862,80 @@ const AtlasSettings = {
                     text-align: right;
                 }
 
-                .atlas-budget-help {
+                .atlas-budget-help,
+                .atlas-recurring-help {
                     margin-top: 10px;
                     color: #98a2bb;
                     font-size: 12px;
                     line-height: 1.45;
+                }
+
+                .atlas-recurring-card {
+                    transition:
+                        opacity
+                        0.2s ease;
+                }
+
+                .atlas-recurring-card[data-inactive="true"] {
+                    opacity: 0.72;
+                }
+
+                .atlas-recurring-fields {
+                    margin-top: 12px;
+                }
+
+                .atlas-recurring-fields .atlas-settings-field {
+                    min-width: 0;
+                }
+
+                .atlas-recurring-wide {
+                    grid-column:
+                        1 / -1;
+                }
+
+                .atlas-recurring-checkboxes {
+                    display: grid;
+                    grid-template-columns:
+                        repeat(
+                            2,
+                            minmax(0, 1fr)
+                        );
+                    gap: 9px;
+                    margin-top: 12px;
+                }
+
+                .atlas-recurring-checkbox {
+                    min-height: 48px;
+                    display: flex;
+                    align-items: center;
+                    gap: 9px;
+                    padding: 11px 12px;
+                    border:
+                        1px solid
+                        rgba(
+                            145,
+                            164,
+                            202,
+                            0.14
+                        );
+                    border-radius: 14px;
+                    background:
+                        rgba(
+                            255,
+                            255,
+                            255,
+                            0.025
+                        );
+                    color: #c8d0e3;
+                    font-size: 12px;
+                    font-weight: 650;
+                }
+
+                .atlas-recurring-checkbox input {
+                    width: 18px;
+                    height: 18px;
+                    flex: 0 0 18px;
+                    accent-color: #4da3ff;
                 }
 
                 .atlas-settings-primary,
@@ -862,6 +990,28 @@ const AtlasSettings = {
                         );
                     font-size: 13px;
                     line-height: 1.5;
+                }
+
+                @media (
+                    max-width: 390px
+                ) {
+
+                    .atlas-settings-sheet {
+                        padding-left: 16px;
+                        padding-right: 16px;
+                    }
+
+                    .atlas-budget-fields,
+                    .atlas-recurring-fields,
+                    .atlas-recurring-checkboxes {
+                        grid-template-columns:
+                            minmax(0, 1fr);
+                    }
+
+                    .atlas-recurring-wide {
+                        grid-column: auto;
+                    }
+
                 }
 
             </style>
@@ -997,6 +1147,13 @@ const AtlasSettings = {
                     "📊",
                     "Presupuestos",
                     "Configura categorías y subcategorías de gasto."
+                )}
+
+                ${this.optionButton(
+                    "recurring",
+                    "🔁",
+                    "Recurrentes",
+                    "Configura nómina, alquiler, cuotas, seguros y otros movimientos periódicos."
                 )}
 
                 ${this.optionButton(
@@ -1692,6 +1849,1041 @@ const AtlasSettings = {
                     data-settings-save
                 >
                     Guardar presupuestos
+                </button>
+
+                <button
+                    class="atlas-settings-secondary"
+                    type="button"
+                    data-settings-action="close"
+                >
+                    Cancelar
+                </button>
+
+            </form>
+
+        `);
+
+    },
+
+    recurringKind(rule) {
+
+        return (
+            rule?.kind ||
+            rule?.type ||
+            "expense"
+        );
+
+    },
+
+    recurringKindLabel(rule) {
+
+        const labels = {
+
+            income:
+                "Ingreso",
+
+            expense:
+                "Gasto",
+
+            investment:
+                "Inversión",
+
+            transfer:
+                "Traspaso",
+
+            debt_payment:
+                "Pago de deuda",
+
+            reimbursement:
+                "Reembolso"
+
+        };
+
+        return (
+            labels[
+                this.recurringKind(
+                    rule
+                )
+            ] ||
+            "Movimiento"
+        );
+
+    },
+
+    recurringIcon(rule) {
+
+        const icons = {
+
+            income:
+                "🟢",
+
+            expense:
+                "🔴",
+
+            investment:
+                "📈",
+
+            transfer:
+                "🔁",
+
+            debt_payment:
+                "💳",
+
+            reimbursement:
+                "↩️"
+
+        };
+
+        return (
+            icons[
+                this.recurringKind(
+                    rule
+                )
+            ] ||
+            "🔁"
+        );
+
+    },
+
+    recurringFrequencyLabel(rule) {
+
+        if (
+            rule.recurrence ===
+            "selected_months"
+        ) {
+
+            const monthNames = [
+                "",
+                "ene",
+                "feb",
+                "mar",
+                "abr",
+                "may",
+                "jun",
+                "jul",
+                "ago",
+                "sep",
+                "oct",
+                "nov",
+                "dic"
+            ];
+
+            const months =
+                (
+                    Array.isArray(
+                        rule.months
+                    )
+                        ? rule.months
+                        : []
+                )
+                    .map(
+                        month =>
+                            monthNames[
+                                Number(month)
+                            ]
+                    )
+                    .filter(Boolean)
+                    .join(", ");
+
+            return months
+                ? `Meses: ${months}`
+                : "Meses concretos";
+
+        }
+
+        if (
+            rule.recurrence ===
+            "yearly"
+        ) {
+
+            return "Anual";
+
+        }
+
+        return "Mensual";
+
+    },
+
+    recurringAmountMode(rule) {
+
+        const allowed = [
+
+            "fixed",
+
+            "last_amount",
+
+            "average",
+
+            "average_amount",
+
+            "by_month"
+
+        ];
+
+        return allowed.includes(
+            rule.amountMode
+        )
+            ? rule.amountMode
+            : "fixed";
+
+    },
+
+    recurringAccountOptions(
+        accounts,
+        selectedId,
+        emptyLabel
+    ) {
+
+        return `
+
+            <option value="">
+                ${emptyLabel}
+            </option>
+
+            ${accounts
+                .filter(
+                    account =>
+                        account.active !==
+                        false
+                )
+                .map(
+                    account => `
+
+                        <option
+                            value="${this.escape(
+                                account.id
+                            )}"
+                            ${
+                                account.id ===
+                                selectedId
+                                    ? "selected"
+                                    : ""
+                            }
+                        >
+                            ${this.escape(
+                                account.name
+                            )}
+                        </option>
+
+                    `
+                )
+                .join("")}
+
+        `;
+
+    },
+
+    recurringDateFields(rule) {
+
+        const dueRule =
+            rule.dueRule ||
+            "fixed_day";
+
+        if (
+            dueRule ===
+            "last_working_friday"
+        ) {
+
+            return `
+
+                <label
+                    class="
+                        atlas-settings-field
+                        atlas-recurring-wide
+                    "
+                >
+
+                    <span>
+                        Fecha prevista
+                    </span>
+
+                    <select
+                        name="recurring_due_rule_${this.escape(
+                            rule.id
+                        )}"
+                    >
+
+                        <option value="last_working_friday" selected>
+                            Último viernes laborable
+                        </option>
+
+                        <option value="fixed_day">
+                            Día fijo
+                        </option>
+
+                        <option value="day_range">
+                            Rango aproximado
+                        </option>
+
+                        <option value="end_of_month">
+                            Fin de mes
+                        </option>
+
+                    </select>
+
+                </label>
+
+            `;
+
+        }
+
+        if (
+            dueRule ===
+            "day_range"
+        ) {
+
+            return `
+
+                <label class="atlas-settings-field">
+
+                    <span>
+                        Tipo de fecha
+                    </span>
+
+                    <select
+                        name="recurring_due_rule_${this.escape(
+                            rule.id
+                        )}"
+                    >
+
+                        <option value="day_range" selected>
+                            Rango aproximado
+                        </option>
+
+                        <option value="fixed_day">
+                            Día fijo
+                        </option>
+
+                        <option value="end_of_month">
+                            Fin de mes
+                        </option>
+
+                        <option value="last_working_friday">
+                            Último viernes laborable
+                        </option>
+
+                    </select>
+
+                </label>
+
+                <label class="atlas-settings-field">
+
+                    <span>
+                        Días del mes
+                    </span>
+
+                    <div
+                        style="
+                            display:grid;
+                            grid-template-columns:
+                                repeat(
+                                    2,
+                                    minmax(0,1fr)
+                                );
+                            gap:8px;
+                        "
+                    >
+
+                        <input
+                            name="recurring_due_from_${this.escape(
+                                rule.id
+                            )}"
+                            type="number"
+                            min="1"
+                            max="31"
+                            step="1"
+                            value="${this.escape(
+                                this.number(
+                                    rule.dueDayFrom
+                                ) || 1
+                            )}"
+                            aria-label="Día inicial"
+                        >
+
+                        <input
+                            name="recurring_due_to_${this.escape(
+                                rule.id
+                            )}"
+                            type="number"
+                            min="1"
+                            max="31"
+                            step="1"
+                            value="${this.escape(
+                                this.number(
+                                    rule.dueDayTo
+                                ) || 7
+                            )}"
+                            aria-label="Día final"
+                        >
+
+                    </div>
+
+                </label>
+
+            `;
+
+        }
+
+        if (
+            dueRule ===
+            "end_of_month"
+        ) {
+
+            return `
+
+                <label class="atlas-settings-field">
+
+                    <span>
+                        Tipo de fecha
+                    </span>
+
+                    <select
+                        name="recurring_due_rule_${this.escape(
+                            rule.id
+                        )}"
+                    >
+
+                        <option value="end_of_month" selected>
+                            Fin de mes
+                        </option>
+
+                        <option value="fixed_day">
+                            Día fijo
+                        </option>
+
+                        <option value="day_range">
+                            Rango aproximado
+                        </option>
+
+                        <option value="last_working_friday">
+                            Último viernes laborable
+                        </option>
+
+                    </select>
+
+                </label>
+
+                <label class="atlas-settings-field">
+
+                    <span>
+                        Días antes del final
+                    </span>
+
+                    <input
+                        name="recurring_days_before_end_${this.escape(
+                            rule.id
+                        )}"
+                        type="number"
+                        min="0"
+                        max="30"
+                        step="1"
+                        value="${this.escape(
+                            this.number(
+                                rule.daysBeforeEnd
+                            )
+                        )}"
+                    >
+
+                </label>
+
+            `;
+
+        }
+
+        return `
+
+            <label class="atlas-settings-field">
+
+                <span>
+                    Tipo de fecha
+                </span>
+
+                <select
+                    name="recurring_due_rule_${this.escape(
+                        rule.id
+                    )}"
+                >
+
+                    <option value="fixed_day" selected>
+                        Día fijo
+                    </option>
+
+                    <option value="day_range">
+                        Rango aproximado
+                    </option>
+
+                    <option value="end_of_month">
+                        Fin de mes
+                    </option>
+
+                    <option value="last_working_friday">
+                        Último viernes laborable
+                    </option>
+
+                </select>
+
+            </label>
+
+            <label class="atlas-settings-field">
+
+                <span>
+                    Día del mes
+                </span>
+
+                <input
+                    name="recurring_due_day_${this.escape(
+                        rule.id
+                    )}"
+                    type="number"
+                    min="1"
+                    max="31"
+                    step="1"
+                    value="${this.escape(
+                        this.number(
+                            rule.dueDay
+                        ) || 1
+                    )}"
+                >
+
+            </label>
+
+        `;
+
+    },
+
+    recurringAccountFields(rule) {
+
+        const kind =
+            this.recurringKind(
+                rule
+            );
+
+        if (
+            kind ===
+            "debt_payment"
+        ) {
+
+            return `
+
+                <label class="atlas-settings-field">
+
+                    <span>
+                        Cuenta de pago
+                    </span>
+
+                    <select
+                        name="recurring_account_${this.escape(
+                            rule.id
+                        )}"
+                    >
+                        ${this.recurringAccountOptions(
+                            this.liquidityAccounts(),
+                            rule.accountId ||
+                            rule.fromAccountId ||
+                            "",
+                            "Seleccionar cuenta"
+                        )}
+                    </select>
+
+                </label>
+
+                <label class="atlas-settings-field">
+
+                    <span>
+                        Deuda
+                    </span>
+
+                    <select
+                        name="recurring_debt_account_${this.escape(
+                            rule.id
+                        )}"
+                    >
+                        ${this.recurringAccountOptions(
+                            this.debtAccounts(),
+                            rule.debtAccountId ||
+                            rule.toAccountId ||
+                            "",
+                            "Seleccionar deuda"
+                        )}
+                    </select>
+
+                </label>
+
+            `;
+
+        }
+
+        if (
+            kind ===
+                "investment" ||
+            kind ===
+                "transfer"
+        ) {
+
+            const destinationAccounts =
+                kind === "investment"
+                    ? this.investmentAccounts()
+                    : this.liquidityAccounts();
+
+            return `
+
+                <label class="atlas-settings-field">
+
+                    <span>
+                        Cuenta de origen
+                    </span>
+
+                    <select
+                        name="recurring_from_account_${this.escape(
+                            rule.id
+                        )}"
+                    >
+                        ${this.recurringAccountOptions(
+                            this.liquidityAccounts(),
+                            rule.fromAccountId ||
+                            rule.accountId ||
+                            "",
+                            "Seleccionar cuenta"
+                        )}
+                    </select>
+
+                </label>
+
+                <label class="atlas-settings-field">
+
+                    <span>
+                        Cuenta de destino
+                    </span>
+
+                    <select
+                        name="recurring_to_account_${this.escape(
+                            rule.id
+                        )}"
+                    >
+                        ${this.recurringAccountOptions(
+                            destinationAccounts,
+                            rule.toAccountId ||
+                            "",
+                            "Seleccionar destino"
+                        )}
+                    </select>
+
+                </label>
+
+            `;
+
+        }
+
+        return `
+
+            <label
+                class="
+                    atlas-settings-field
+                    atlas-recurring-wide
+                "
+            >
+
+                <span>
+                    Cuenta
+                </span>
+
+                <select
+                    name="recurring_account_${this.escape(
+                        rule.id
+                    )}"
+                >
+                    ${this.recurringAccountOptions(
+                        this.liquidityAccounts(),
+                        rule.accountId ||
+                        "",
+                        "Seleccionar cuenta"
+                    )}
+                </select>
+
+            </label>
+
+        `;
+
+    },
+
+    recurringRuleCard(rule) {
+
+        const amountMode =
+            this.recurringAmountMode(
+                rule
+            );
+
+        const active =
+            rule.active !==
+            false;
+
+        const paused =
+            rule.paused ===
+            true;
+
+        const amount =
+            rule.amount ===
+                null ||
+            rule.amount ===
+                undefined
+                ? ""
+                : this.number(
+                    rule.amount
+                );
+
+        return `
+
+            <article
+                class="atlas-recurring-card"
+                data-recurring-card="${this.escape(
+                    rule.id
+                )}"
+                data-inactive="${
+                    active
+                        ? "false"
+                        : "true"
+                }"
+            >
+
+                <div class="atlas-recurring-head">
+
+                    <div class="atlas-recurring-title">
+
+                        <strong>
+                            ${this.recurringIcon(
+                                rule
+                            )}
+                            ${this.escape(
+                                rule.name
+                            )}
+                        </strong>
+
+                        <small>
+                            ${this.recurringKindLabel(
+                                rule
+                            )}
+                            ·
+                            ${this.recurringFrequencyLabel(
+                                rule
+                            )}
+                        </small>
+
+                    </div>
+
+                    <label class="atlas-budget-toggle">
+
+                        <input
+                            name="recurring_active_${this.escape(
+                                rule.id
+                            )}"
+                            type="checkbox"
+                            data-recurring-active="${this.escape(
+                                rule.id
+                            )}"
+                            ${
+                                active
+                                    ? "checked"
+                                    : ""
+                            }
+                        >
+
+                        <span></span>
+
+                    </label>
+
+                </div>
+
+                <div class="atlas-recurring-fields">
+
+                    <label class="atlas-settings-field">
+
+                        <span>
+                            Cálculo del importe
+                        </span>
+
+                        <select
+                            name="recurring_amount_mode_${this.escape(
+                                rule.id
+                            )}"
+                        >
+
+                            <option
+                                value="fixed"
+                                ${
+                                    amountMode ===
+                                    "fixed"
+                                        ? "selected"
+                                        : ""
+                                }
+                            >
+                                Importe fijo
+                            </option>
+
+                            <option
+                                value="last_amount"
+                                ${
+                                    amountMode ===
+                                    "last_amount"
+                                        ? "selected"
+                                        : ""
+                                }
+                            >
+                                Último importe
+                            </option>
+
+                            <option
+                                value="average"
+                                ${
+                                    amountMode ===
+                                        "average" ||
+                                    amountMode ===
+                                        "average_amount"
+                                        ? "selected"
+                                        : ""
+                                }
+                            >
+                                Media histórica
+                            </option>
+
+                            ${
+                                rule.recurrence ===
+                                "selected_months"
+                                    ? `
+
+                                        <option
+                                            value="by_month"
+                                            ${
+                                                amountMode ===
+                                                "by_month"
+                                                    ? "selected"
+                                                    : ""
+                                            }
+                                        >
+                                            Distinto por mes
+                                        </option>
+
+                                    `
+                                    : ""
+                            }
+
+                        </select>
+
+                    </label>
+
+                    <label class="atlas-settings-field">
+
+                        <span>
+                            Importe habitual
+                        </span>
+
+                        <input
+                            name="recurring_amount_${this.escape(
+                                rule.id
+                            )}"
+                            type="number"
+                            inputmode="decimal"
+                            min="0"
+                            step="0.01"
+                            value="${this.escape(
+                                amount
+                            )}"
+                            placeholder="Sin configurar"
+                        >
+
+                    </label>
+
+                    ${this.recurringAccountFields(
+                        rule
+                    )}
+
+                    ${this.recurringDateFields(
+                        rule
+                    )}
+
+                    <label class="atlas-settings-field">
+
+                        <span>
+                            Fecha de inicio
+                        </span>
+
+                        <input
+                            name="recurring_start_${this.escape(
+                                rule.id
+                            )}"
+                            type="date"
+                            value="${this.escape(
+                                rule.startDate ||
+                                ""
+                            )}"
+                        >
+
+                    </label>
+
+                    <label class="atlas-settings-field">
+
+                        <span>
+                            Fecha de finalización
+                        </span>
+
+                        <input
+                            name="recurring_end_${this.escape(
+                                rule.id
+                            )}"
+                            type="date"
+                            value="${this.escape(
+                                rule.endDate ||
+                                ""
+                            )}"
+                        >
+
+                    </label>
+
+                    <label
+                        class="
+                            atlas-settings-field
+                            atlas-recurring-wide
+                        "
+                    >
+
+                        <span>
+                            Pausar hasta
+                        </span>
+
+                        <input
+                            name="recurring_paused_until_${this.escape(
+                                rule.id
+                            )}"
+                            type="month"
+                            value="${this.escape(
+                                rule.pausedUntil
+                                    ? String(
+                                        rule.pausedUntil
+                                    ).slice(
+                                        0,
+                                        7
+                                    )
+                                    : ""
+                            )}"
+                        >
+
+                    </label>
+
+                </div>
+
+                <div class="atlas-recurring-checkboxes">
+
+                    <label class="atlas-recurring-checkbox">
+
+                        <input
+                            name="recurring_paused_${this.escape(
+                                rule.id
+                            )}"
+                            type="checkbox"
+                            ${
+                                paused
+                                    ? "checked"
+                                    : ""
+                            }
+                        >
+
+                        Pausada
+
+                    </label>
+
+                    <label class="atlas-recurring-checkbox">
+
+                        <input
+                            name="recurring_confirmation_${this.escape(
+                                rule.id
+                            )}"
+                            type="checkbox"
+                            ${
+                                rule.requiresConfirmation !==
+                                false
+                                    ? "checked"
+                                    : ""
+                            }
+                        >
+
+                        Confirmación obligatoria
+
+                    </label>
+
+                </div>
+
+                <p class="atlas-recurring-help">
+
+                    ${
+                        active
+                            ? "Atlas propondrá este movimiento en Pendientes cuando tenga importe y cuenta configurados."
+                            : "La regla está desactivada y no generará propuestas."
+                    }
+
+                </p>
+
+            </article>
+
+        `;
+
+    },
+
+    renderRecurringRules() {
+
+        const rules =
+            this.recurringRules();
+
+        this.renderSheet(`
+
+            ${this.headerBlock(
+                "Movimientos recurrentes",
+                "Configura las propuestas que aparecerán en Movimientos → Pendientes."
+            )}
+
+            <form
+                class="atlas-settings-form"
+                data-settings-form="recurring"
+            >
+
+                <p class="atlas-settings-warning">
+
+                    Ninguna regla modifica saldos,
+                    presupuestos ni análisis hasta que
+                    confirmes su movimiento pendiente.
+
+                </p>
+
+                ${
+                    rules.length > 0
+                        ? rules
+                            .map(
+                                rule =>
+                                    this.recurringRuleCard(
+                                        rule
+                                    )
+                            )
+                            .join("")
+                        : `
+
+                            <div
+                                class="atlas-settings-account"
+                                style="
+                                    text-align:center;
+                                    color:#98a2bb;
+                                    line-height:1.5;
+                                "
+                            >
+                                No hay reglas recurrentes configuradas.
+                            </div>
+
+                        `
+                }
+
+                <button
+                    class="atlas-settings-primary"
+                    type="submit"
+                    data-settings-save
+                >
+                    Guardar recurrentes
                 </button>
 
                 <button
@@ -2861,12 +4053,402 @@ const AtlasSettings = {
         }
 
         updatedData.catalog.updatedAt =
-            new Date()
-                .toISOString();
+            this.now();
 
         this.saveUpdatedData(
             updatedData,
             "Presupuestos actualizados.",
+            form
+        );
+
+    },
+
+    saveRecurringRules(form) {
+
+        const values =
+            new FormData(
+                form
+            );
+
+        const updatedData =
+            this.cloneData();
+
+        const rules =
+            this.recurringRules(
+                updatedData
+            );
+
+        for (
+            const rule of rules
+        ) {
+
+            const id =
+                rule.id;
+
+            const active =
+                values.has(
+                    `recurring_active_${id}`
+                );
+
+            const paused =
+                values.has(
+                    `recurring_paused_${id}`
+                );
+
+            const requiresConfirmation =
+                values.has(
+                    `recurring_confirmation_${id}`
+                );
+
+            const amountModeValue =
+                String(
+                    values.get(
+                        `recurring_amount_mode_${id}`
+                    ) ||
+                    "fixed"
+                );
+
+            const allowedAmountModes = [
+
+                "fixed",
+
+                "last_amount",
+
+                "average",
+
+                "by_month"
+
+            ];
+
+            const amountMode =
+                allowedAmountModes.includes(
+                    amountModeValue
+                )
+                    ? amountModeValue
+                    : "fixed";
+
+            const amount =
+                this.nullableNumber(
+                    values.get(
+                        `recurring_amount_${id}`
+                    )
+                );
+
+            if (
+                amount !== null &&
+                amount < 0
+            ) {
+
+                this.saving = false;
+
+                this.restoreSaveButton(
+                    form
+                );
+
+                AtlasUI.toast(
+                    `Revisa el importe de ${rule.name}.`
+                );
+
+                return;
+
+            }
+
+            const dueRuleValue =
+                String(
+                    values.get(
+                        `recurring_due_rule_${id}`
+                    ) ||
+                    rule.dueRule ||
+                    "fixed_day"
+                );
+
+            const allowedDueRules = [
+
+                "fixed_day",
+
+                "day_range",
+
+                "end_of_month",
+
+                "last_working_friday"
+
+            ];
+
+            const dueRule =
+                allowedDueRules.includes(
+                    dueRuleValue
+                )
+                    ? dueRuleValue
+                    : "fixed_day";
+
+            const dueDay =
+                this.nullableNumber(
+                    values.get(
+                        `recurring_due_day_${id}`
+                    )
+                );
+
+            const dueDayFrom =
+                this.nullableNumber(
+                    values.get(
+                        `recurring_due_from_${id}`
+                    )
+                );
+
+            const dueDayTo =
+                this.nullableNumber(
+                    values.get(
+                        `recurring_due_to_${id}`
+                    )
+                );
+
+            const daysBeforeEnd =
+                this.nullableNumber(
+                    values.get(
+                        `recurring_days_before_end_${id}`
+                    )
+                );
+
+            const startDate =
+                String(
+                    values.get(
+                        `recurring_start_${id}`
+                    ) ||
+                    ""
+                );
+
+            const endDate =
+                String(
+                    values.get(
+                        `recurring_end_${id}`
+                    ) ||
+                    ""
+                );
+
+            if (
+                startDate &&
+                endDate &&
+                startDate >
+                endDate
+            ) {
+
+                this.saving = false;
+
+                this.restoreSaveButton(
+                    form
+                );
+
+                AtlasUI.toast(
+                    `La fecha final de ${rule.name} es anterior a la inicial.`
+                );
+
+                return;
+
+            }
+
+            const pausedUntil =
+                String(
+                    values.get(
+                        `recurring_paused_until_${id}`
+                    ) ||
+                    ""
+                );
+
+            const kind =
+                this.recurringKind(
+                    rule
+                );
+
+            const accountId =
+                String(
+                    values.get(
+                        `recurring_account_${id}`
+                    ) ||
+                    ""
+                ) || null;
+
+            const fromAccountId =
+                String(
+                    values.get(
+                        `recurring_from_account_${id}`
+                    ) ||
+                    ""
+                ) || null;
+
+            const toAccountId =
+                String(
+                    values.get(
+                        `recurring_to_account_${id}`
+                    ) ||
+                    ""
+                ) || null;
+
+            const debtAccountId =
+                String(
+                    values.get(
+                        `recurring_debt_account_${id}`
+                    ) ||
+                    ""
+                ) || null;
+
+            rule.active =
+                active;
+
+            rule.paused =
+                paused;
+
+            rule.pausedUntil =
+                pausedUntil ||
+                null;
+
+            rule.requiresConfirmation =
+                requiresConfirmation;
+
+            rule.amountMode =
+                amountMode;
+
+            rule.amount =
+                amount;
+
+            rule.dueRule =
+                dueRule;
+
+            rule.startDate =
+                startDate ||
+                null;
+
+            rule.endDate =
+                endDate ||
+                null;
+
+            if (
+                dueRule ===
+                "fixed_day"
+            ) {
+
+                rule.dueDay =
+                    Math.max(
+                        1,
+                        Math.min(
+                            31,
+                            this.number(
+                                dueDay
+                            ) || 1
+                        )
+                    );
+
+            }
+
+            if (
+                dueRule ===
+                "day_range"
+            ) {
+
+                const from =
+                    Math.max(
+                        1,
+                        Math.min(
+                            31,
+                            this.number(
+                                dueDayFrom
+                            ) || 1
+                        )
+                    );
+
+                const to =
+                    Math.max(
+                        from,
+                        Math.min(
+                            31,
+                            this.number(
+                                dueDayTo
+                            ) || from
+                        )
+                    );
+
+                rule.dueDayFrom =
+                    from;
+
+                rule.dueDayTo =
+                    to;
+
+            }
+
+            if (
+                dueRule ===
+                "end_of_month"
+            ) {
+
+                rule.daysBeforeEnd =
+                    Math.max(
+                        0,
+                        Math.min(
+                            30,
+                            this.number(
+                                daysBeforeEnd
+                            )
+                        )
+                    );
+
+            }
+
+            if (
+                kind ===
+                "debt_payment"
+            ) {
+
+                rule.accountId =
+                    accountId;
+
+                rule.fromAccountId =
+                    accountId;
+
+                rule.debtAccountId =
+                    debtAccountId;
+
+                rule.toAccountId =
+                    debtAccountId;
+
+            } else if (
+                kind ===
+                    "investment" ||
+                kind ===
+                    "transfer"
+            ) {
+
+                rule.accountId =
+                    null;
+
+                rule.fromAccountId =
+                    fromAccountId;
+
+                rule.toAccountId =
+                    toAccountId;
+
+            } else {
+
+                rule.accountId =
+                    accountId;
+
+                rule.fromAccountId =
+                    null;
+
+                rule.toAccountId =
+                    null;
+
+            }
+
+            rule.updatedAt =
+                this.now();
+
+        }
+
+        updatedData.catalog.updatedAt =
+            this.now();
+
+        this.saveUpdatedData(
+            updatedData,
+            "Movimientos recurrentes actualizados.",
             form
         );
 
@@ -2895,8 +4477,7 @@ const AtlasSettings = {
                     account.name = value;
 
                     account.updatedAt =
-                        new Date()
-                            .toISOString();
+                        this.now();
 
                 }
 
@@ -2957,12 +4538,10 @@ const AtlasSettings = {
             account.balance = value;
 
             account.valueUpdatedAt =
-                new Date()
-                    .toISOString();
+                this.now();
 
             account.updatedAt =
-                new Date()
-                    .toISOString();
+                this.now();
 
         }
 
@@ -2983,8 +4562,7 @@ const AtlasSettings = {
             this.snapshotTotals(data);
 
         const now =
-            new Date()
-                .toISOString();
+            this.now();
 
         return {
 
@@ -3414,6 +4992,49 @@ const AtlasSettings = {
 
     },
 
+    updateRecurringCard(ruleId) {
+
+        const card =
+            document.querySelector(
+                `[data-recurring-card="${ruleId}"]`
+            );
+
+        if (!card) {
+
+            return;
+
+        }
+
+        const activeInput =
+            card.querySelector(
+                `[data-recurring-active="${ruleId}"]`
+            );
+
+        const active =
+            activeInput?.checked ===
+            true;
+
+        card.dataset.inactive =
+            active
+                ? "false"
+                : "true";
+
+        const help =
+            card.querySelector(
+                ".atlas-recurring-help"
+            );
+
+        if (help) {
+
+            help.textContent =
+                active
+                    ? "Atlas propondrá este movimiento en Pendientes cuando tenga importe y cuenta configurados."
+                    : "La regla está desactivada y no generará propuestas.";
+
+        }
+
+    },
+
     submit(form) {
 
         if (this.saving) {
@@ -3438,6 +5059,12 @@ const AtlasSettings = {
 
             case "budgets":
                 this.saveBudgets(form);
+                break;
+
+            case "recurring":
+                this.saveRecurringRules(
+                    form
+                );
                 break;
 
             case "accounts":
@@ -3593,6 +5220,22 @@ const AtlasSettings = {
                     this.updateBudgetCard(
                         distribution.dataset
                             .budgetDistribution
+                    );
+
+                    return;
+
+                }
+
+                const recurringActive =
+                    event.target.closest(
+                        "[data-recurring-active]"
+                    );
+
+                if (recurringActive) {
+
+                    this.updateRecurringCard(
+                        recurringActive.dataset
+                            .recurringActive
                     );
 
                 }
