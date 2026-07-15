@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    movements.js
-   Atlas v1.0 — Reembolsos y gastos compartidos
+   Atlas v1.0 — Movimientos reales y propuestas recurrentes
 ========================================================== */
 
 const AtlasMovements = {
@@ -9,6 +9,7 @@ const AtlasMovements = {
     data: null,
     onComplete: null,
     editingId: null,
+    recurringOccurrenceId: null,
     saving: false,
 
     open(
@@ -20,6 +21,7 @@ const AtlasMovements = {
         this.data = data;
         this.onComplete = onComplete;
         this.editingId = movementId;
+        this.recurringOccurrenceId = null;
         this.saving = false;
 
         if (movementId) {
@@ -54,6 +56,84 @@ const AtlasMovements = {
 
     },
 
+    openRecurringOccurrence(
+        data,
+        onComplete,
+        occurrenceId
+    ) {
+
+        this.data = data;
+        this.onComplete = onComplete;
+        this.editingId = null;
+        this.recurringOccurrenceId =
+            occurrenceId;
+        this.saving = false;
+
+        const occurrence =
+            this.findRecurringOccurrence(
+                occurrenceId
+            );
+
+        if (!occurrence) {
+
+            AtlasUI.toast(
+                "No se encontró la propuesta recurrente."
+            );
+
+            return;
+
+        }
+
+        if (
+            ![
+                "pending",
+                "possible_duplicate"
+            ].includes(
+                occurrence.status
+            )
+        ) {
+
+            AtlasUI.toast(
+                "Esta propuesta ya no está pendiente."
+            );
+
+            return;
+
+        }
+
+        const movement =
+            this.movementFromOccurrence(
+                occurrence
+            );
+
+        const error =
+            this.validateMovement(
+                movement
+            );
+
+        if (
+            error &&
+            !this.isEditableOccurrenceError(
+                error
+            )
+        ) {
+
+            AtlasUI.toast(error);
+
+            return;
+
+        }
+
+        this.renderForm(
+            this.getMovementKind(
+                movement
+            ),
+            movement,
+            true
+        );
+
+    },
+
     root() {
 
         return document.getElementById(
@@ -62,11 +142,13 @@ const AtlasMovements = {
 
     },
 
-    cloneData() {
+    cloneData(
+        data = this.data
+    ) {
 
         return JSON.parse(
             JSON.stringify(
-                this.data
+                data
             )
         );
 
@@ -89,26 +171,28 @@ const AtlasMovements = {
         const now =
             new Date();
 
-        const year =
-            now.getFullYear();
-
-        const month =
+        return [
+            now.getFullYear(),
             String(
                 now.getMonth() + 1
             ).padStart(
                 2,
                 "0"
-            );
-
-        const day =
+            ),
             String(
                 now.getDate()
             ).padStart(
                 2,
                 "0"
-            );
+            )
+        ].join("-");
 
-        return `${year}-${month}-${day}`;
+    },
+
+    now() {
+
+        return new Date()
+            .toISOString();
 
     },
 
@@ -246,11 +330,82 @@ const AtlasMovements = {
 
     },
 
+    recurringOccurrences(
+        data = this.data
+    ) {
+
+        return Array.isArray(
+            data?.recurringOccurrences
+        )
+            ? data.recurringOccurrences
+            : [];
+
+    },
+
+    recurringRules(
+        data = this.data
+    ) {
+
+        return Array.isArray(
+            data?.catalog
+                ?.recurringRules
+        )
+            ? data.catalog
+                .recurringRules
+            : [];
+
+    },
+
+    findRecurringOccurrence(
+        occurrenceId,
+        data = this.data
+    ) {
+
+        return this
+            .recurringOccurrences(data)
+            .find(
+                occurrence =>
+                    occurrence.id ===
+                    occurrenceId
+            ) || null;
+
+    },
+
+    occurrenceRuleId(
+        occurrence
+    ) {
+
+        return (
+            occurrence?.ruleId ||
+            occurrence
+                ?.recurringRuleId ||
+            null
+        );
+
+    },
+
+    findRecurringRule(
+        ruleId,
+        data = this.data
+    ) {
+
+        return this
+            .recurringRules(data)
+            .find(
+                rule =>
+                    rule.id ===
+                    ruleId
+            ) || null;
+
+    },
+
     getMovementKind(movement) {
 
         if (
             movement?.kind ===
-            "debt_payment"
+                "debt_payment" ||
+            movement?.type ===
+                "debt_payment"
         ) {
 
             return "debt_payment";
@@ -268,7 +423,11 @@ const AtlasMovements = {
 
         }
 
-        return movement?.type || "";
+        return (
+            movement?.kind ||
+            movement?.type ||
+            ""
+        );
 
     },
 
@@ -280,6 +439,218 @@ const AtlasMovements = {
             ) ===
             "expense"
         );
+
+    },
+
+    isEditableOccurrenceError(
+        error
+    ) {
+
+        return [
+            "Introduce un importe válido.",
+            "Selecciona la fecha.",
+            "Selecciona una categoría y subcategoría.",
+            "Selecciona una cuenta.",
+            "Selecciona la cuenta de origen y destino."
+        ].includes(error);
+
+    },
+
+    occurrenceCategoryName(
+        kind,
+        categoryId,
+        subcategoryId
+    ) {
+
+        if (
+            kind !== "income" &&
+            kind !== "expense"
+        ) {
+
+            if (
+                kind ===
+                "investment"
+            ) {
+
+                return "Aportación periódica";
+
+            }
+
+            if (
+                kind ===
+                "transfer"
+            ) {
+
+                return "Traspaso";
+
+            }
+
+            if (
+                kind ===
+                "debt_payment"
+            ) {
+
+                return "Pago de deuda";
+
+            }
+
+            return "Movimiento recurrente";
+
+        }
+
+        return this.categoryDisplayName(
+            kind,
+            categoryId,
+            subcategoryId
+        );
+
+    },
+
+    movementFromOccurrence(
+        occurrence
+    ) {
+
+        const kind =
+            this.getMovementKind(
+                occurrence
+            );
+
+        const ruleId =
+            this.occurrenceRuleId(
+                occurrence
+            );
+
+        const rule =
+            this.findRecurringRule(
+                ruleId
+            );
+
+        const movement = {
+
+            id:
+                this.generateId(),
+
+            type:
+                kind ===
+                    "debt_payment"
+                    ? "expense"
+                    : kind,
+
+            kind,
+
+            amount:
+                this.number(
+                    occurrence
+                        .expectedAmount
+                ),
+
+            date:
+                occurrence.expectedDate ||
+                this.today(),
+
+            note:
+                occurrence.note ||
+                rule?.name ||
+                "",
+
+            categoryId:
+                occurrence.categoryId ||
+                rule?.categoryId ||
+                null,
+
+            subcategoryId:
+                occurrence
+                    .subcategoryId ||
+                rule?.subcategoryId ||
+                null,
+
+            accountId:
+                occurrence.accountId ||
+                rule?.accountId ||
+                null,
+
+            fromAccountId:
+                occurrence
+                    .fromAccountId ||
+                rule?.fromAccountId ||
+                occurrence.accountId ||
+                rule?.accountId ||
+                null,
+
+            toAccountId:
+                occurrence.toAccountId ||
+                rule?.toAccountId ||
+                occurrence
+                    .debtAccountId ||
+                rule?.debtAccountId ||
+                null,
+
+            debtAccountId:
+                occurrence
+                    .debtAccountId ||
+                rule?.debtAccountId ||
+                occurrence.toAccountId ||
+                rule?.toAccountId ||
+                null,
+
+            recurringRuleId:
+                ruleId,
+
+            recurringOccurrenceId:
+                occurrence.id,
+
+            createdAt:
+                this.now(),
+
+            updatedAt:
+                this.now()
+
+        };
+
+        movement.category =
+            this.occurrenceCategoryName(
+                kind,
+                movement.categoryId,
+                movement.subcategoryId
+            );
+
+        if (
+            kind === "income"
+        ) {
+
+            const subcategory =
+                this.findSubcategory(
+                    "income",
+                    movement.categoryId,
+                    movement.subcategoryId
+                );
+
+            const category =
+                this.findCategory(
+                    "income",
+                    movement.categoryId
+                );
+
+            movement.incomeBehavior =
+                subcategory
+                    ?.incomeBehavior ||
+                category
+                    ?.incomeBehavior ||
+                "income";
+
+        }
+
+        if (
+            kind === "investment"
+        ) {
+
+            movement.category =
+                rule?.name ||
+                "Aportación periódica";
+
+        }
+
+        return movement;
 
     },
 
@@ -314,8 +685,7 @@ const AtlasMovements = {
                         );
 
                     if (
-                        dateDifference !==
-                        0
+                        dateDifference !== 0
                     ) {
 
                         return dateDifference;
@@ -357,13 +727,10 @@ const AtlasMovements = {
                                 ? ` · ${movement.note}`
                                 : "";
 
-                        const date =
-                            this.formatDate(
-                                movement.date
-                            );
-
                         const label =
-                            `${date} · ` +
+                            `${this.formatDate(
+                                movement.date
+                            )} · ` +
                             `${this.formatCurrency(
                                 movement.amount
                             )} · ` +
@@ -405,11 +772,15 @@ const AtlasMovements = {
 
     },
 
-    debtAvailableForPayment(movement) {
+    debtAvailableForPayment(
+        movement,
+        data = this.data
+    ) {
 
         const debtAccount =
             this.findAccount(
-                movement.toAccountId
+                movement.toAccountId,
+                data
             );
 
         if (!debtAccount) {
@@ -430,7 +801,8 @@ const AtlasMovements = {
 
             const oldMovement =
                 this.findMovement(
-                    this.editingId
+                    this.editingId,
+                    data
                 );
 
             if (
@@ -1145,7 +1517,9 @@ const AtlasMovements = {
 
                 .movement-field input,
                 .movement-field select {
+                    box-sizing: border-box;
                     width: 100%;
+                    min-width: 0;
                     min-height: 54px;
                     padding:
                         0
@@ -1229,6 +1603,24 @@ const AtlasMovements = {
                         );
                     font-size: 12px;
                     line-height: 1.5;
+                }
+
+                .movement-recurring-info {
+                    border-color:
+                        rgba(
+                            95,
+                            214,
+                            193,
+                            0.22
+                        );
+                    color: #bce9df;
+                    background:
+                        rgba(
+                            95,
+                            214,
+                            193,
+                            0.07
+                        );
                 }
 
                 .movement-primary,
@@ -2011,11 +2403,14 @@ const AtlasMovements = {
 
     renderForm(
         type,
-        movement = null
+        movement = null,
+        recurringReview = false
     ) {
 
         const isEditing =
-            Boolean(movement);
+            Boolean(
+                this.editingId
+            );
 
         this.renderSheet(`
 
@@ -2034,19 +2429,23 @@ const AtlasMovements = {
 
                     <h2>
                         ${
-                            isEditing
-                                ? "Editar movimiento"
-                                : this.formTitle(
-                                    type
-                                )
+                            recurringReview
+                                ? "Revisar propuesta"
+                                : isEditing
+                                    ? "Editar movimiento"
+                                    : this.formTitle(
+                                        type
+                                    )
                         }
                     </h2>
 
                     <p>
                         ${
-                            isEditing
-                                ? "Modifica los datos o elimina el movimiento."
-                                : "Introduce los datos reales de la operación."
+                            recurringReview
+                                ? "Comprueba los datos antes de convertirla en un movimiento real."
+                                : isEditing
+                                    ? "Modifica los datos o elimina el movimiento."
+                                    : "Introduce los datos reales de la operación."
                         }
                     </p>
 
@@ -2060,6 +2459,23 @@ const AtlasMovements = {
                 novalidate
             >
 
+                ${
+                    recurringReview
+                        ? `
+
+                            <div
+                                class="
+                                    movement-info
+                                    movement-recurring-info
+                                "
+                            >
+                                Al guardar se confirmará esta propuesta, se registrará el movimiento real y se actualizarán sus saldos.
+                            </div>
+
+                        `
+                        : ""
+                }
+
                 ${this.formFields(
                     type,
                     movement
@@ -2072,9 +2488,11 @@ const AtlasMovements = {
                     data-movement-save
                 >
                     ${
-                        isEditing
-                            ? "Guardar cambios"
-                            : "Guardar movimiento"
+                        recurringReview
+                            ? "Confirmar movimiento"
+                            : isEditing
+                                ? "Guardar cambios"
+                                : "Guardar movimiento"
                     }
                 </button>
 
@@ -2135,13 +2553,10 @@ const AtlasMovements = {
 
         }
 
-        const type =
-            categorySelect.dataset
-                .categoryType;
-
         subcategorySelect.innerHTML =
             this.subcategoryOptions(
-                type,
+                categorySelect.dataset
+                    .categoryType,
                 categorySelect.value,
                 selectedSubcategoryId
             );
@@ -2200,37 +2615,26 @@ const AtlasMovements = {
 
         if (
             !categorySelect ||
-            !subcategorySelect
+            !subcategorySelect ||
+            !expense.categoryId
         ) {
 
             return;
 
         }
 
-        const categoryId =
-            expense.categoryId ||
-            "";
-
-        const subcategoryId =
-            expense.subcategoryId ||
-            "";
-
-        if (!categoryId) {
-
-            return;
-
-        }
-
         categorySelect.value =
-            categoryId;
+            expense.categoryId;
 
         this.updateSubcategorySelect(
             categorySelect,
-            subcategoryId
+            expense.subcategoryId ||
+            ""
         );
 
         subcategorySelect.value =
-            subcategoryId;
+            expense.subcategoryId ||
+            "";
 
     },
 
@@ -2248,6 +2652,21 @@ const AtlasMovements = {
                     this.editingId
                 )
                 : null;
+
+        const occurrence =
+            this.recurringOccurrenceId
+                ? this.findRecurringOccurrence(
+                    this.recurringOccurrenceId
+                )
+                : null;
+
+        const ruleId =
+            oldMovement
+                ?.recurringRuleId ||
+            this.occurrenceRuleId(
+                occurrence
+            ) ||
+            null;
 
         const movement = {
 
@@ -2286,24 +2705,21 @@ const AtlasMovements = {
                 ).trim(),
 
             recurringRuleId:
-                oldMovement
-                    ?.recurringRuleId ||
-                null,
+                ruleId,
 
             recurringOccurrenceId:
                 oldMovement
                     ?.recurringOccurrenceId ||
+                this.recurringOccurrenceId ||
                 null,
 
             createdAt:
                 oldMovement
                     ?.createdAt ||
-                new Date()
-                    .toISOString(),
+                this.now(),
 
             updatedAt:
-                new Date()
-                    .toISOString()
+                this.now()
 
         };
 
@@ -2442,6 +2858,9 @@ const AtlasMovements = {
             movement.subcategoryId =
                 null;
 
+            movement.debtAccountId =
+                movement.toAccountId;
+
         }
 
         if (
@@ -2475,7 +2894,10 @@ const AtlasMovements = {
 
     },
 
-    validateMovement(movement) {
+    validateMovement(
+        movement,
+        data = this.data
+    ) {
 
         const kind =
             this.getMovementKind(
@@ -2575,7 +2997,10 @@ const AtlasMovements = {
         const missingAccount =
             accountIds.some(
                 id =>
-                    !this.findAccount(id)
+                    !this.findAccount(
+                        id,
+                        data
+                    )
             );
 
         if (missingAccount) {
@@ -2591,7 +3016,8 @@ const AtlasMovements = {
 
             const account =
                 this.findAccount(
-                    movement.accountId
+                    movement.accountId,
+                    data
                 );
 
             if (
@@ -2609,7 +3035,8 @@ const AtlasMovements = {
 
                 const linkedExpense =
                     this.findMovement(
-                        movement.linkedMovementId
+                        movement.linkedMovementId,
+                        data
                     );
 
                 if (
@@ -2643,12 +3070,14 @@ const AtlasMovements = {
 
             const fromAccount =
                 this.findAccount(
-                    movement.fromAccountId
+                    movement.fromAccountId,
+                    data
                 );
 
             const debtAccount =
                 this.findAccount(
-                    movement.toAccountId
+                    movement.toAccountId,
+                    data
                 );
 
             if (
@@ -2671,7 +3100,8 @@ const AtlasMovements = {
 
             const availableDebt =
                 this.debtAvailableForPayment(
-                    movement
+                    movement,
+                    data
                 );
 
             if (
@@ -2724,8 +3154,7 @@ const AtlasMovements = {
             );
 
         account.updatedAt =
-            new Date()
-                .toISOString();
+            this.now();
 
     },
 
@@ -2749,8 +3178,7 @@ const AtlasMovements = {
             );
 
         account.updatedAt =
-            new Date()
-                .toISOString();
+            this.now();
 
     },
 
@@ -2772,25 +3200,8 @@ const AtlasMovements = {
             );
 
         if (
-            kind ===
-            "income"
-        ) {
-
-            this.changeBalance(
-                this.findAccount(
-                    movement.accountId,
-                    data
-                ),
-                amount
-            );
-
-            return;
-
-        }
-
-        if (
-            kind ===
-            "reimbursement"
+            kind === "income" ||
+            kind === "reimbursement"
         ) {
 
             this.changeBalance(
@@ -2949,6 +3360,200 @@ const AtlasMovements = {
 
     },
 
+    markOccurrenceConfirmed(
+        data,
+        occurrenceId,
+        movement
+    ) {
+
+        if (!occurrenceId) {
+
+            return;
+
+        }
+
+        const occurrence =
+            this.findRecurringOccurrence(
+                occurrenceId,
+                data
+            );
+
+        if (!occurrence) {
+
+            return;
+
+        }
+
+        occurrence.status =
+            "confirmed";
+
+        occurrence.ruleId =
+            this.occurrenceRuleId(
+                occurrence
+            ) ||
+            movement.recurringRuleId ||
+            null;
+
+        occurrence.recurringRuleId =
+            occurrence.ruleId;
+
+        occurrence.confirmedAmount =
+            movement.amount;
+
+        occurrence.confirmedDate =
+            movement.date;
+
+        occurrence.movementId =
+            movement.id;
+
+        occurrence.reviewedAt =
+            occurrence.reviewedAt ||
+            this.now();
+
+        occurrence.confirmedAt =
+            this.now();
+
+        occurrence.updatedAt =
+            this.now();
+
+        const rule =
+            this.findRecurringRule(
+                occurrence.ruleId,
+                data
+            );
+
+        if (rule) {
+
+            rule.confirmedOccurrences =
+                this.number(
+                    rule.confirmedOccurrences
+                ) + 1;
+
+            rule.updatedAt =
+                this.now();
+
+        }
+
+    },
+
+    syncConfirmedOccurrence(
+        data,
+        movement
+    ) {
+
+        if (
+            !movement
+                ?.recurringOccurrenceId
+        ) {
+
+            return;
+
+        }
+
+        const occurrence =
+            this.findRecurringOccurrence(
+                movement
+                    .recurringOccurrenceId,
+                data
+            );
+
+        if (!occurrence) {
+
+            return;
+
+        }
+
+        occurrence.status =
+            "confirmed";
+
+        occurrence.confirmedAmount =
+            movement.amount;
+
+        occurrence.confirmedDate =
+            movement.date;
+
+        occurrence.movementId =
+            movement.id;
+
+        occurrence.updatedAt =
+            this.now();
+
+    },
+
+    restoreOccurrenceFromMovement(
+        data,
+        movement
+    ) {
+
+        if (
+            !movement
+                ?.recurringOccurrenceId
+        ) {
+
+            return;
+
+        }
+
+        const occurrence =
+            this.findRecurringOccurrence(
+                movement
+                    .recurringOccurrenceId,
+                data
+            );
+
+        if (!occurrence) {
+
+            return;
+
+        }
+
+        occurrence.status =
+            occurrence
+                .possibleDuplicateMovementId
+                ? "possible_duplicate"
+                : "pending";
+
+        occurrence.confirmedAmount =
+            null;
+
+        occurrence.confirmedDate =
+            null;
+
+        occurrence.movementId =
+            null;
+
+        occurrence.confirmedAt =
+            null;
+
+        occurrence.updatedAt =
+            this.now();
+
+        const rule =
+            this.findRecurringRule(
+                movement.recurringRuleId ||
+                this.occurrenceRuleId(
+                    occurrence
+                ),
+                data
+            );
+
+        if (rule) {
+
+            rule.confirmedOccurrences =
+                Math.max(
+                    0,
+                    this.number(
+                        rule.confirmedOccurrences
+                    ) - 1
+                );
+
+            rule.updatedAt =
+                this.now();
+
+        }
+
+    },
+
     restoreSaveButton(
         saveButton,
         editing
@@ -2964,9 +3569,11 @@ const AtlasMovements = {
             false;
 
         saveButton.textContent =
-            editing
-                ? "Guardar cambios"
-                : "Guardar movimiento";
+            this.recurringOccurrenceId
+                ? "Confirmar movimiento"
+                : editing
+                    ? "Guardar cambios"
+                    : "Guardar movimiento";
 
     },
 
@@ -3087,7 +3694,44 @@ const AtlasMovements = {
                 1
             );
 
+            this.syncConfirmedOccurrence(
+                updatedData,
+                movement
+            );
+
         } else {
+
+            const existingLinked =
+                movement
+                    .recurringOccurrenceId
+                    ? updatedData
+                        .movements
+                        .find(
+                            item =>
+                                item
+                                    .recurringOccurrenceId ===
+                                movement
+                                    .recurringOccurrenceId
+                        )
+                    : null;
+
+            if (existingLinked) {
+
+                this.saving =
+                    false;
+
+                this.restoreSaveButton(
+                    saveButton,
+                    false
+                );
+
+                AtlasUI.toast(
+                    "Esta propuesta ya tiene un movimiento registrado."
+                );
+
+                return;
+
+            }
 
             updatedData.movements.push(
                 movement
@@ -3097,6 +3741,13 @@ const AtlasMovements = {
                 updatedData,
                 movement,
                 1
+            );
+
+            this.markOccurrenceConfirmed(
+                updatedData,
+                movement
+                    .recurringOccurrenceId,
+                movement
             );
 
         }
@@ -3127,10 +3778,16 @@ const AtlasMovements = {
         }
 
         this.data =
-            updatedData;
+            AtlasStorage.load();
 
         const callback =
             this.onComplete;
+
+        const wasRecurring =
+            Boolean(
+                movement
+                    .recurringOccurrenceId
+            );
 
         this.close();
 
@@ -3140,11 +3797,355 @@ const AtlasMovements = {
         ) {
 
             callback(
-                updatedData,
+                this.data,
                 movement
             );
 
         }
+
+        AtlasUI.toast(
+            wasRecurring
+                ? "Propuesta confirmada y movimiento registrado."
+                : this.editingId
+                    ? "Movimiento actualizado."
+                    : "Movimiento guardado."
+        );
+
+    },
+
+    confirmRecurringOccurrence(
+        data,
+        onComplete,
+        occurrenceId
+    ) {
+
+        if (this.saving) {
+
+            return;
+
+        }
+
+        this.data = data;
+        this.onComplete = onComplete;
+        this.editingId = null;
+        this.recurringOccurrenceId =
+            occurrenceId;
+
+        const occurrence =
+            this.findRecurringOccurrence(
+                occurrenceId
+            );
+
+        if (!occurrence) {
+
+            AtlasUI.toast(
+                "No se encontró la propuesta."
+            );
+
+            return;
+
+        }
+
+        if (
+            ![
+                "pending",
+                "possible_duplicate"
+            ].includes(
+                occurrence.status
+            )
+        ) {
+
+            AtlasUI.toast(
+                "Esta propuesta ya no está pendiente."
+            );
+
+            return;
+
+        }
+
+        const movement =
+            this.movementFromOccurrence(
+                occurrence
+            );
+
+        const error =
+            this.validateMovement(
+                movement
+            );
+
+        if (error) {
+
+            AtlasUI.toast(
+                `${error} Pulsa Revisar para corregirla.`
+            );
+
+            return;
+
+        }
+
+        const confirmed =
+            window.confirm(
+                `¿Confirmar ${
+                    this.formatCurrency(
+                        movement.amount
+                    )
+                } con fecha ${
+                    this.formatDate(
+                        movement.date
+                    )
+                }?`
+            );
+
+        if (!confirmed) {
+
+            return;
+
+        }
+
+        const updatedData =
+            this.cloneData();
+
+        if (
+            !Array.isArray(
+                updatedData.movements
+            )
+        ) {
+
+            updatedData.movements = [];
+
+        }
+
+        const existingLinked =
+            updatedData.movements
+                .find(
+                    item =>
+                        item
+                            .recurringOccurrenceId ===
+                        occurrenceId
+                );
+
+        if (existingLinked) {
+
+            AtlasUI.toast(
+                "Esta propuesta ya tiene un movimiento registrado."
+            );
+
+            return;
+
+        }
+
+        const freshOccurrence =
+            this.findRecurringOccurrence(
+                occurrenceId,
+                updatedData
+            );
+
+        if (
+            !freshOccurrence ||
+            ![
+                "pending",
+                "possible_duplicate"
+            ].includes(
+                freshOccurrence.status
+            )
+        ) {
+
+            AtlasUI.toast(
+                "La propuesta ya no está disponible."
+            );
+
+            return;
+
+        }
+
+        this.saving = true;
+
+        updatedData.movements.push(
+            movement
+        );
+
+        this.applyMovement(
+            updatedData,
+            movement,
+            1
+        );
+
+        this.markOccurrenceConfirmed(
+            updatedData,
+            occurrenceId,
+            movement
+        );
+
+        const saved =
+            AtlasStorage.save(
+                updatedData
+            );
+
+        if (!saved) {
+
+            this.saving = false;
+
+            AtlasUI.toast(
+                "No se pudo confirmar la propuesta."
+            );
+
+            return;
+
+        }
+
+        this.data =
+            AtlasStorage.load();
+
+        this.saving = false;
+        this.recurringOccurrenceId =
+            null;
+
+        if (
+            typeof onComplete ===
+            "function"
+        ) {
+
+            onComplete(
+                this.data,
+                movement
+            );
+
+        }
+
+        AtlasUI.toast(
+            "Propuesta confirmada."
+        );
+
+    },
+
+    omitRecurringOccurrence(
+        data,
+        onComplete,
+        occurrenceId
+    ) {
+
+        if (this.saving) {
+
+            return;
+
+        }
+
+        const occurrence =
+            this.findRecurringOccurrence(
+                occurrenceId,
+                data
+            );
+
+        if (!occurrence) {
+
+            AtlasUI.toast(
+                "No se encontró la propuesta."
+            );
+
+            return;
+
+        }
+
+        if (
+            ![
+                "pending",
+                "possible_duplicate"
+            ].includes(
+                occurrence.status
+            )
+        ) {
+
+            AtlasUI.toast(
+                "Esta propuesta ya no está pendiente."
+            );
+
+            return;
+
+        }
+
+        const confirmed =
+            window.confirm(
+                "¿Omitir esta propuesta solo durante este mes?"
+            );
+
+        if (!confirmed) {
+
+            return;
+
+        }
+
+        this.saving = true;
+
+        const updatedData =
+            this.cloneData(data);
+
+        const updatedOccurrence =
+            this.findRecurringOccurrence(
+                occurrenceId,
+                updatedData
+            );
+
+        if (!updatedOccurrence) {
+
+            this.saving = false;
+
+            AtlasUI.toast(
+                "No se pudo omitir la propuesta."
+            );
+
+            return;
+
+        }
+
+        updatedOccurrence.status =
+            "omitted";
+
+        updatedOccurrence.omittedReason =
+            "Omitido manualmente";
+
+        updatedOccurrence.omittedAt =
+            this.now();
+
+        updatedOccurrence.updatedAt =
+            this.now();
+
+        const saved =
+            AtlasStorage.save(
+                updatedData
+            );
+
+        if (!saved) {
+
+            this.saving = false;
+
+            AtlasUI.toast(
+                "No se pudo omitir la propuesta."
+            );
+
+            return;
+
+        }
+
+        this.data =
+            AtlasStorage.load();
+
+        this.saving = false;
+
+        if (
+            typeof onComplete ===
+            "function"
+        ) {
+
+            onComplete(
+                this.data,
+                null
+            );
+
+        }
+
+        AtlasUI.toast(
+            "Propuesta omitida este mes."
+        );
 
     },
 
@@ -3175,6 +4176,21 @@ const AtlasMovements = {
 
         let message =
             "¿Eliminar este movimiento?\n\nLos saldos se corregirán automáticamente.";
+
+        const movementToDelete =
+            this.findMovement(
+                this.editingId
+            );
+
+        if (
+            movementToDelete
+                ?.recurringOccurrenceId
+        ) {
+
+            message +=
+                "\n\nLa propuesta recurrente volverá a aparecer como pendiente.";
+
+        }
 
         if (
             linkedReimbursements.length >
@@ -3250,6 +4266,11 @@ const AtlasMovements = {
             -1
         );
 
+        this.restoreOccurrenceFromMovement(
+            updatedData,
+            movement
+        );
+
         updatedData.movements.splice(
             index,
             1
@@ -3268,8 +4289,7 @@ const AtlasMovements = {
                             null;
 
                         item.updatedAt =
-                            new Date()
-                                .toISOString();
+                            this.now();
 
                     }
 
@@ -3295,7 +4315,7 @@ const AtlasMovements = {
         }
 
         this.data =
-            updatedData;
+            AtlasStorage.load();
 
         const callback =
             this.onComplete;
@@ -3308,14 +4328,17 @@ const AtlasMovements = {
         ) {
 
             callback(
-                updatedData,
+                this.data,
                 null
             );
 
         }
 
         AtlasUI.toast(
-            "Movimiento eliminado."
+            movement
+                .recurringOccurrenceId
+                ? "Movimiento eliminado y propuesta restaurada."
+                : "Movimiento eliminado."
         );
 
     },
@@ -3337,6 +4360,9 @@ const AtlasMovements = {
         );
 
         this.editingId =
+            null;
+
+        this.recurringOccurrenceId =
             null;
 
         this.saving =
@@ -3459,7 +4485,8 @@ const AtlasMovements = {
                 ) {
 
                     if (
-                        this.editingId
+                        this.editingId ||
+                        this.recurringOccurrenceId
                     ) {
 
                         this.close();
