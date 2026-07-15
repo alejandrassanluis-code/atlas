@@ -1230,7 +1230,8 @@ const AtlasMovementFilters = {
                 }
 
                 if (
-                    kind === "expense"
+                    kind ===
+                    "expense"
                 ) {
 
                     summary.grossExpenses +=
@@ -1241,7 +1242,8 @@ const AtlasMovementFilters = {
                 }
 
                 if (
-                    kind === "investment"
+                    kind ===
+                    "investment"
                 ) {
 
                     summary.invested +=
@@ -1252,7 +1254,8 @@ const AtlasMovementFilters = {
                 }
 
                 if (
-                    kind === "debt_payment"
+                    kind ===
+                    "debt_payment"
                 ) {
 
                     summary.debtPayments +=
@@ -1263,7 +1266,8 @@ const AtlasMovementFilters = {
                 }
 
                 if (
-                    kind === "transfer"
+                    kind ===
+                    "transfer"
                 ) {
 
                     summary.transfers +=
@@ -1476,17 +1480,6 @@ const AtlasMovementFilters = {
                 movement
             );
 
-        const kind =
-            this.movementKind(
-                movement
-            );
-
-        const reimbursementDescription =
-            kind ===
-                "reimbursement"
-                ? "Reduce el gasto neto"
-                : "";
-
         return `
 
             <button
@@ -1541,20 +1534,6 @@ const AtlasMovementFilters = {
                                     ${this.escape(
                                         accountDescription
                                     )}
-                                </small>
-
-                            `
-                            : ""
-                    }
-
-                    ${
-                        reimbursementDescription
-                            ? `
-
-                                <small
-                                    class="atlas-movement-reimbursement-note"
-                                >
-                                    ${reimbursementDescription}
                                 </small>
 
                             `
@@ -1996,10 +1975,7 @@ const AtlasMovementFilters = {
                         --color-primary
                     );
                 box-shadow:
-                    0
-                    0
-                    0
-                    3px
+                    0 0 0 3px
                     rgba(
                         77,
                         163,
@@ -2248,11 +2224,6 @@ const AtlasMovementFilters = {
                 overflow: hidden;
                 text-overflow: ellipsis;
                 white-space: nowrap;
-            }
-
-            .atlas-movement-reimbursement-note {
-                margin-top: 3px;
-                color: #5fd6c1 !important;
             }
 
             .atlas-movement-note {
