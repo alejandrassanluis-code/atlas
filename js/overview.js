@@ -59,6 +59,15 @@ const AtlasOverviewCards = {
 
     },
 
+    appAvailable() {
+
+        return (
+            typeof AtlasApp !==
+            "undefined"
+        );
+
+    },
+
     ensureSelectedMonth() {
 
         const currentMonth =
@@ -72,9 +81,12 @@ const AtlasOverviewCards = {
         ) {
 
             this.selectedMonth =
-                globalThis.AtlasApp
-                    ?.analysisMonth ||
-                currentMonth;
+                this.appAvailable()
+                    ? (
+                        AtlasApp.analysisMonth ||
+                        currentMonth
+                    )
+                    : currentMonth;
 
         }
 
@@ -102,7 +114,7 @@ const AtlasOverviewCards = {
     synchronizeSelectedMonth() {
 
         if (
-            !globalThis.AtlasApp
+            !this.appAvailable()
         ) {
 
             return;
@@ -181,15 +193,19 @@ const AtlasOverviewCards = {
 
         this.ensureSelectedMonth();
 
-        this.synchronizeSelectedMonth();
-
         if (
-            !globalThis.AtlasApp
+            !this.appAvailable()
         ) {
+
+            AtlasUI.toast(
+                "No se pudo abrir el análisis."
+            );
 
             return;
 
         }
+
+        this.synchronizeSelectedMonth();
 
         AtlasApp.analysisView =
             "monthly";
