@@ -1,12 +1,12 @@
 /* ==========================================================
    ATLAS
    catalog.js
-   Sprint 4.0 — Catálogo financiero definitivo
+   Atlas v1.0 — Catálogo con reembolsos independientes
 ========================================================== */
 
 const AtlasCatalog = {
 
-    version: 1,
+    version: 2,
 
     clone(value) {
 
@@ -381,12 +381,21 @@ const AtlasCatalog = {
                     },
 
                     {
+                        id: "sport_padel",
+                        name: "Pádel",
+                        icon: "🎾",
+                        active: true,
+                        order: 30,
+                        recommendedPercent: 1
+                    },
+
+                    {
                         id: "sport_other",
                         name: "Otros",
                         icon: "🏅",
                         active: true,
-                        order: 30,
-                        recommendedPercent: 1
+                        order: 40,
+                        recommendedPercent: 0
                     }
 
                 ]
@@ -661,57 +670,13 @@ const AtlasCatalog = {
                     },
 
                     {
-                        id: "bizum_shared_expenses",
-                        name: "Gastos compartidos",
-                        icon: "👥",
-                        active: true,
-                        order: 20,
-                        incomeBehavior:
-                            "refund"
-                    },
-
-                    {
                         id: "bizum_other",
                         name: "Otros Bizums",
                         icon: "📲",
                         active: true,
-                        order: 30,
-                        incomeBehavior:
-                            "income"
-                    }
-
-                ]
-            },
-
-            {
-                id: "refunds",
-                name: "Reembolsos",
-                icon: "↩️",
-                type: "income",
-                active: true,
-                order: 30,
-                incomeBehavior:
-                    "refund",
-                subcategories: [
-
-                    {
-                        id: "refunds_returns",
-                        name: "Devoluciones",
-                        icon: "📦",
-                        active: true,
-                        order: 10,
-                        incomeBehavior:
-                            "refund"
-                    },
-
-                    {
-                        id: "refunds_other",
-                        name: "Otros reembolsos",
-                        icon: "↩️",
-                        active: true,
                         order: 20,
                         incomeBehavior:
-                            "refund"
+                            "income"
                     }
 
                 ]
@@ -723,7 +688,7 @@ const AtlasCatalog = {
                 icon: "💰",
                 type: "income",
                 active: true,
-                order: 40,
+                order: 30,
                 subcategories: [
 
                     {
@@ -751,7 +716,7 @@ const AtlasCatalog = {
                 icon: "🧾",
                 type: "income",
                 active: true,
-                order: 50,
+                order: 40,
                 subcategories: [
 
                     {
@@ -1139,6 +1104,356 @@ const AtlasCatalog = {
 
     },
 
+    migrateIncomeCategories(categories) {
+
+        const current =
+            Array.isArray(categories)
+                ? this.clone(categories)
+                : [];
+
+        const withoutRefunds =
+            current.filter(
+                category =>
+                    category.id !==
+                    "refunds"
+            );
+
+        const bizum =
+            withoutRefunds.find(
+                category =>
+                    category.id ===
+                    "bizum"
+            );
+
+        if (
+            bizum &&
+            Array.isArray(
+                bizum.subcategories
+            )
+        ) {
+
+            bizum.subcategories =
+                bizum.subcategories
+                    .filter(
+                        subcategory =>
+                            subcategory.id !==
+                            "bizum_shared_expenses"
+                    )
+                    .map(
+                        (
+                            subcategory,
+                            index
+                        ) => ({
+
+                            ...subcategory,
+
+                            order:
+                                (
+                                    index +
+                                    1
+                                ) * 10
+
+                        })
+                    );
+
+        }
+
+        return withoutRefunds
+            .map(
+                (
+                    category,
+                    index
+                ) => ({
+
+                    ...category,
+
+                    order:
+                        (
+                            index +
+                            1
+                        ) * 10
+
+                })
+            );
+
+    },
+
+    migrateSportCategory(categories) {
+
+        const current =
+            Array.isArray(categories)
+                ? this.clone(categories)
+                : [];
+
+        const sport =
+            current.find(
+                category =>
+                    category.id ===
+                    "sport"
+            );
+
+        if (!sport) {
+
+            const defaultSport =
+                this.expenseCategories()
+                    .find(
+                        category =>
+                            category.id ===
+                            "sport"
+                    );
+
+            if (defaultSport) {
+
+                current.push(
+                    this.clone(
+                        defaultSport
+                    )
+                );
+
+            }
+
+            return current;
+
+        }
+
+        if (
+            !Array.isArray(
+                sport.subcategories
+            )
+        ) {
+
+            sport.subcategories = [];
+
+        }
+
+        const padelExists =
+            sport.subcategories.some(
+                subcategory =>
+                    subcategory.id ===
+                    "sport_padel"
+            );
+
+        if (!padelExists) {
+
+            sport.subcategories.push({
+
+                id:
+                    "sport_padel",
+
+                name:
+                    "Pádel",
+
+                icon:
+                    "🎾",
+
+                active:
+                    true,
+
+                order:
+                    30,
+
+                recommendedPercent:
+                    1
+
+            });
+
+        }
+
+        const other =
+            sport.subcategories.find(
+                subcategory =>
+                    subcategory.id ===
+                    "sport_other"
+            );
+
+        if (other) {
+
+            other.order = 40;
+
+            if (
+                this.number(
+                    other.recommendedPercent
+                ) === 1
+            ) {
+
+                other.recommendedPercent =
+                    0;
+
+            }
+
+        }
+
+        sport.subcategories.sort(
+            (
+                first,
+                second
+            ) =>
+                this.number(
+                    first.order
+                ) -
+                this.number(
+                    second.order
+                )
+        );
+
+        return current;
+
+    },
+
+    migrateBudgetConfiguration(
+        budgets,
+        expenseCategories
+    ) {
+
+        const updatedBudgets =
+            budgets
+                ? this.clone(
+                    budgets
+                )
+                : this.budgetConfiguration();
+
+        if (
+            !Array.isArray(
+                updatedBudgets
+                    .categoryBudgets
+            )
+        ) {
+
+            updatedBudgets
+                .categoryBudgets =
+                [];
+
+        }
+
+        expenseCategories.forEach(
+            category => {
+
+                let categoryBudget =
+                    updatedBudgets
+                        .categoryBudgets
+                        .find(
+                            item =>
+                                item.categoryId ===
+                                category.id
+                        );
+
+                if (!categoryBudget) {
+
+                    categoryBudget = {
+
+                        categoryId:
+                            category.id,
+
+                        mode:
+                            "percentage",
+
+                        recommendedPercent:
+                            category
+                                .recommendedPercent,
+
+                        targetPercent:
+                            category
+                                .recommendedPercent,
+
+                        fixedAmount:
+                            null,
+
+                        active:
+                            category
+                                .recommendedPercent > 0,
+
+                        subcategories:
+                            []
+
+                    };
+
+                    updatedBudgets
+                        .categoryBudgets
+                        .push(
+                            categoryBudget
+                        );
+
+                }
+
+                if (
+                    !Array.isArray(
+                        categoryBudget
+                            .subcategories
+                    )
+                ) {
+
+                    categoryBudget
+                        .subcategories =
+                        [];
+
+                }
+
+                category
+                    .subcategories
+                    .forEach(
+                        subcategory => {
+
+                            const exists =
+                                categoryBudget
+                                    .subcategories
+                                    .some(
+                                        item =>
+                                            item.subcategoryId ===
+                                            subcategory.id
+                                    );
+
+                            if (!exists) {
+
+                                categoryBudget
+                                    .subcategories
+                                    .push({
+
+                                        subcategoryId:
+                                            subcategory.id,
+
+                                        mode:
+                                            "percentage",
+
+                                        recommendedPercent:
+                                            subcategory
+                                                .recommendedPercent,
+
+                                        targetPercent:
+                                            subcategory
+                                                .recommendedPercent,
+
+                                        fixedAmount:
+                                            null,
+
+                                        active:
+                                            subcategory
+                                                .recommendedPercent > 0
+
+                                    });
+
+                            }
+
+                        }
+                    );
+
+            }
+        );
+
+        return updatedBudgets;
+
+    },
+
+    number(value) {
+
+        const result =
+            Number(value);
+
+        return Number.isFinite(result)
+            ? result
+            : 0;
+
+    },
+
     ensure(data) {
 
         const updatedData =
@@ -1172,14 +1487,26 @@ const AtlasCatalog = {
 
         }
 
-        if (
-            !updatedData.catalog.budgets
-        ) {
+        updatedData.catalog
+            .categories.expense =
+            this.migrateSportCategory(
+                updatedData.catalog
+                    .categories.expense
+            );
 
-            updatedData.catalog.budgets =
-                this.budgetConfiguration();
+        updatedData.catalog
+            .categories.income =
+            this.migrateIncomeCategories(
+                updatedData.catalog
+                    .categories.income
+            );
 
-        }
+        updatedData.catalog.budgets =
+            this.migrateBudgetConfiguration(
+                updatedData.catalog.budgets,
+                updatedData.catalog
+                    .categories.expense
+            );
 
         if (
             !Array.isArray(
