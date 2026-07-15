@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    calculations.js
-   Sprint 5.0 — Motor de presupuestos mensuales
+   Atlas v1.0 — Motor financiero con reembolsos
 ========================================================== */
 
 const AtlasCalculations = {
@@ -37,16 +37,31 @@ const AtlasCalculations = {
 
     },
 
+    findMovement(
+        data,
+        movementId
+    ) {
+
+        return this.movements(data)
+            .find(
+                movement =>
+                    movement.id ===
+                    movementId
+            ) || null;
+
+    },
+
     findAccount(
         data,
         accountId
     ) {
 
-        return this.accounts(data).find(
-            account =>
-                account.id ===
-                accountId
-        );
+        return this.accounts(data)
+            .find(
+                account =>
+                    account.id ===
+                    accountId
+            ) || null;
 
     },
 
@@ -55,11 +70,12 @@ const AtlasCalculations = {
         group
     ) {
 
-        return this.accounts(data).filter(
-            account =>
-                account.group ===
-                group
-        );
+        return this.accounts(data)
+            .filter(
+                account =>
+                    account.group ===
+                    group
+            );
 
     },
 
@@ -213,15 +229,12 @@ const AtlasCalculations = {
 
         }
 
-        const date =
+        return this.monthKey(
             new Date(
                 year,
                 month - 1 + difference,
                 1
-            );
-
-        return this.monthKey(
-            date
+            )
         );
 
     },
@@ -307,6 +320,17 @@ const AtlasCalculations = {
 
         }
 
+        if (
+            movement?.kind ===
+                "reimbursement" ||
+            movement?.type ===
+                "reimbursement"
+        ) {
+
+            return "reimbursement";
+
+        }
+
         return movement?.type || "";
 
     },
@@ -318,6 +342,17 @@ const AtlasCalculations = {
                 movement
             ) ===
             "debt_payment"
+        );
+
+    },
+
+    isReimbursement(movement) {
+
+        return (
+            this.movementKind(
+                movement
+            ) ===
+            "reimbursement"
         );
 
     },
@@ -387,6 +422,9 @@ const AtlasCalculations = {
                 "expense" &&
             !this.isDebtPayment(
                 movement
+            ) &&
+            !this.isReimbursement(
+                movement
             )
         );
 
@@ -396,15 +434,6 @@ const AtlasCalculations = {
         data,
         movement
     ) {
-
-        /*
-         * Las compras se cuentan como gasto
-         * cuando se registran.
-         *
-         * Los pagos posteriores de tarjeta
-         * o préstamo solo reducen liquidez
-         * y deuda. No vuelven a sumar gasto.
-         */
 
         if (
             this.isDebtPayment(
@@ -444,21 +473,17 @@ const AtlasCalculations = {
                     movement.accountId
                 );
 
-            if (
-                account?.group ===
+            return account?.group ===
                 "liquidity"
-            ) {
-
-                return amount;
-
-            }
-
-            return 0;
+                ? amount
+                : 0;
 
         }
 
         if (
-            movement?.type ===
+            this.movementKind(
+                movement
+            ) ===
             "investment"
         ) {
 
@@ -477,7 +502,9 @@ const AtlasCalculations = {
         }
 
         if (
-            movement?.type ===
+            this.movementKind(
+                movement
+            ) ===
             "transfer"
         ) {
 
@@ -521,7 +548,9 @@ const AtlasCalculations = {
         )
             .filter(
                 movement =>
-                    movement.type ===
+                    this.movementKind(
+                        movement
+                    ) ===
                     "income"
             )
             .reduce(
@@ -538,7 +567,7 @@ const AtlasCalculations = {
 
     },
 
-    monthlyExpenses(
+    monthlyGrossExpenses(
         data,
         monthKey = this.monthKey()
     ) {
@@ -568,6 +597,53 @@ const AtlasCalculations = {
 
     },
 
+    monthlyReimbursements(
+        data,
+        monthKey = this.monthKey()
+    ) {
+
+        return this.movementsForMonth(
+            data,
+            monthKey
+        )
+            .filter(
+                movement =>
+                    this.isReimbursement(
+                        movement
+                    )
+            )
+            .reduce(
+                (
+                    total,
+                    movement
+                ) =>
+                    total +
+                    this.number(
+                        movement.amount
+                    ),
+                0
+            );
+
+    },
+
+    monthlyExpenses(
+        data,
+        monthKey = this.monthKey()
+    ) {
+
+        return (
+            this.monthlyGrossExpenses(
+                data,
+                monthKey
+            ) -
+            this.monthlyReimbursements(
+                data,
+                monthKey
+            )
+        );
+
+    },
+
     monthlyInvested(
         data,
         monthKey = this.monthKey()
@@ -579,7 +655,9 @@ const AtlasCalculations = {
         )
             .filter(
                 movement =>
-                    movement.type ===
+                    this.movementKind(
+                        movement
+                    ) ===
                     "investment"
             )
             .reduce(
@@ -671,76 +749,63 @@ const AtlasCalculations = {
 
     },
 
-    expenseCategories(
+    linkedExpenseMovement(
         data,
-        monthKey = this.monthKey()
+        movement
     ) {
 
-        const categories = {};
+        if (
+            !movement?.linkedMovementId
+        ) {
 
-        this.movementsForMonth(
-            data,
-            monthKey
-        )
-            .filter(
-                movement =>
-                    this.expenseCountsForSavings(
-                        data,
-                        movement
-                    )
-            )
-            .forEach(
-                movement => {
+            return null;
 
-                    const category =
-                        movement.category ||
-                        "Otros gastos";
+        }
 
-                    categories[category] =
-                        (
-                            categories[
-                                category
-                            ] ||
-                            0
-                        ) +
-                        this.number(
-                            movement.amount
-                        );
-
-                }
+        const linkedMovement =
+            this.findMovement(
+                data,
+                movement.linkedMovementId
             );
 
-        return Object.entries(
-            categories
-        )
-            .map(
-                ([
-                    category,
-                    amount
-                ]) => ({
-
-                    category,
-
-                    amount
-
-                })
+        if (
+            !linkedMovement ||
+            !this.isNormalExpense(
+                linkedMovement
             )
-            .sort(
-                (
-                    a,
-                    b
-                ) =>
-                    b.amount -
-                    a.amount
-            );
+        ) {
+
+            return null;
+
+        }
+
+        return linkedMovement;
 
     },
 
-    /*
-     * =======================================================
-     * PRESUPUESTOS
-     * =======================================================
-     */
+    categorySourceMovement(
+        data,
+        movement
+    ) {
+
+        if (
+            movement?.categoryId ||
+            movement?.subcategoryId
+        ) {
+
+            return movement;
+
+        }
+
+        return (
+            this.linkedExpenseMovement(
+                data,
+                movement
+            ) ||
+            movement
+        );
+
+    },
 
     expenseCatalog(data) {
 
@@ -787,13 +852,12 @@ const AtlasCalculations = {
         categoryId
     ) {
 
-        return this.expenseCatalog(
-            data
-        ).find(
-            category =>
-                category.id ===
-                categoryId
-        ) || null;
+        return this.expenseCatalog(data)
+            .find(
+                category =>
+                    category.id ===
+                    categoryId
+            ) || null;
 
     },
 
@@ -820,8 +884,7 @@ const AtlasCalculations = {
 
         }
 
-        return category
-            .subcategories
+        return category.subcategories
             .find(
                 subcategory =>
                     subcategory.id ===
@@ -870,8 +933,7 @@ const AtlasCalculations = {
 
         }
 
-        return categoryBudget
-            .subcategories
+        return categoryBudget.subcategories
             .find(
                 budget =>
                     budget.subcategoryId ===
@@ -885,17 +947,25 @@ const AtlasCalculations = {
         movement
     ) {
 
+        const sourceMovement =
+            this.categorySourceMovement(
+                data,
+                movement
+            );
+
         if (
-            movement?.categoryId
+            sourceMovement?.categoryId
         ) {
 
-            return movement.categoryId;
+            return sourceMovement
+                .categoryId;
 
         }
 
         const legacyCategory =
             String(
-                movement?.category || ""
+                sourceMovement?.category ||
+                ""
             )
                 .trim()
                 .toLowerCase();
@@ -938,18 +1008,25 @@ const AtlasCalculations = {
         movement
     ) {
 
+        const sourceMovement =
+            this.categorySourceMovement(
+                data,
+                movement
+            );
+
         if (
-            movement?.subcategoryId
+            sourceMovement?.subcategoryId
         ) {
 
-            return movement.subcategoryId;
+            return sourceMovement
+                .subcategoryId;
 
         }
 
         const categoryId =
             this.movementCategoryId(
                 data,
-                movement
+                sourceMovement
             );
 
         const category =
@@ -971,7 +1048,8 @@ const AtlasCalculations = {
 
         const legacyCategory =
             String(
-                movement?.category || ""
+                sourceMovement?.category ||
+                ""
             )
                 .trim()
                 .toLowerCase();
@@ -1003,6 +1081,65 @@ const AtlasCalculations = {
 
     },
 
+    categoryDisplayName(
+        data,
+        movement
+    ) {
+
+        const categoryId =
+            this.movementCategoryId(
+                data,
+                movement
+            );
+
+        const subcategoryId =
+            this.movementSubcategoryId(
+                data,
+                movement
+            );
+
+        const category =
+            this.findExpenseCategory(
+                data,
+                categoryId
+            );
+
+        const subcategory =
+            this.findExpenseSubcategory(
+                data,
+                categoryId,
+                subcategoryId
+            );
+
+        if (
+            category &&
+            subcategory
+        ) {
+
+            return (
+                `${category.icon || ""} ` +
+                `${category.name} · ` +
+                `${subcategory.name}`
+            ).trim();
+
+        }
+
+        if (category) {
+
+            return (
+                `${category.icon || ""} ` +
+                category.name
+            ).trim();
+
+        }
+
+        return (
+            movement?.category ||
+            "Otros gastos"
+        );
+
+    },
+
     monthlyExpenseMovements(
         data,
         monthKey = this.monthKey()
@@ -1022,7 +1159,25 @@ const AtlasCalculations = {
 
     },
 
-    monthlyExpenseForCategory(
+    monthlyReimbursementMovements(
+        data,
+        monthKey = this.monthKey()
+    ) {
+
+        return this.movementsForMonth(
+            data,
+            monthKey
+        )
+            .filter(
+                movement =>
+                    this.isReimbursement(
+                        movement
+                    )
+            );
+
+    },
+
+    monthlyGrossExpenseForCategory(
         data,
         categoryId,
         monthKey = this.monthKey()
@@ -1054,7 +1209,61 @@ const AtlasCalculations = {
 
     },
 
-    monthlyExpenseForSubcategory(
+    monthlyReimbursementForCategory(
+        data,
+        categoryId,
+        monthKey = this.monthKey()
+    ) {
+
+        return this
+            .monthlyReimbursementMovements(
+                data,
+                monthKey
+            )
+            .filter(
+                movement =>
+                    this.movementCategoryId(
+                        data,
+                        movement
+                    ) ===
+                    categoryId
+            )
+            .reduce(
+                (
+                    total,
+                    movement
+                ) =>
+                    total +
+                    this.number(
+                        movement.amount
+                    ),
+                0
+            );
+
+    },
+
+    monthlyExpenseForCategory(
+        data,
+        categoryId,
+        monthKey = this.monthKey()
+    ) {
+
+        return (
+            this.monthlyGrossExpenseForCategory(
+                data,
+                categoryId,
+                monthKey
+            ) -
+            this.monthlyReimbursementForCategory(
+                data,
+                categoryId,
+                monthKey
+            )
+        );
+
+    },
+
+    monthlyGrossExpenseForSubcategory(
         data,
         categoryId,
         subcategoryId,
@@ -1092,6 +1301,195 @@ const AtlasCalculations = {
 
     },
 
+    monthlyReimbursementForSubcategory(
+        data,
+        categoryId,
+        subcategoryId,
+        monthKey = this.monthKey()
+    ) {
+
+        return this
+            .monthlyReimbursementMovements(
+                data,
+                monthKey
+            )
+            .filter(
+                movement =>
+                    this.movementCategoryId(
+                        data,
+                        movement
+                    ) ===
+                        categoryId &&
+                    this.movementSubcategoryId(
+                        data,
+                        movement
+                    ) ===
+                        subcategoryId
+            )
+            .reduce(
+                (
+                    total,
+                    movement
+                ) =>
+                    total +
+                    this.number(
+                        movement.amount
+                    ),
+                0
+            );
+
+    },
+
+    monthlyExpenseForSubcategory(
+        data,
+        categoryId,
+        subcategoryId,
+        monthKey = this.monthKey()
+    ) {
+
+        return (
+            this.monthlyGrossExpenseForSubcategory(
+                data,
+                categoryId,
+                subcategoryId,
+                monthKey
+            ) -
+            this.monthlyReimbursementForSubcategory(
+                data,
+                categoryId,
+                subcategoryId,
+                monthKey
+            )
+        );
+
+    },
+
+    expenseCategories(
+        data,
+        monthKey = this.monthKey()
+    ) {
+
+        const categories = {};
+
+        const ensureCategory =
+            movement => {
+
+                const categoryId =
+                    this.movementCategoryId(
+                        data,
+                        movement
+                    ) ||
+                    "other";
+
+                if (
+                    !categories[
+                        categoryId
+                    ]
+                ) {
+
+                    categories[
+                        categoryId
+                    ] = {
+
+                        categoryId,
+
+                        category:
+                            this.categoryDisplayName(
+                                data,
+                                movement
+                            ),
+
+                        grossAmount:
+                            0,
+
+                        reimbursements:
+                            0,
+
+                        amount:
+                            0
+
+                    };
+
+                }
+
+                return categories[
+                    categoryId
+                ];
+
+            };
+
+        this.monthlyExpenseMovements(
+            data,
+            monthKey
+        )
+            .forEach(
+                movement => {
+
+                    const category =
+                        ensureCategory(
+                            movement
+                        );
+
+                    category.grossAmount +=
+                        this.number(
+                            movement.amount
+                        );
+
+                }
+            );
+
+        this.monthlyReimbursementMovements(
+            data,
+            monthKey
+        )
+            .forEach(
+                movement => {
+
+                    const category =
+                        ensureCategory(
+                            movement
+                        );
+
+                    category.reimbursements +=
+                        this.number(
+                            movement.amount
+                        );
+
+                }
+            );
+
+        return Object.values(
+            categories
+        )
+            .map(
+                category => ({
+
+                    ...category,
+
+                    amount:
+                        category.grossAmount -
+                        category.reimbursements
+
+                })
+            )
+            .filter(
+                category =>
+                    category.grossAmount !==
+                        0 ||
+                    category.reimbursements !==
+                        0
+            )
+            .sort(
+                (
+                    first,
+                    second
+                ) =>
+                    second.amount -
+                    first.amount
+            );
+
+    },
+
     budgetAmount(
         configuration,
         monthlyIncome
@@ -1099,7 +1497,8 @@ const AtlasCalculations = {
 
         if (
             !configuration ||
-            configuration.active === false
+            configuration.active ===
+                false
         ) {
 
             return 0;
@@ -1154,13 +1553,8 @@ const AtlasCalculations = {
         monthlyIncome
     ) {
 
-        if (!configuration) {
-
-            return 0;
-
-        }
-
         if (
+            !configuration ||
             monthlyIncome <= 0
         ) {
 
@@ -1338,13 +1732,25 @@ const AtlasCalculations = {
                 ) ||
             null;
 
-        const spent =
-            this.monthlyExpenseForSubcategory(
+        const grossSpent =
+            this.monthlyGrossExpenseForSubcategory(
                 data,
                 category.id,
                 subcategory.id,
                 monthKey
             );
+
+        const reimbursements =
+            this.monthlyReimbursementForSubcategory(
+                data,
+                category.id,
+                subcategory.id,
+                monthKey
+            );
+
+        const spent =
+            grossSpent -
+            reimbursements;
 
         const budget =
             this.budgetAmount(
@@ -1414,6 +1820,10 @@ const AtlasCalculations = {
 
             recommendedBudget,
 
+            grossSpent,
+
+            reimbursements,
+
             spent,
 
             remaining,
@@ -1444,12 +1854,23 @@ const AtlasCalculations = {
                 category.id
             );
 
-        const spent =
-            this.monthlyExpenseForCategory(
+        const grossSpent =
+            this.monthlyGrossExpenseForCategory(
                 data,
                 category.id,
                 monthKey
             );
+
+        const reimbursements =
+            this.monthlyReimbursementForCategory(
+                data,
+                category.id,
+                monthKey
+            );
+
+        const spent =
+            grossSpent -
+            reimbursements;
 
         const budget =
             this.budgetAmount(
@@ -1553,6 +1974,10 @@ const AtlasCalculations = {
 
             recommendedBudget,
 
+            grossSpent,
+
+            reimbursements,
+
             spent,
 
             remaining,
@@ -1588,11 +2013,21 @@ const AtlasCalculations = {
                 monthKey
             );
 
-        const monthlyExpenses =
-            this.monthlyExpenses(
+        const monthlyGrossExpenses =
+            this.monthlyGrossExpenses(
                 data,
                 monthKey
             );
+
+        const monthlyReimbursements =
+            this.monthlyReimbursements(
+                data,
+                monthKey
+            );
+
+        const monthlyExpenses =
+            monthlyGrossExpenses -
+            monthlyReimbursements;
 
         const categories =
             this.expenseCatalog(data)
@@ -1733,9 +2168,19 @@ const AtlasCalculations = {
 
             monthlyIncome,
 
+            monthlyGrossExpenses,
+
+            monthlyReimbursements,
+
             monthlyExpenses,
 
             totalBudget,
+
+            totalGrossSpent:
+                monthlyGrossExpenses,
+
+            totalReimbursements:
+                monthlyReimbursements,
 
             totalSpent:
                 monthlyExpenses,
@@ -1743,11 +2188,8 @@ const AtlasCalculations = {
             budgetedSpent,
 
             unbudgetedSpent:
-                Math.max(
-                    0,
-                    monthlyExpenses -
-                    budgetedSpent
-                ),
+                monthlyExpenses -
+                budgetedSpent,
 
             remaining:
                 totalRemaining,
@@ -1804,15 +2246,9 @@ const AtlasCalculations = {
             previous === 0
         ) {
 
-            if (
-                current === 0
-            ) {
-
-                return 0;
-
-            }
-
-            return null;
+            return current === 0
+                ? 0
+                : null;
 
         }
 
@@ -1940,11 +2376,21 @@ const AtlasCalculations = {
                 monthKey
             );
 
-        const monthlyExpenses =
-            this.monthlyExpenses(
+        const monthlyGrossExpenses =
+            this.monthlyGrossExpenses(
                 data,
                 monthKey
             );
+
+        const monthlyReimbursements =
+            this.monthlyReimbursements(
+                data,
+                monthKey
+            );
+
+        const monthlyExpenses =
+            monthlyGrossExpenses -
+            monthlyReimbursements;
 
         const monthlyInvested =
             this.monthlyInvested(
@@ -1995,6 +2441,10 @@ const AtlasCalculations = {
 
             monthlyIncome,
 
+            monthlyGrossExpenses,
+
+            monthlyReimbursements,
+
             monthlyExpenses,
 
             monthlyInvested,
@@ -2007,6 +2457,12 @@ const AtlasCalculations = {
 
             income:
                 monthlyIncome,
+
+            grossExpenses:
+                monthlyGrossExpenses,
+
+            reimbursements:
+                monthlyReimbursements,
 
             expenses:
                 monthlyExpenses,
@@ -2061,6 +2517,18 @@ const AtlasCalculations = {
                 this.metricComparison(
                     current.monthlyIncome,
                     previous.monthlyIncome
+                ),
+
+            grossExpenses:
+                this.metricComparison(
+                    current.monthlyGrossExpenses,
+                    previous.monthlyGrossExpenses
+                ),
+
+            reimbursements:
+                this.metricComparison(
+                    current.monthlyReimbursements,
+                    previous.monthlyReimbursements
                 ),
 
             expenses:
@@ -2168,6 +2636,12 @@ const AtlasCalculations = {
                         income:
                             summary.monthlyIncome,
 
+                        grossExpenses:
+                            summary.monthlyGrossExpenses,
+
+                        reimbursements:
+                            summary.monthlyReimbursements,
+
                         expenses:
                             summary.monthlyExpenses,
 
@@ -2213,15 +2687,50 @@ const AtlasCalculations = {
                     .forEach(
                         item => {
 
-                            totals[
-                                item.category
-                            ] =
-                                (
-                                    totals[
-                                        item.category
-                                    ] ||
-                                    0
-                                ) +
+                            const key =
+                                item.categoryId ||
+                                item.category;
+
+                            if (
+                                !totals[key]
+                            ) {
+
+                                totals[key] = {
+
+                                    categoryId:
+                                        item.categoryId ||
+                                        null,
+
+                                    category:
+                                        item.category,
+
+                                    grossAmount:
+                                        0,
+
+                                    reimbursements:
+                                        0,
+
+                                    amount:
+                                        0
+
+                                };
+
+                            }
+
+                            totals[key]
+                                .grossAmount +=
+                                this.number(
+                                    item.grossAmount
+                                );
+
+                            totals[key]
+                                .reimbursements +=
+                                this.number(
+                                    item.reimbursements
+                                );
+
+                            totals[key]
+                                .amount +=
                                 this.number(
                                     item.amount
                                 );
@@ -2232,28 +2741,16 @@ const AtlasCalculations = {
             }
         );
 
-        return Object.entries(
+        return Object.values(
             totals
         )
-            .map(
-                ([
-                    category,
-                    amount
-                ]) => ({
-
-                    category,
-
-                    amount
-
-                })
-            )
             .sort(
                 (
-                    a,
-                    b
+                    first,
+                    second
                 ) =>
-                    b.amount -
-                    a.amount
+                    second.amount -
+                    first.amount
             );
 
     },
@@ -2367,61 +2864,64 @@ const AtlasCalculations = {
                     month.monthKey
             );
 
+        const totalFor =
+            property =>
+                months.reduce(
+                    (
+                        total,
+                        month
+                    ) =>
+                        total +
+                        this.number(
+                            month[property]
+                        ),
+                    0
+                );
+
+        const averageFor =
+            property =>
+                this.average(
+                    months.map(
+                        month =>
+                            month[property]
+                    )
+                );
+
         const totals = {
 
             income:
-                months.reduce(
-                    (
-                        total,
-                        month
-                    ) =>
-                        total +
-                        month.income,
-                    0
+                totalFor(
+                    "income"
+                ),
+
+            grossExpenses:
+                totalFor(
+                    "grossExpenses"
+                ),
+
+            reimbursements:
+                totalFor(
+                    "reimbursements"
                 ),
 
             expenses:
-                months.reduce(
-                    (
-                        total,
-                        month
-                    ) =>
-                        total +
-                        month.expenses,
-                    0
+                totalFor(
+                    "expenses"
                 ),
 
             invested:
-                months.reduce(
-                    (
-                        total,
-                        month
-                    ) =>
-                        total +
-                        month.invested,
-                    0
+                totalFor(
+                    "invested"
                 ),
 
             cashOutflow:
-                months.reduce(
-                    (
-                        total,
-                        month
-                    ) =>
-                        total +
-                        month.cashOutflow,
-                    0
+                totalFor(
+                    "cashOutflow"
                 ),
 
             savings:
-                months.reduce(
-                    (
-                        total,
-                        month
-                    ) =>
-                        total +
-                        month.savings,
-                    0
+                totalFor(
+                    "savings"
                 )
 
         };
@@ -2429,51 +2929,43 @@ const AtlasCalculations = {
         const averages = {
 
             income:
-                this.average(
-                    months.map(
-                        month =>
-                            month.income
-                    )
+                averageFor(
+                    "income"
+                ),
+
+            grossExpenses:
+                averageFor(
+                    "grossExpenses"
+                ),
+
+            reimbursements:
+                averageFor(
+                    "reimbursements"
                 ),
 
             expenses:
-                this.average(
-                    months.map(
-                        month =>
-                            month.expenses
-                    )
+                averageFor(
+                    "expenses"
                 ),
 
             invested:
-                this.average(
-                    months.map(
-                        month =>
-                            month.invested
-                    )
+                averageFor(
+                    "invested"
                 ),
 
             cashOutflow:
-                this.average(
-                    months.map(
-                        month =>
-                            month.cashOutflow
-                    )
+                averageFor(
+                    "cashOutflow"
                 ),
 
             savings:
-                this.average(
-                    months.map(
-                        month =>
-                            month.savings
-                    )
+                averageFor(
+                    "savings"
                 ),
 
             savingRate:
-                this.average(
-                    months.map(
-                        month =>
-                            month.savingRate
-                    )
+                averageFor(
+                    "savingRate"
                 )
 
         };
