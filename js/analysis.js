@@ -12,28 +12,6 @@ const AtlasAnalysisUI = {
     options:
         {},
 
-    state: {
-
-        monthlyMode:
-            "real",
-
-        distributionLevel:
-            "category",
-
-        trendsPeriod:
-            6,
-
-        trendMetric:
-            "savings",
-
-        comparisonMetric:
-            "none",
-
-        selectedCategory:
-            ""
-
-    },
-
     number(value) {
 
         const result =
@@ -101,6 +79,109 @@ const AtlasAnalysisUI = {
 
     },
 
+    sum(
+        collection,
+        property
+    ) {
+
+        return (
+            Array.isArray(collection)
+                ? collection
+                : []
+        ).reduce(
+            (
+                total,
+                item
+            ) =>
+                total +
+                this.number(
+                    item?.[property]
+                ),
+            0
+        );
+
+    },
+
+    average(values) {
+
+        const list =
+            (
+                Array.isArray(values)
+                    ? values
+                    : []
+            ).map(
+                value =>
+                    this.number(value)
+            );
+
+        if (
+            list.length === 0
+        ) {
+
+            return 0;
+
+        }
+
+        return list.reduce(
+            (
+                total,
+                value
+            ) =>
+                total + value,
+            0
+        ) / list.length;
+
+    },
+
+    median(values) {
+
+        const list =
+            (
+                Array.isArray(values)
+                    ? values
+                    : []
+            )
+                .map(
+                    value =>
+                        this.number(value)
+                )
+                .sort(
+                    (
+                        first,
+                        second
+                    ) =>
+                        first - second
+                );
+
+        if (
+            list.length === 0
+        ) {
+
+            return 0;
+
+        }
+
+        const middle =
+            Math.floor(
+                list.length / 2
+            );
+
+        if (
+            list.length % 2 ===
+            0
+        ) {
+
+            return (
+                list[middle - 1] +
+                list[middle]
+            ) / 2;
+
+        }
+
+        return list[middle];
+
+    },
+
     statusColor(
         value,
         positiveIsGood = true
@@ -120,28 +201,294 @@ const AtlasAnalysisUI = {
 
     },
 
-    movementLabel(movement) {
+    shiftMonth(
+        monthKey,
+        difference
+    ) {
 
-        if (!movement) {
+        const [
+            year,
+            month
+        ] = String(
+            monthKey || ""
+        )
+            .split("-")
+            .map(Number);
 
-            return "Sin datos";
+        if (
+            !year ||
+            !month
+        ) {
+
+            return monthKey;
 
         }
 
+        const date =
+            new Date(
+                year,
+                month - 1 +
+                    this.number(
+                        difference
+                    ),
+                1
+            );
+
+        const shiftedYear =
+            date.getFullYear();
+
+        const shiftedMonth =
+            String(
+                date.getMonth() + 1
+            ).padStart(
+                2,
+                "0"
+            );
+
         return (
-            movement.description ||
-            movement.name ||
-            movement.title ||
-            movement.category ||
-            "Movimiento"
+            `${shiftedYear}-${shiftedMonth}`
         );
+
+    },
+
+    metricDefinitions() {
+
+        return {
+
+            savings: {
+
+                label:
+                    "Ahorro",
+
+                property:
+                    "savings",
+
+                positiveIsGood:
+                    true,
+
+                percent:
+                    false,
+
+                accumulable:
+                    true
+
+            },
+
+            income: {
+
+                label:
+                    "Ingresos",
+
+                property:
+                    "income",
+
+                positiveIsGood:
+                    true,
+
+                percent:
+                    false,
+
+                accumulable:
+                    true
+
+            },
+
+            expenses: {
+
+                label:
+                    "Gasto neto",
+
+                property:
+                    "expenses",
+
+                positiveIsGood:
+                    false,
+
+                percent:
+                    false,
+
+                accumulable:
+                    true
+
+            },
+
+            grossExpenses: {
+
+                label:
+                    "Gasto bruto",
+
+                property:
+                    "grossExpenses",
+
+                positiveIsGood:
+                    false,
+
+                percent:
+                    false,
+
+                accumulable:
+                    true
+
+            },
+
+            reimbursements: {
+
+                label:
+                    "Reembolsos",
+
+                property:
+                    "reimbursements",
+
+                positiveIsGood:
+                    true,
+
+                percent:
+                    false,
+
+                accumulable:
+                    true
+
+            },
+
+            invested: {
+
+                label:
+                    "Invertido",
+
+                property:
+                    "invested",
+
+                positiveIsGood:
+                    true,
+
+                percent:
+                    false,
+
+                accumulable:
+                    true
+
+            },
+
+            savingRate: {
+
+                label:
+                    "Tasa de ahorro",
+
+                property:
+                    "savingRate",
+
+                positiveIsGood:
+                    true,
+
+                percent:
+                    true,
+
+                accumulable:
+                    false
+
+            },
+
+            debtPayments: {
+
+                label:
+                    "Pagos de deuda",
+
+                property:
+                    "debtPayments",
+
+                positiveIsGood:
+                    true,
+
+                percent:
+                    false,
+
+                accumulable:
+                    true
+
+            },
+
+            cashOutflow: {
+
+                label:
+                    "Salidas de caja",
+
+                property:
+                    "cashOutflow",
+
+                positiveIsGood:
+                    false,
+
+                percent:
+                    false,
+
+                accumulable:
+                    true
+
+            },
+
+            cashResult: {
+
+                label:
+                    "Resultado de caja",
+
+                property:
+                    "cashResult",
+
+                positiveIsGood:
+                    true,
+
+                percent:
+                    false,
+
+                accumulable:
+                    true
+
+            }
+
+        };
+
+    },
+
+    metricDefinition(metric) {
+
+        const definitions =
+            this.metricDefinitions();
+
+        return (
+            definitions[metric] ||
+            definitions.savings
+        );
+
+    },
+
+    metricValue(
+        month,
+        definition
+    ) {
+
+        return this.number(
+            month?.[
+                definition.property
+            ]
+        );
+
+    },
+
+    formatMetric(
+        value,
+        definition
+    ) {
+
+        return definition.percent
+            ? this.percent(value)
+            : this.currency(value);
 
     },
 
     comparisonInformation(
         comparison,
         positiveIsGood = true,
-        isPercentagePoint = false
+        percentagePoint = false
     ) {
 
         const difference =
@@ -150,7 +497,8 @@ const AtlasAnalysisUI = {
             );
 
         if (
-            difference === 0
+            Math.abs(difference) <
+            0.0001
         ) {
 
             return {
@@ -176,47 +524,31 @@ const AtlasAnalysisUI = {
                 ? rises
                 : !rises;
 
-        let changeText;
+        if (percentagePoint) {
 
-        if (isPercentagePoint) {
+            return {
 
-            changeText =
-                `${Math.abs(
-                    difference
-                ).toFixed(1)} p. p.`;
+                icon:
+                    rises
+                        ? "↑"
+                        : "↓",
 
-        } else {
-
-            const percentage =
-                comparison?.percentage;
-
-            changeText =
-                this.currency(
-                    Math.abs(
+                text:
+                    `${Math.abs(
                         difference
-                    )
-                );
+                    ).toFixed(1)} p. p.`,
 
-            if (
-                percentage !== null &&
-                percentage !== undefined
-            ) {
+                color:
+                    good
+                        ? "var(--color-success)"
+                        : "var(--color-danger)"
 
-                changeText +=
-                    ` · ${Math.abs(
-                        this.number(
-                            percentage
-                        )
-                    ).toFixed(0)}%`;
-
-            } else {
-
-                changeText +=
-                    " · nuevo";
-
-            }
+            };
 
         }
+
+        const percentage =
+            comparison?.percentage;
 
         return {
 
@@ -226,7 +558,25 @@ const AtlasAnalysisUI = {
                     : "↓",
 
             text:
-                changeText,
+                (
+                    `${this.currency(
+                        Math.abs(
+                            difference
+                        )
+                    )}` +
+                    (
+                        percentage === null ||
+                        percentage === undefined
+                            ? " · nuevo"
+                            : (
+                                ` · ${Math.abs(
+                                    this.number(
+                                        percentage
+                                    )
+                                ).toFixed(0)}%`
+                            )
+                    )
+                ),
 
             color:
                 good
@@ -245,7 +595,7 @@ const AtlasAnalysisUI = {
 
         return `
 
-            <div class="panelhead">
+            <div class="panelhead atlas-analysis-panel-head">
 
                 <div>
 
@@ -287,6 +637,48 @@ const AtlasAnalysisUI = {
 
     },
 
+    sectionHeading(
+        eyebrow,
+        title,
+        subtitle = ""
+    ) {
+
+        return `
+
+            <div class="atlas-analysis-section-heading">
+
+                <small>
+                    ${this.escape(
+                        eyebrow
+                    )}
+                </small>
+
+                <h2>
+                    ${this.escape(
+                        title
+                    )}
+                </h2>
+
+                ${
+                    subtitle
+                        ? `
+
+                            <p class="note">
+                                ${this.escape(
+                                    subtitle
+                                )}
+                            </p>
+
+                        `
+                        : ""
+                }
+
+            </div>
+
+        `;
+
+    },
+
     emptyState(
         icon,
         title,
@@ -297,7 +689,7 @@ const AtlasAnalysisUI = {
 
             <div class="atlas-analysis-empty">
 
-                <div>
+                <div aria-hidden="true">
                     ${icon}
                 </div>
 
@@ -315,35 +707,33 @@ const AtlasAnalysisUI = {
 
     },
 
-    monthSelector(
-        monthKey,
-        currentMonth
+    openAttribute(
+        panelId,
+        defaultOpen = false
     ) {
 
-        return AtlasUI.monthSelector({
+        const openPanels =
+            Array.isArray(
+                this.options
+                    ?.analysisOpenPanels
+            )
+                ? this.options
+                    .analysisOpenPanels
+                : [];
 
-            monthKey,
+        if (
+            openPanels.includes(
+                panelId
+            )
+        ) {
 
-            isCurrentMonth:
-                monthKey ===
-                currentMonth,
+            return "open";
 
-            previousAction:
-                "previousAnalysisMonth",
+        }
 
-            nextAction:
-                "nextAnalysisMonth",
-
-            currentAction:
-                "currentAnalysisMonth",
-
-            subtitle:
-                monthKey ===
-                currentMonth
-                    ? "Mes actual"
-                    : "Análisis histórico"
-
-        });
+        return defaultOpen
+            ? "open"
+            : "";
 
     },
 
@@ -385,7 +775,39 @@ const AtlasAnalysisUI = {
 
     },
 
-    modeSelector() {
+    monthSelector(
+        monthKey,
+        currentMonth
+    ) {
+
+        return AtlasUI.monthSelector({
+
+            monthKey,
+
+            isCurrentMonth:
+                monthKey ===
+                currentMonth,
+
+            previousAction:
+                "previousAnalysisMonth",
+
+            nextAction:
+                "nextAnalysisMonth",
+
+            currentAction:
+                "currentAnalysisMonth",
+
+            subtitle:
+                monthKey ===
+                currentMonth
+                    ? "Mes actual"
+                    : "Análisis histórico"
+
+        });
+
+    },
+
+    modeSelector(mode) {
 
         return `
 
@@ -393,11 +815,10 @@ const AtlasAnalysisUI = {
 
                 <button
                     type="button"
-                    data-analysis-mode="real"
+                    data-action="setAnalysisMode"
+                    data-mode="real"
                     class="${
-                        this.state
-                            .monthlyMode ===
-                        "real"
+                        mode === "real"
                             ? "active"
                             : ""
                     }"
@@ -407,11 +828,10 @@ const AtlasAnalysisUI = {
 
                 <button
                     type="button"
-                    data-analysis-mode="forecast"
+                    data-action="setAnalysisMode"
+                    data-mode="forecast"
                     class="${
-                        this.state
-                            .monthlyMode ===
-                        "forecast"
+                        mode === "forecast"
                             ? "active"
                             : ""
                     }"
@@ -435,11 +855,9 @@ const AtlasAnalysisUI = {
         const information =
             this.comparisonInformation(
                 comparison,
-                options
-                    .positiveIsGood !==
+                options.positiveIsGood !==
                     false,
-                options
-                    .percentagePoint ===
+                options.percentagePoint ===
                     true
             );
 
@@ -501,26 +919,225 @@ const AtlasAnalysisUI = {
 
     },
 
-    monthlySummary(
+    monthlyDisplaySummary(
         summary,
-        comparison
+        forecast,
+        mode
     ) {
 
-        const expenseDetail =
-            summary
-                .monthlyReimbursements >
-            0
+        if (
+            mode !== "forecast"
+        ) {
+
+            return {
+
+                monthlyIncome:
+                    summary.monthlyIncome,
+
+                monthlyGrossExpenses:
+                    summary.monthlyGrossExpenses,
+
+                monthlyReimbursements:
+                    summary.monthlyReimbursements,
+
+                monthlyExpenses:
+                    summary.monthlyExpenses,
+
+                monthlyInvested:
+                    summary.monthlyInvested,
+
+                monthlySavings:
+                    summary.monthlySavings,
+
+                monthlySavingRate:
+                    summary.monthlySavingRate,
+
+                monthlyCashInflow:
+                    summary.monthlyCashInflow,
+
+                monthlyCashOutflow:
+                    summary.monthlyCashOutflow,
+
+                monthlyCashResult:
+                    summary.monthlyCashResult,
+
+                monthlyDebtPayments:
+                    summary.monthlyDebtPayments
+
+            };
+
+        }
+
+        const estimatedIncome =
+            this.number(
+                forecast?.estimated
+                    ?.income
+            );
+
+        const estimatedExpenses =
+            this.number(
+                forecast?.estimated
+                    ?.expenses
+            );
+
+        const estimatedInvested =
+            this.number(
+                forecast?.estimated
+                    ?.invested
+            );
+
+        const estimatedSavings =
+            this.number(
+                forecast?.estimated
+                    ?.savings
+            );
+
+        const estimatedCashResult =
+            this.number(
+                forecast?.estimated
+                    ?.cashResult
+            );
+
+        const estimatedCashInflow =
+            this.number(
+                summary.monthlyCashInflow
+            ) +
+            this.number(
+                forecast?.pending
+                    ?.income
+            );
+
+        const estimatedCashOutflow =
+            estimatedCashInflow -
+            estimatedCashResult;
+
+        const estimatedSavingRate =
+            estimatedIncome > 0
                 ? (
-                    `Bruto ${this.currency(
-                        summary
-                            .monthlyGrossExpenses
-                    )} · ` +
-                    `Reembolsos ${this.currency(
+                    estimatedSavings /
+                    estimatedIncome
+                ) * 100
+                : 0;
+
+        return {
+
+            monthlyIncome:
+                estimatedIncome,
+
+            monthlyGrossExpenses:
+                this.number(
+                    summary.monthlyGrossExpenses
+                ) +
+                this.number(
+                    forecast?.pending
+                        ?.expenses
+                ),
+
+            monthlyReimbursements:
+                summary.monthlyReimbursements,
+
+            monthlyExpenses:
+                estimatedExpenses,
+
+            monthlyInvested:
+                estimatedInvested,
+
+            monthlySavings:
+                estimatedSavings,
+
+            monthlySavingRate:
+                estimatedSavingRate,
+
+            monthlyCashInflow:
+                estimatedCashInflow,
+
+            monthlyCashOutflow:
+                estimatedCashOutflow,
+
+            monthlyCashResult:
+                estimatedCashResult,
+
+            monthlyDebtPayments:
+                this.number(
+                    summary.monthlyDebtPayments
+                ) +
+                this.number(
+                    forecast?.pending
+                        ?.debtPayments
+                )
+
+        };
+
+    },
+
+    forecastDetail(
+        real,
+        pending
+    ) {
+
+        const pendingNumber =
+            this.number(pending);
+
+        const sign =
+            pendingNumber > 0
+                ? "+"
+                : pendingNumber < 0
+                    ? "−"
+                    : "";
+
+        return (
+            `Real ${this.currency(real)} · ` +
+            `Pendiente ${sign}${this.currency(
+                Math.abs(
+                    pendingNumber
+                )
+            )}`
+        );
+
+    },
+
+    monthlySummary(
+        summary,
+        comparison,
+        forecast,
+        mode
+    ) {
+
+        const display =
+            this.monthlyDisplaySummary(
+                summary,
+                forecast,
+                mode
+            );
+
+        const forecastMode =
+            mode === "forecast";
+
+        const expenseDetail =
+            forecastMode
+                ? this.forecastDetail(
+                    summary.monthlyExpenses,
+                    forecast?.pending
+                        ?.expenses
+                )
+                : (
+                    this.number(
                         summary
                             .monthlyReimbursements
-                    )}`
-                )
-                : "";
+                    ) >
+                    0
+                        ? (
+                            `Bruto ${this.currency(
+                                summary
+                                    .monthlyGrossExpenses
+                            )} · ` +
+                            `Reembolsos ${this.currency(
+                                summary
+                                    .monthlyReimbursements
+                            )}`
+                        )
+                        : ""
+                );
 
         return `
 
@@ -531,14 +1148,34 @@ const AtlasAnalysisUI = {
                     <div>
 
                         <h2>
-                            Resumen financiero
+                            ${
+                                forecastMode
+                                    ? "Resumen estimado"
+                                    : "Resumen financiero"
+                            }
                         </h2>
 
                         <p class="note">
-                            Resultado del mes y cambio respecto al anterior
+                            ${
+                                forecastMode
+                                    ? "Movimientos confirmados más propuestas pendientes"
+                                    : "Solo movimientos confirmados"
+                            }
                         </p>
 
                     </div>
+
+                    ${
+                        forecastMode
+                            ? `
+
+                                <span class="atlas-analysis-badge">
+                                    Previsión
+                                </span>
+
+                            `
+                            : ""
+                    }
 
                 </div>
 
@@ -546,25 +1183,39 @@ const AtlasAnalysisUI = {
 
                     ${this.summaryMetric(
                         "Ingresos",
-                        summary.monthlyIncome,
+                        display.monthlyIncome,
                         comparison.income,
                         {
                             icon:
                                 "🟢",
+
                             positiveIsGood:
-                                true
+                                true,
+
+                            detail:
+                                forecastMode
+                                    ? this.forecastDetail(
+                                        summary
+                                            .monthlyIncome,
+                                        forecast
+                                            ?.pending
+                                            ?.income
+                                    )
+                                    : ""
                         }
                     )}
 
                     ${this.summaryMetric(
                         "Gastos netos",
-                        summary.monthlyExpenses,
+                        display.monthlyExpenses,
                         comparison.expenses,
                         {
                             icon:
                                 "🔴",
+
                             positiveIsGood:
                                 false,
+
                             detail:
                                 expenseDetail
                         }
@@ -572,50 +1223,79 @@ const AtlasAnalysisUI = {
 
                     ${this.summaryMetric(
                         "Invertido",
-                        summary.monthlyInvested,
+                        display.monthlyInvested,
                         comparison.invested,
                         {
                             icon:
                                 "📈",
+
                             positiveIsGood:
-                                true
+                                true,
+
+                            detail:
+                                forecastMode
+                                    ? this.forecastDetail(
+                                        summary
+                                            .monthlyInvested,
+                                        forecast
+                                            ?.pending
+                                            ?.invested
+                                    )
+                                    : ""
                         }
                     )}
 
                     ${this.summaryMetric(
                         "Ahorro",
-                        summary.monthlySavings,
+                        display.monthlySavings,
                         comparison.savings,
                         {
                             icon:
                                 "💰",
+
                             positiveIsGood:
                                 true,
+
                             color:
                                 this.statusColor(
-                                    summary
+                                    display
                                         .monthlySavings,
                                     true
-                                )
+                                ),
+
+                            detail:
+                                forecastMode
+                                    ? this.forecastDetail(
+                                        summary
+                                            .monthlySavings,
+                                        forecast
+                                            ?.pending
+                                            ?.savingsImpact
+                                    )
+                                    : ""
                         }
                     )}
 
                     ${this.summaryMetric(
                         "Tasa de ahorro",
-                        summary.monthlySavingRate,
+                        display.monthlySavingRate,
                         comparison.savingRate,
                         {
                             icon:
                                 "🎯",
+
                             positiveIsGood:
                                 true,
+
                             percent:
                                 true,
+
                             percentagePoint:
                                 true,
+
                             color:
                                 this.statusColor(
-                                    summary
+                                    display
                                         .monthlySavingRate,
                                     true
                                 )
@@ -624,30 +1304,41 @@ const AtlasAnalysisUI = {
 
                     ${this.summaryMetric(
                         "Resultado de caja",
-                        summary.monthlyCashResult,
+                        display.monthlyCashResult,
                         comparison.cashResult,
                         {
                             icon:
                                 "💧",
+
                             positiveIsGood:
                                 true,
+
                             color:
                                 this.statusColor(
-                                    summary
+                                    display
                                         .monthlyCashResult,
                                     true
                                 ),
+
                             detail:
-                                (
-                                    `Entradas ${this.currency(
+                                forecastMode
+                                    ? this.forecastDetail(
                                         summary
-                                            .monthlyCashInflow
-                                    )} · ` +
-                                    `Salidas ${this.currency(
-                                        summary
-                                            .monthlyCashOutflow
-                                    )}`
-                                )
+                                            .monthlyCashResult,
+                                        forecast
+                                            ?.pending
+                                            ?.cashResult
+                                    )
+                                    : (
+                                        `Entradas ${this.currency(
+                                            summary
+                                                .monthlyCashInflow
+                                        )} · ` +
+                                        `Salidas ${this.currency(
+                                            summary
+                                                .monthlyCashOutflow
+                                        )}`
+                                    )
                         }
                     )}
 
@@ -659,179 +1350,107 @@ const AtlasAnalysisUI = {
 
     },
 
-    forecastBars(
-        forecast
-    ) {
+    forecastPanel(forecast) {
 
         const rows = [
 
             {
                 label:
                     "Ingresos",
+
                 real:
-                    forecast.real
-                        .monthlyIncome,
+                    forecast?.real
+                        ?.monthlyIncome,
+
                 pending:
-                    forecast.pending
-                        .income,
+                    forecast?.pending
+                        ?.income,
+
                 estimated:
-                    forecast.estimated
-                        .income
+                    forecast?.estimated
+                        ?.income
             },
 
             {
                 label:
                     "Gastos",
+
                 real:
-                    forecast.real
-                        .monthlyExpenses,
+                    forecast?.real
+                        ?.monthlyExpenses,
+
                 pending:
-                    forecast.pending
-                        .expenses,
+                    forecast?.pending
+                        ?.expenses,
+
                 estimated:
-                    forecast.estimated
-                        .expenses
+                    forecast?.estimated
+                        ?.expenses
             },
 
             {
                 label:
                     "Inversión",
+
                 real:
-                    forecast.real
-                        .monthlyInvested,
+                    forecast?.real
+                        ?.monthlyInvested,
+
                 pending:
-                    forecast.pending
-                        .invested,
+                    forecast?.pending
+                        ?.invested,
+
                 estimated:
-                    forecast.estimated
-                        .invested
+                    forecast?.estimated
+                        ?.invested
             },
 
             {
                 label:
                     "Ahorro",
+
                 real:
-                    forecast.real
-                        .monthlySavings,
+                    forecast?.real
+                        ?.monthlySavings,
+
                 pending:
-                    forecast.pending
-                        .savingsImpact,
+                    forecast?.pending
+                        ?.savingsImpact,
+
                 estimated:
-                    forecast.estimated
-                        .savings
+                    forecast?.estimated
+                        ?.savings
             }
 
-        ];
+        ].map(
+            row => ({
 
-        const maximum =
-            Math.max(
-                1,
-                ...rows.flatMap(
-                    row => [
-                        Math.abs(
-                            row.real
-                        ),
-                        Math.abs(
-                            row.estimated
-                        )
-                    ]
-                )
+                ...row,
+
+                real:
+                    this.number(row.real),
+
+                pending:
+                    this.number(
+                        row.pending
+                    ),
+
+                estimated:
+                    this.number(
+                        row.estimated
+                    )
+
+            })
+        );
+
+        const count =
+            this.number(
+                forecast?.pending
+                    ?.count
             );
 
-        return `
-
-            <div class="atlas-analysis-forecast-chart">
-
-                ${rows.map(
-                    row => {
-
-                        const realWidth =
-                            this.clamp(
-                                (
-                                    Math.abs(
-                                        row.real
-                                    ) /
-                                    maximum
-                                ) * 100
-                            );
-
-                        const estimatedWidth =
-                            this.clamp(
-                                (
-                                    Math.abs(
-                                        row.estimated
-                                    ) /
-                                    maximum
-                                ) * 100
-                            );
-
-                        return `
-
-                            <div class="atlas-analysis-forecast-row">
-
-                                <div class="atlas-analysis-forecast-label">
-
-                                    <strong>
-                                        ${row.label}
-                                    </strong>
-
-                                    <small>
-                                        ${this.currency(
-                                            row.real
-                                        )}
-                                        real ·
-                                        ${this.currency(
-                                            row.pending
-                                        )}
-                                        pendiente
-                                    </small>
-
-                                </div>
-
-                                <div class="atlas-analysis-forecast-track">
-
-                                    <i
-                                        class="estimated"
-                                        style="
-                                            width:
-                                                ${estimatedWidth}%;
-                                        "
-                                    ></i>
-
-                                    <i
-                                        class="real"
-                                        style="
-                                            width:
-                                                ${realWidth}%;
-                                        "
-                                    ></i>
-
-                                </div>
-
-                                <strong>
-                                    ${this.currency(
-                                        row.estimated
-                                    )}
-                                </strong>
-
-                            </div>
-
-                        `;
-
-                    }
-                ).join("")}
-
-            </div>
-
-        `;
-
-    },
-
-    forecastPanel(forecast) {
-
         if (
-            forecast.pending.count ===
-            0
+            count === 0
         ) {
 
             return `
@@ -840,13 +1459,13 @@ const AtlasAnalysisUI = {
 
                     ${this.panelHeader(
                         "Real frente a previsión",
-                        "No hay movimientos recurrentes pendientes"
+                        "No hay propuestas pendientes"
                     )}
 
                     ${this.emptyState(
                         "✓",
-                        "Mes actualizado",
-                        "La previsión coincide con los movimientos registrados."
+                        "Previsión sin cambios",
+                        "Las cifras estimadas coinciden con las confirmadas."
                     )}
 
                 </section>
@@ -855,6 +1474,25 @@ const AtlasAnalysisUI = {
 
         }
 
+        const maximum =
+            Math.max(
+                1,
+                ...rows.map(
+                    row =>
+                        Math.max(
+                            Math.abs(
+                                row.real
+                            ) +
+                            Math.abs(
+                                row.pending
+                            ),
+                            Math.abs(
+                                row.estimated
+                            )
+                        )
+                )
+            );
+
         return `
 
             <section class="panel atlas-analysis-panel">
@@ -862,8 +1500,12 @@ const AtlasAnalysisUI = {
                 ${this.panelHeader(
                     "Real frente a previsión",
                     (
-                        `${forecast.pending.count} ` +
-                        `movimientos pendientes`
+                        `${count} ` +
+                        (
+                            count === 1
+                                ? "propuesta pendiente"
+                                : "propuestas pendientes"
+                        )
                     ),
                     `
 
@@ -874,9 +1516,139 @@ const AtlasAnalysisUI = {
                     `
                 )}
 
-                ${this.forecastBars(
-                    forecast
-                )}
+                <div class="atlas-analysis-forecast-legend">
+
+                    <span class="real">
+                        Real
+                    </span>
+
+                    <span class="pending">
+                        Pendiente
+                    </span>
+
+                    <span class="negative">
+                        Impacto negativo
+                    </span>
+
+                </div>
+
+                <div class="atlas-analysis-forecast-chart">
+
+                    ${rows.map(
+                        row => {
+
+                            const realWidth =
+                                (
+                                    Math.abs(
+                                        row.real
+                                    ) /
+                                    maximum
+                                ) * 100;
+
+                            const pendingWidth =
+                                (
+                                    Math.abs(
+                                        row.pending
+                                    ) /
+                                    maximum
+                                ) * 100;
+
+                            return `
+
+                                <article class="atlas-analysis-forecast-row">
+
+                                    <div class="atlas-analysis-forecast-label">
+
+                                        <strong>
+                                            ${row.label}
+                                        </strong>
+
+                                        <small>
+                                            Real
+                                            ${this.currency(
+                                                row.real
+                                            )}
+                                            · Pendiente
+                                            ${
+                                                row.pending >
+                                                0
+                                                    ? "+"
+                                                    : row.pending <
+                                                        0
+                                                        ? "−"
+                                                        : ""
+                                            }${this.currency(
+                                                Math.abs(
+                                                    row.pending
+                                                )
+                                            )}
+                                        </small>
+
+                                    </div>
+
+                                    <div class="atlas-analysis-forecast-track">
+
+                                        <i
+                                            class="real"
+                                            style="
+                                                width:
+                                                    ${realWidth}%;
+                                            "
+                                        ></i>
+
+                                        <i
+                                            class="
+                                                pending
+                                                ${
+                                                    row.pending <
+                                                    0
+                                                        ? "negative"
+                                                        : ""
+                                                }
+                                            "
+                                            style="
+                                                width:
+                                                    ${pendingWidth}%;
+                                            "
+                                        ></i>
+
+                                    </div>
+
+                                    <div class="atlas-analysis-forecast-result">
+
+                                        <small>
+                                            Estimado
+                                        </small>
+
+                                        <strong
+                                            style="
+                                                color:
+                                                    ${
+                                                        row.label ===
+                                                        "Ahorro"
+                                                            ? this.statusColor(
+                                                                row.estimated,
+                                                                true
+                                                            )
+                                                            : "var(--color-text)"
+                                                    };
+                                            "
+                                        >
+                                            ${this.currency(
+                                                row.estimated
+                                            )}
+                                        </strong>
+
+                                    </div>
+
+                                </article>
+
+                            `;
+
+                        }
+                    ).join("")}
+
+                </div>
 
             </section>
 
@@ -949,50 +1721,69 @@ const AtlasAnalysisUI = {
 
     budgetPanel(
         budget,
-        forecast
+        forecast,
+        mode
     ) {
 
-        const estimatedSpent =
-            budget.totalSpent +
-            forecast.pending.expenses;
+        const forecastMode =
+            mode === "forecast";
 
-        const estimatedRemaining =
-            budget.totalBudget -
-            estimatedSpent;
+        const pendingExpenses =
+            this.number(
+                forecast?.pending
+                    ?.expenses
+            );
 
-        const estimatedUsed =
+        const displayedSpent =
+            this.number(
+                budget.totalSpent
+            ) +
+            (
+                forecastMode
+                    ? pendingExpenses
+                    : 0
+            );
+
+        const remaining =
+            this.number(
+                budget.totalBudget
+            ) -
+            displayedSpent;
+
+        const usedPercent =
             AtlasCalculations
                 .budgetUsedPercent(
-                    estimatedSpent,
+                    displayedSpent,
                     budget.totalBudget
                 );
 
-        const realStatus =
-            this.budgetStatusInformation(
-                budget.status
-            );
-
-        const estimatedStatusKey =
+        const statusKey =
             AtlasCalculations
                 .budgetStatus(
                     this.data,
-                    estimatedSpent,
+                    displayedSpent,
                     budget.totalBudget
                 );
 
-        const estimatedStatus =
+        const status =
             this.budgetStatusInformation(
-                estimatedStatusKey
+                statusKey
             );
 
-        const relevantCategories =
-            budget.categories
+        const alerts =
+            (
+                Array.isArray(
+                    budget.categories
+                )
+                    ? budget.categories
+                    : []
+            )
                 .filter(
                     category =>
                         category.status ===
-                            "exceeded" ||
+                            "warning" ||
                         category.status ===
-                            "warning"
+                            "exceeded"
                 )
                 .sort(
                     (
@@ -1005,6 +1796,10 @@ const AtlasAnalysisUI = {
                         this.number(
                             first.usedPercent
                         )
+                )
+                .slice(
+                    0,
+                    3
                 );
 
         return `
@@ -1013,42 +1808,21 @@ const AtlasAnalysisUI = {
 
                 ${this.panelHeader(
                     "Estado presupuestario",
-                    "Resumen prioritario; el detalle se gestiona en Presupuestos",
+                    "Situación general del presupuesto del mes seleccionado",
                     `
 
                         <strong
                             style="
                                 color:
-                                    ${
-                                        this.state
-                                            .monthlyMode ===
-                                        "forecast"
-                                            ? estimatedStatus.color
-                                            : realStatus.color
-                                    };
+                                    ${status.color};
                             "
                         >
                             ${
-                                this.state
-                                    .monthlyMode ===
-                                "forecast"
-                                    ? (
-                                        estimatedUsed ===
-                                        null
-                                            ? "—"
-                                            : this.percent(
-                                                estimatedUsed
-                                            )
-                                    )
-                                    : (
-                                        budget
-                                            .usedPercent ===
-                                        null
-                                            ? "—"
-                                            : this.percent(
-                                                budget
-                                                    .usedPercent
-                                            )
+                                usedPercent ===
+                                null
+                                    ? "—"
+                                    : this.percent(
+                                        usedPercent
                                     )
                             }
                         </strong>
@@ -1075,12 +1849,16 @@ const AtlasAnalysisUI = {
                     <div>
 
                         <small>
-                            Gasto real
+                            ${
+                                forecastMode
+                                    ? "Gasto estimado"
+                                    : "Gasto real"
+                            }
                         </small>
 
                         <strong>
                             ${this.currency(
-                                budget.totalSpent
+                                displayedSpent
                             )}
                         </strong>
 
@@ -1089,35 +1867,39 @@ const AtlasAnalysisUI = {
                     <div>
 
                         <small>
-                            Gasto estimado
-                        </small>
-
-                        <strong>
-                            ${this.currency(
-                                estimatedSpent
-                            )}
-                        </strong>
-
-                    </div>
-
-                    <div>
-
-                        <small>
-                            Margen estimado
+                            Margen
                         </small>
 
                         <strong
                             style="
                                 color:
                                     ${this.statusColor(
-                                        estimatedRemaining,
+                                        remaining,
                                         true
                                     )};
                             "
                         >
                             ${this.currency(
-                                estimatedRemaining
+                                remaining
                             )}
+                        </strong>
+
+                    </div>
+
+                    <div>
+
+                        <small>
+                            Estado
+                        </small>
+
+                        <strong
+                            class="atlas-analysis-small-text"
+                            style="
+                                color:
+                                    ${status.color};
+                            "
+                        >
+                            ${status.label}
                         </strong>
 
                     </div>
@@ -1130,102 +1912,88 @@ const AtlasAnalysisUI = {
                         style="
                             width:
                                 ${this.clamp(
-                                    estimatedUsed ===
+                                    usedPercent ===
                                     null
-                                        ? 100
-                                        : estimatedUsed
+                                        ? 0
+                                        : usedPercent
                                 )}%;
                             background:
-                                ${estimatedStatus.color};
+                                ${status.color};
                         "
                     ></i>
 
                 </div>
 
-                <div class="atlas-analysis-budget-footer">
+                ${
+                    forecastMode &&
+                    pendingExpenses > 0
+                        ? `
 
-                    <span
-                        style="
-                            color:
-                                ${estimatedStatus.color};
-                        "
-                    >
-                        ${estimatedStatus.label}
-                    </span>
+                            <p class="atlas-analysis-budget-note">
+                                Incluye
+                                ${this.currency(
+                                    pendingExpenses
+                                )}
+                                de gasto pendiente.
+                            </p>
 
-                    <button
-                        type="button"
-                        data-route="budgets"
-                        class="atlas-analysis-link"
-                    >
-                        Ver presupuestos
-                    </button>
-
-                </div>
+                        `
+                        : ""
+                }
 
                 ${
-                    relevantCategories.length >
+                    alerts.length >
                     0
                         ? `
 
                             <div class="atlas-analysis-alerts">
 
-                                ${relevantCategories
-                                    .slice(
-                                        0,
-                                        3
-                                    )
-                                    .map(
-                                        category => {
+                                ${alerts.map(
+                                    category => {
 
-                                            const status =
-                                                this
-                                                    .budgetStatusInformation(
-                                                        category
-                                                            .status
-                                                    );
+                                        const categoryStatus =
+                                            this
+                                                .budgetStatusInformation(
+                                                    category.status
+                                                );
 
-                                            return `
+                                        return `
 
-                                                <div>
+                                            <div>
 
-                                                    <span>
-                                                        ${
-                                                            category.icon ||
-                                                            ""
-                                                        }
-                                                        ${this.escape(
-                                                            category.name
-                                                        )}
-                                                    </span>
+                                                <span>
+                                                    ${
+                                                        category.icon ||
+                                                        ""
+                                                    }
+                                                    ${this.escape(
+                                                        category.name
+                                                    )}
+                                                </span>
 
-                                                    <strong
-                                                        style="
-                                                            color:
-                                                                ${
-                                                                    status.color
-                                                                };
-                                                        "
-                                                    >
-                                                        ${
-                                                            category
-                                                                .usedPercent ===
-                                                            null
-                                                                ? "Sin límite"
-                                                                : this.percent(
-                                                                    category
-                                                                        .usedPercent
-                                                                )
-                                                        }
-                                                    </strong>
+                                                <strong
+                                                    style="
+                                                        color:
+                                                            ${categoryStatus.color};
+                                                    "
+                                                >
+                                                    ${
+                                                        category.usedPercent ===
+                                                        null
+                                                            ? "Sin límite"
+                                                            : this.percent(
+                                                                category
+                                                                    .usedPercent
+                                                            )
+                                                    }
+                                                </strong>
 
-                                                </div>
+                                            </div>
 
-                                            `;
+                                        `;
 
-                                        }
-                                    )
-                                    .join("")}
+                                    }
+                                ).join("")}
 
                             </div>
 
@@ -1233,13 +2001,21 @@ const AtlasAnalysisUI = {
                         : ""
                 }
 
+                <button
+                    type="button"
+                    data-action="openAnalysisBudgets"
+                    class="atlas-analysis-primary-link"
+                >
+                    Ver presupuestos
+                </button>
+
             </section>
 
         `;
 
     },
 
-    distributionControls() {
+    distributionControls(level) {
 
         return `
 
@@ -1247,10 +2023,10 @@ const AtlasAnalysisUI = {
 
                 <button
                     type="button"
-                    data-distribution-level="category"
+                    data-action="setAnalysisDistributionLevel"
+                    data-level="category"
                     class="${
-                        this.state
-                            .distributionLevel ===
+                        level ===
                         "category"
                             ? "active"
                             : ""
@@ -1261,10 +2037,10 @@ const AtlasAnalysisUI = {
 
                 <button
                     type="button"
-                    data-distribution-level="subcategory"
+                    data-action="setAnalysisDistributionLevel"
+                    data-level="subcategory"
                     class="${
-                        this.state
-                            .distributionLevel ===
+                        level ===
                         "subcategory"
                             ? "active"
                             : ""
@@ -1282,7 +2058,11 @@ const AtlasAnalysisUI = {
     donutChart(items) {
 
         const positiveItems =
-            items.filter(
+            (
+                Array.isArray(items)
+                    ? items
+                    : []
+            ).filter(
                 item =>
                     this.number(
                         item.amount
@@ -1290,16 +2070,9 @@ const AtlasAnalysisUI = {
             );
 
         const total =
-            positiveItems.reduce(
-                (
-                    sum,
-                    item
-                ) =>
-                    sum +
-                    this.number(
-                        item.amount
-                    ),
-                0
+            this.sum(
+                positiveItems,
+                "amount"
             );
 
         if (
@@ -1317,7 +2090,8 @@ const AtlasAnalysisUI = {
         const circumference =
             251.2;
 
-        let offset = 0;
+        let offset =
+            0;
 
         const circles =
             positiveItems
@@ -1333,7 +2107,9 @@ const AtlasAnalysisUI = {
 
                         const share =
                             (
-                                item.amount /
+                                this.number(
+                                    item.amount
+                                ) /
                                 total
                             ) *
                             circumference;
@@ -1370,7 +2146,8 @@ const AtlasAnalysisUI = {
 
                         `;
 
-                        offset += share;
+                        offset +=
+                            share;
 
                         return circle;
 
@@ -1428,149 +2205,33 @@ const AtlasAnalysisUI = {
 
     },
 
-    distributionRows(items) {
-
-        const total =
-            items.reduce(
-                (
-                    sum,
-                    item
-                ) =>
-                    sum +
-                    Math.max(
-                        0,
-                        this.number(
-                            item.amount
-                        )
-                    ),
-                0
-            );
-
-        return `
-
-            <div class="atlas-analysis-distribution-list">
-
-                ${items
-                    .slice(
-                        0,
-                        8
-                    )
-                    .map(
-                        (
-                            item,
-                            index
-                        ) => {
-
-                            const percentage =
-                                total > 0
-                                    ? (
-                                        Math.max(
-                                            0,
-                                            item.amount
-                                        ) /
-                                        total
-                                    ) * 100
-                                    : 0;
-
-                            return `
-
-                                <div class="atlas-analysis-distribution-row">
-
-                                    <i
-                                        style="
-                                            background:
-                                                var(
-                                                    --atlas-chart-${
-                                                        (
-                                                            index %
-                                                            8
-                                                        ) + 1
-                                                    }
-                                                );
-                                        "
-                                    ></i>
-
-                                    <div>
-
-                                        <strong>
-                                            ${this.escape(
-                                                item.label ||
-                                                item.category
-                                            )}
-                                        </strong>
-
-                                        <small>
-                                            ${percentage.toFixed(
-                                                0
-                                            )}%
-                                            · bruto
-                                            ${this.currency(
-                                                item.grossAmount
-                                            )}
-
-                                            ${
-                                                item
-                                                    .reimbursements >
-                                                0
-                                                    ? (
-                                                        ` · reembolsos ` +
-                                                        `${this.currency(
-                                                            item
-                                                                .reimbursements
-                                                        )}`
-                                                    )
-                                                    : ""
-                                            }
-                                        </small>
-
-                                    </div>
-
-                                    <strong>
-                                        ${this.currency(
-                                            item.amount
-                                        )}
-                                    </strong>
-
-                                </div>
-
-                            `;
-
-                        }
-                    )
-                    .join("")}
-
-            </div>
-
-        `;
-
-    },
-
     distributionPanel(
         categories,
-        subcategories
+        subcategories,
+        level
     ) {
 
-        const items =
-            this.state
-                .distributionLevel ===
-            "subcategory"
+        const source =
+            level === "subcategory"
                 ? subcategories
                 : categories;
 
+        const items =
+            (
+                Array.isArray(source)
+                    ? source
+                    : []
+            ).filter(
+                item =>
+                    this.number(
+                        item.amount
+                    ) > 0
+            );
+
         const total =
-            items.reduce(
-                (
-                    sum,
-                    item
-                ) =>
-                    sum +
-                    Math.max(
-                        0,
-                        this.number(
-                            item.amount
-                        )
-                    ),
-                0
+            this.sum(
+                items,
+                "amount"
             );
 
         const topThree =
@@ -1581,15 +2242,12 @@ const AtlasAnalysisUI = {
                 )
                 .reduce(
                     (
-                        sum,
+                        totalAmount,
                         item
                     ) =>
-                        sum +
-                        Math.max(
-                            0,
-                            this.number(
-                                item.amount
-                            )
+                        totalAmount +
+                        this.number(
+                            item.amount
                         ),
                     0
                 );
@@ -1608,8 +2266,10 @@ const AtlasAnalysisUI = {
 
                 ${this.panelHeader(
                     "Distribución del gasto",
-                    "Composición del gasto neto",
-                    this.distributionControls()
+                    "Composición del gasto neto confirmado",
+                    this.distributionControls(
+                        level
+                    )
                 )}
 
                 ${
@@ -1628,9 +2288,100 @@ const AtlasAnalysisUI = {
                                     items
                                 )}
 
-                                ${this.distributionRows(
-                                    items
-                                )}
+                                <div class="atlas-analysis-distribution-list">
+
+                                    ${items
+                                        .slice(
+                                            0,
+                                            8
+                                        )
+                                        .map(
+                                            (
+                                                item,
+                                                index
+                                            ) => {
+
+                                                const share =
+                                                    total >
+                                                    0
+                                                        ? (
+                                                            this.number(
+                                                                item.amount
+                                                            ) /
+                                                            total
+                                                        ) * 100
+                                                        : 0;
+
+                                                return `
+
+                                                    <div class="atlas-analysis-distribution-row">
+
+                                                        <i
+                                                            style="
+                                                                background:
+                                                                    var(
+                                                                        --atlas-chart-${
+                                                                            (
+                                                                                index %
+                                                                                8
+                                                                            ) + 1
+                                                                        }
+                                                                    );
+                                                            "
+                                                        ></i>
+
+                                                        <div>
+
+                                                            <strong>
+                                                                ${this.escape(
+                                                                    item.label ||
+                                                                    item.category ||
+                                                                    "Sin categoría"
+                                                                )}
+                                                            </strong>
+
+                                                            <small>
+                                                                ${share.toFixed(
+                                                                    0
+                                                                )}%
+                                                                · bruto
+                                                                ${this.currency(
+                                                                    item.grossAmount
+                                                                )}
+
+                                                                ${
+                                                                    this.number(
+                                                                        item.reimbursements
+                                                                    ) >
+                                                                    0
+                                                                        ? (
+                                                                            ` · reembolsos ` +
+                                                                            `${this.currency(
+                                                                                item
+                                                                                    .reimbursements
+                                                                            )}`
+                                                                        )
+                                                                        : ""
+                                                                }
+                                                            </small>
+
+                                                        </div>
+
+                                                        <strong>
+                                                            ${this.currency(
+                                                                item.amount
+                                                            )}
+                                                        </strong>
+
+                                                    </div>
+
+                                                `;
+
+                                            }
+                                        )
+                                        .join("")}
+
+                                </div>
 
                             </div>
 
@@ -1638,8 +2389,7 @@ const AtlasAnalysisUI = {
 
                                 <span>
                                     ${
-                                        this.state
-                                            .distributionLevel ===
+                                        level ===
                                         "category"
                                             ? "Categorías activas"
                                             : "Subcategorías activas"
@@ -1661,16 +2411,13 @@ const AtlasAnalysisUI = {
                                 <span>
                                     Mayor peso
                                     <strong>
-                                        ${
+                                        ${this.escape(
                                             items[0]
-                                                ? this.escape(
-                                                    items[0]
-                                                        .label ||
-                                                    items[0]
-                                                        .category
-                                                )
-                                                : "—"
-                                        }
+                                                ?.label ||
+                                            items[0]
+                                                ?.category ||
+                                            "—"
+                                        )}
                                     </strong>
                                 </span>
 
@@ -1692,45 +2439,43 @@ const AtlasAnalysisUI = {
                 summary.monthlyIncome
             );
 
-        const expenseShare =
-            income > 0
-                ? (
-                    summary.monthlyExpenses /
-                    income
-                ) * 100
-                : 0;
+        if (
+            income <= 0
+        ) {
 
-        const investmentShare =
-            income > 0
-                ? (
-                    summary.monthlyInvested /
-                    income
-                ) * 100
-                : 0;
+            return `
 
-        const debtShare =
-            income > 0
-                ? (
-                    summary.monthlyDebtPayments /
-                    income
-                ) * 100
-                : 0;
+                <section class="panel atlas-analysis-panel">
 
-        const savingShare =
-            income > 0
-                ? (
-                    summary.monthlySavings /
-                    income
-                ) * 100
-                : 0;
+                    ${this.panelHeader(
+                        "Flujo del dinero",
+                        "Relación entre ingresos y destinos del dinero"
+                    )}
 
-        const segments = [
+                    ${this.emptyState(
+                        "↔",
+                        "Sin ingresos",
+                        "El reparto necesita ingresos registrados en el mes."
+                    )}
+
+                </section>
+
+            `;
+
+        }
+
+        const values = [
 
             {
                 label:
                     "Gasto",
-                value:
-                    expenseShare,
+
+                amount:
+                    this.number(
+                        summary
+                            .monthlyExpenses
+                    ),
+
                 className:
                     "expense"
             },
@@ -1738,8 +2483,13 @@ const AtlasAnalysisUI = {
             {
                 label:
                     "Inversión",
-                value:
-                    investmentShare,
+
+                amount:
+                    this.number(
+                        summary
+                            .monthlyInvested
+                    ),
+
                 className:
                     "investment"
             },
@@ -1747,22 +2497,66 @@ const AtlasAnalysisUI = {
             {
                 label:
                     "Deuda",
-                value:
-                    debtShare,
+
+                amount:
+                    this.number(
+                        summary
+                            .monthlyDebtPayments
+                    ),
+
                 className:
                     "debt"
             },
 
             {
                 label:
-                    "Ahorro",
-                value:
-                    savingShare,
+                    this.number(
+                        summary
+                            .monthlySavings
+                    ) >=
+                    0
+                        ? "Ahorro"
+                        : "Déficit",
+
+                amount:
+                    Math.abs(
+                        this.number(
+                            summary
+                                .monthlySavings
+                        )
+                    ),
+
+                original:
+                    this.number(
+                        summary
+                            .monthlySavings
+                    ),
+
                 className:
-                    "saving"
+                    this.number(
+                        summary
+                            .monthlySavings
+                    ) >=
+                    0
+                        ? "saving"
+                        : "deficit"
             }
 
-        ];
+        ].filter(
+            item =>
+                item.amount > 0
+        );
+
+        const denominator =
+            values.reduce(
+                (
+                    total,
+                    item
+                ) =>
+                    total +
+                    item.amount,
+                0
+            ) || 1;
 
         return `
 
@@ -1770,101 +2564,120 @@ const AtlasAnalysisUI = {
 
                 ${this.panelHeader(
                     "Flujo del dinero",
-                    "Destino aproximado por cada 100 € de ingresos"
+                    "Relación entre ingresos, gasto, inversión, deuda y ahorro"
                 )}
 
-                ${
-                    income <= 0
-                        ? this.emptyState(
-                            "↔",
-                            "Sin ingresos",
-                            "El reparto necesita ingresos registrados en el mes."
-                        )
-                        : `
+                <div class="atlas-analysis-flow">
 
-                            <div class="atlas-analysis-flow">
+                    ${values.map(
+                        item => {
 
-                                ${segments
-                                    .map(
-                                        segment => `
+                            const share =
+                                (
+                                    item.amount /
+                                    income
+                                ) * 100;
 
-                                            <div
-                                                class="${
-                                                    segment.className
-                                                }"
-                                                style="
-                                                    flex-grow:
-                                                        ${Math.max(
-                                                            0.4,
-                                                            Math.abs(
-                                                                segment.value
-                                                            )
-                                                        )};
-                                                "
-                                            >
-                                                <strong>
-                                                    ${segment.value.toFixed(
-                                                        0
-                                                    )} €
-                                                </strong>
+                            return `
 
-                                                <small>
-                                                    ${segment.label}
-                                                </small>
-                                            </div>
+                                <div
+                                    class="${
+                                        item.className
+                                    }"
+                                    style="
+                                        flex-grow:
+                                            ${
+                                                item.amount /
+                                                denominator
+                                            };
+                                    "
+                                >
 
-                                        `
-                                    )
-                                    .join("")}
-
-                            </div>
-
-                            <div class="atlas-analysis-flow-values">
-
-                                <span>
-                                    Gastos
                                     <strong>
-                                        ${this.currency(
-                                            summary
-                                                .monthlyExpenses
-                                        )}
+                                        ${
+                                            item.original <
+                                            0
+                                                ? "−"
+                                                : ""
+                                        }${share.toFixed(
+                                            0
+                                        )}%
                                     </strong>
-                                </span>
 
-                                <span>
-                                    Inversión
-                                    <strong>
-                                        ${this.currency(
-                                            summary
-                                                .monthlyInvested
-                                        )}
-                                    </strong>
-                                </span>
+                                    <small>
+                                        ${item.label}
+                                    </small>
 
-                                <span>
-                                    Deuda
-                                    <strong>
-                                        ${this.currency(
-                                            summary
-                                                .monthlyDebtPayments
-                                        )}
-                                    </strong>
-                                </span>
+                                </div>
 
-                                <span>
-                                    Ahorro
-                                    <strong>
-                                        ${this.currency(
-                                            summary
-                                                .monthlySavings
-                                        )}
-                                    </strong>
-                                </span>
+                            `;
 
-                            </div>
+                        }
+                    ).join("")}
 
-                        `
-                }
+                </div>
+
+                <div class="atlas-analysis-flow-values">
+
+                    <span>
+                        Ingresos
+                        <strong>
+                            ${this.currency(
+                                income
+                            )}
+                        </strong>
+                    </span>
+
+                    <span>
+                        Gastos
+                        <strong>
+                            ${this.currency(
+                                summary
+                                    .monthlyExpenses
+                            )}
+                        </strong>
+                    </span>
+
+                    <span>
+                        Inversión
+                        <strong>
+                            ${this.currency(
+                                summary
+                                    .monthlyInvested
+                            )}
+                        </strong>
+                    </span>
+
+                    <span>
+                        Deuda
+                        <strong>
+                            ${this.currency(
+                                summary
+                                    .monthlyDebtPayments
+                            )}
+                        </strong>
+                    </span>
+
+                    <span>
+                        Ahorro
+                        <strong
+                            style="
+                                color:
+                                    ${this.statusColor(
+                                        summary
+                                            .monthlySavings,
+                                        true
+                                    )};
+                            "
+                        >
+                            ${this.currency(
+                                summary
+                                    .monthlySavings
+                            )}
+                        </strong>
+                    </span>
+
+                </div>
 
             </section>
 
@@ -1872,30 +2685,89 @@ const AtlasAnalysisUI = {
 
     },
 
-    recurringPanel(forecast) {
+    recurringRules(data) {
+
+        return Array.isArray(
+            data?.catalog
+                ?.recurringRules
+        )
+            ? data.catalog
+                .recurringRules
+            : [];
+
+    },
+
+    recurringTitle(
+        occurrence
+    ) {
+
+        const ruleId =
+            occurrence?.ruleId ||
+            occurrence?.recurringRuleId ||
+            "";
+
+        const rule =
+            this.recurringRules(
+                this.data
+            ).find(
+                item =>
+                    item.id ===
+                    ruleId
+            );
+
+        return (
+            rule?.name ||
+            occurrence?.name ||
+            occurrence?.title ||
+            occurrence?.description ||
+            occurrence?.category ||
+            "Movimiento recurrente"
+        );
+
+    },
+
+    recurringPanel(
+        forecast,
+        analysisMonth
+    ) {
 
         const pending =
-            forecast.pending;
+            forecast?.pending || {};
+
+        const count =
+            this.number(
+                pending.count
+            );
 
         if (
-            pending.count ===
-            0
+            count === 0
         ) {
 
             return "";
 
         }
 
-        const nextDates =
-            pending.occurrences
-                .slice(
-                    0,
-                    3
-                );
+        const occurrences =
+            (
+                Array.isArray(
+                    pending.occurrences
+                )
+                    ? pending.occurrences
+                    : []
+            ).slice(
+                0,
+                4
+            );
 
         return `
 
-            <details class="panel atlas-analysis-panel atlas-analysis-details">
+            <details
+                class="panel atlas-analysis-panel atlas-analysis-details"
+                data-analysis-panel="monthly-recurring"
+                ${this.openAttribute(
+                    "monthly-recurring"
+                )}
+            >
 
                 <summary>
 
@@ -1906,8 +2778,12 @@ const AtlasAnalysisUI = {
                         </strong>
 
                         <small>
-                            ${pending.count}
-                            movimientos pendientes
+                            ${count}
+                            ${
+                                count === 1
+                                    ? "movimiento pendiente"
+                                    : "movimientos pendientes"
+                            }
                         </small>
 
                     </div>
@@ -1920,7 +2796,7 @@ const AtlasAnalysisUI = {
 
                 <div class="atlas-analysis-details-content">
 
-                    <div class="atlas-analysis-grid atlas-analysis-grid-compact">
+                    <div class="atlas-analysis-grid">
 
                         ${this.simpleCard(
                             "Ingresos pendientes",
@@ -2001,8 +2877,10 @@ const AtlasAnalysisUI = {
                             </span>
 
                             <strong>
-                                ${pending
-                                    .possibleDuplicates}
+                                ${this.number(
+                                    pending
+                                        .possibleDuplicates
+                                )}
                             </strong>
 
                         </div>
@@ -2010,17 +2888,17 @@ const AtlasAnalysisUI = {
                     </div>
 
                     ${
-                        nextDates.length >
+                        occurrences.length >
                         0
                             ? `
 
                                 <div class="atlas-analysis-upcoming">
 
                                     <small class="note">
-                                        Próximas fechas
+                                        Próximos movimientos
                                     </small>
 
-                                    ${nextDates.map(
+                                    ${occurrences.map(
                                         occurrence => `
 
                                             <div>
@@ -2029,21 +2907,15 @@ const AtlasAnalysisUI = {
                                                     ${this.escape(
                                                         occurrence
                                                             .expectedDate ||
-                                                        occurrence
-                                                            .monthKey ||
-                                                        ""
+                                                        analysisMonth
                                                     )}
                                                 </span>
 
                                                 <strong>
                                                     ${this.escape(
-                                                        occurrence
-                                                            .title ||
-                                                        occurrence
-                                                            .name ||
-                                                        occurrence
-                                                            .description ||
-                                                        "Movimiento recurrente"
+                                                        this.recurringTitle(
+                                                            occurrence
+                                                        )
                                                     )}
                                                 </strong>
 
@@ -2067,7 +2939,7 @@ const AtlasAnalysisUI = {
 
                     <button
                         type="button"
-                        data-action="showPendingMovements"
+                        data-action="openAnalysisPendingMovements"
                         class="atlas-analysis-primary-link"
                     >
                         Revisar pendientes
@@ -2083,8 +2955,7 @@ const AtlasAnalysisUI = {
 
     simpleCard(
         label,
-        value,
-        subtitle = ""
+        value
     ) {
 
         return `
@@ -2099,145 +2970,160 @@ const AtlasAnalysisUI = {
                     ${this.currency(value)}
                 </strong>
 
-                ${
-                    subtitle
-                        ? `
-
-                            <small class="note">
-                                ${this.escape(
-                                    subtitle
-                                )}
-                            </small>
-
-                        `
-                        : ""
-                }
-
             </article>
 
         `;
 
     },
 
-    activityPanel(activity) {
+    movementLabel(movement) {
 
-        const accountName =
-            activity
-                .mostUsedAccount
-                ?.account
-                ?.name ||
-            "—";
+        return (
+            movement?.description ||
+            movement?.name ||
+            movement?.title ||
+            movement?.category ||
+            "Movimiento"
+        );
+
+    },
+
+    activityPanel(activity) {
 
         const rows = [
 
             {
                 label:
                     "Movimientos",
+
                 value:
-                    activity.movements
+                    this.number(
+                        activity?.movements
+                    )
             },
 
             {
                 label:
                     "Días con actividad",
+
                 value:
-                    activity.activeDays
+                    this.number(
+                        activity?.activeDays
+                    )
             },
 
             {
                 label:
                     "Gasto medio",
+
                 value:
                     this.currency(
-                        activity.averageExpense
+                        activity?.averageExpense
                     )
             },
 
             {
                 label:
                     "Gasto mediano",
+
                 value:
                     this.currency(
-                        activity.medianExpense
+                        activity?.medianExpense
                     )
             },
 
             {
                 label:
                     "Mayor ingreso",
+
                 value:
                     this.currency(
                         activity
-                            .highestIncome
+                            ?.highestIncome
                             ?.amount
                     ),
+
                 detail:
                     this.movementLabel(
                         activity
-                            .highestIncome
+                            ?.highestIncome
                     )
             },
 
             {
                 label:
                     "Mayor gasto",
+
                 value:
                     this.currency(
                         activity
-                            .highestExpense
+                            ?.highestExpense
                             ?.amount
                     ),
+
                 detail:
                     this.movementLabel(
                         activity
-                            .highestExpense
+                            ?.highestExpense
                     )
             },
 
             {
                 label:
                     "Mayor inversión",
+
                 value:
                     this.currency(
                         activity
-                            .highestInvestment
+                            ?.highestInvestment
                             ?.amount
                     ),
+
                 detail:
                     this.movementLabel(
                         activity
-                            .highestInvestment
+                            ?.highestInvestment
                     )
             },
 
             {
                 label:
                     "Mayor pago de deuda",
+
                 value:
                     this.currency(
                         activity
-                            .highestDebtPayment
+                            ?.highestDebtPayment
                             ?.amount
                     ),
+
                 detail:
                     this.movementLabel(
                         activity
-                            .highestDebtPayment
+                            ?.highestDebtPayment
                     )
             },
 
             {
                 label:
                     "Cuenta más utilizada",
+
                 value:
-                    accountName,
+                    activity
+                        ?.mostUsedAccount
+                        ?.account
+                        ?.name ||
+                    "—",
+
                 detail:
                     activity
-                        .mostUsedAccount
+                        ?.mostUsedAccount
                         ? (
-                            `${activity
-                                .mostUsedAccount
-                                .count} movimientos`
+                            `${this.number(
+                                activity
+                                    .mostUsedAccount
+                                    .count
+                            )} movimientos`
                         )
                         : ""
             }
@@ -2246,7 +3132,13 @@ const AtlasAnalysisUI = {
 
         return `
 
-            <details class="panel atlas-analysis-panel atlas-analysis-details">
+            <details
+                class="panel atlas-analysis-panel atlas-analysis-details"
+                data-analysis-panel="monthly-activity"
+                ${this.openAttribute(
+                    "monthly-activity"
+                )}
+            >
 
                 <summary>
 
@@ -2270,7 +3162,7 @@ const AtlasAnalysisUI = {
 
                 <div class="atlas-analysis-details-content">
 
-                    <div class="atlas-analysis-activity-grid">
+                    <div class="atlas-analysis-card-grid">
 
                         ${rows.map(
                             row => `
@@ -2320,115 +3212,42 @@ const AtlasAnalysisUI = {
 
     },
 
-    dailyChart(activity) {
+    dailyActivityPanel(activity) {
 
-        const values =
-            activity.daily.map(
-                day =>
-                    Math.max(
-                        0,
-                        this.number(
-                            day.expenses
-                        )
-                    )
-            );
+        const daily =
+            Array.isArray(
+                activity?.daily
+            )
+                ? activity.daily
+                : [];
 
         const maximum =
             Math.max(
                 1,
-                ...values
+                ...daily.map(
+                    day =>
+                        Math.max(
+                            0,
+                            this.number(
+                                day.expenses
+                            )
+                        )
+                )
             );
-
-        return `
-
-            <div class="atlas-analysis-daily-chart">
-
-                ${activity.daily.map(
-                    day => {
-
-                        const height =
-                            Math.max(
-                                day.expenses > 0
-                                    ? 6
-                                    : 2,
-                                (
-                                    Math.max(
-                                        0,
-                                        day.expenses
-                                    ) /
-                                    maximum
-                                ) * 110
-                            );
-
-                        return `
-
-                            <div
-                                title="
-                                    Día ${day.day}:
-                                    ${this.currency(
-                                        day.expenses
-                                    )}
-                                "
-                            >
-
-                                <i
-                                    style="
-                                        height:
-                                            ${height}px;
-                                        opacity:
-                                            ${
-                                                day.expenses >
-                                                0
-                                                    ? 0.9
-                                                    : 0.18
-                                            };
-                                    "
-                                ></i>
-
-                                ${
-                                    day.day ===
-                                        1 ||
-                                    day.day % 5 ===
-                                        0 ||
-                                    day.day ===
-                                        activity.daily
-                                            .length
-                                        ? `
-
-                                            <small>
-                                                ${day.day}
-                                            </small>
-
-                                        `
-                                        : `
-
-                                            <small></small>
-
-                                        `
-                                }
-
-                            </div>
-
-                        `;
-
-                    }
-                ).join("")}
-
-            </div>
-
-        `;
-
-    },
-
-    dailyActivityPanel(activity) {
 
         const highestDay =
             activity
-                .highestExpenseDay;
+                ?.highestExpenseDay;
 
         return `
 
-            <details class="panel atlas-analysis-panel atlas-analysis-details">
+            <details
+                class="panel atlas-analysis-panel atlas-analysis-details"
+                data-analysis-panel="monthly-daily"
+                ${this.openAttribute(
+                    "monthly-daily"
+                )}
+            >
 
                 <summary>
 
@@ -2452,9 +3271,98 @@ const AtlasAnalysisUI = {
 
                 <div class="atlas-analysis-details-content">
 
-                    ${this.dailyChart(
-                        activity
-                    )}
+                    ${
+                        daily.length ===
+                        0
+                            ? this.emptyState(
+                                "▥",
+                                "Sin actividad diaria",
+                                "No hay movimientos confirmados que representar."
+                            )
+                            : `
+
+                                <div
+                                    class="atlas-analysis-daily-chart"
+                                    style="
+                                        --atlas-columns:
+                                            ${daily.length};
+                                    "
+                                >
+
+                                    ${daily.map(
+                                        day => {
+
+                                            const expenses =
+                                                Math.max(
+                                                    0,
+                                                    this.number(
+                                                        day.expenses
+                                                    )
+                                                );
+
+                                            const height =
+                                                expenses >
+                                                0
+                                                    ? Math.max(
+                                                        5,
+                                                        (
+                                                            expenses /
+                                                            maximum
+                                                        ) *
+                                                        90
+                                                    )
+                                                    : 2;
+
+                                            return `
+
+                                                <div
+                                                    title="
+                                                        Día ${day.day}:
+                                                        ${this.currency(
+                                                            expenses
+                                                        )}
+                                                    "
+                                                >
+
+                                                    <i
+                                                        style="
+                                                            height:
+                                                                ${height}px;
+                                                            opacity:
+                                                                ${
+                                                                    expenses >
+                                                                    0
+                                                                        ? 0.92
+                                                                        : 0.16
+                                                                };
+                                                        "
+                                                    ></i>
+
+                                                    <small>
+                                                        ${
+                                                            day.day ===
+                                                                1 ||
+                                                            day.day %
+                                                                5 ===
+                                                                0 ||
+                                                            day.day ===
+                                                                daily.length
+                                                                ? day.day
+                                                                : ""
+                                                        }
+                                                    </small>
+
+                                                </div>
+
+                                            `;
+
+                                        }
+                                    ).join("")}
+
+                                </div>
+
+                            `
+                    }
 
                     <div class="atlas-analysis-inline-facts">
 
@@ -2463,7 +3371,10 @@ const AtlasAnalysisUI = {
                             <strong>
                                 ${
                                     highestDay &&
-                                    highestDay.expenses >
+                                    this.number(
+                                        highestDay
+                                            .expenses
+                                    ) >
                                     0
                                         ? (
                                             `${highestDay.day} · ` +
@@ -2480,8 +3391,10 @@ const AtlasAnalysisUI = {
                         <span>
                             Racha activa
                             <strong>
-                                ${activity
-                                    .longestActiveStreak}
+                                ${this.number(
+                                    activity
+                                        ?.longestActiveStreak
+                                )}
                                 días
                             </strong>
                         </span>
@@ -2496,18 +3409,27 @@ const AtlasAnalysisUI = {
 
     },
 
-    monthlyInsights(
+    qualityPanel(
         summary,
         comparison,
         budget,
         categories,
-        forecast
+        forecast,
+        mode
     ) {
 
-        const insights = [];
+        const display =
+            this.monthlyDisplaySummary(
+                summary,
+                forecast,
+                mode
+            );
+
+        const insights =
+            [];
 
         if (
-            summary.monthlySavings >
+            display.monthlySavings >=
             0
         ) {
 
@@ -2522,10 +3444,10 @@ const AtlasAnalysisUI = {
                 text:
                     (
                         `Has conservado ${this.currency(
-                            summary
+                            display
                                 .monthlySavings
                         )}, un ${this.percent(
-                            summary
+                            display
                                 .monthlySavingRate
                         )} de los ingresos.`
                     ),
@@ -2547,8 +3469,8 @@ const AtlasAnalysisUI = {
 
                 text:
                     (
-                        `El resultado de ahorro es ${this.currency(
-                            summary
+                        `El ahorro del mes es ${this.currency(
+                            display
                                 .monthlySavings
                         )}.`
                     ),
@@ -2561,15 +3483,41 @@ const AtlasAnalysisUI = {
         }
 
         if (
-            budget.totalBudget >
+            this.number(
+                budget.totalBudget
+            ) >
             0
         ) {
+
+            const spent =
+                this.number(
+                    budget.totalSpent
+                ) +
+                (
+                    mode ===
+                    "forecast"
+                        ? this.number(
+                            forecast
+                                ?.pending
+                                ?.expenses
+                        )
+                        : 0
+                );
+
+            const used =
+                AtlasCalculations
+                    .budgetUsedPercent(
+                        spent,
+                        budget.totalBudget
+                    );
 
             insights.push({
 
                 icon:
-                    budget.status ===
-                    "exceeded"
+                    this.number(
+                        used
+                    ) >
+                    100
                         ? "!"
                         : "✓",
 
@@ -2578,40 +3526,51 @@ const AtlasAnalysisUI = {
 
                 text:
                     (
-                        `Has consumido ${this.percent(
-                            budget.usedPercent
+                        `Has utilizado ${this.percent(
+                            used
                         )} del presupuesto mensual.`
                     ),
 
                 tone:
-                    budget.status ===
-                    "exceeded"
+                    this.number(
+                        used
+                    ) >
+                    100
                         ? "bad"
-                        : (
-                            budget.status ===
-                            "warning"
-                                ? "warning"
-                                : "good"
-                        )
+                        : this.number(
+                            used
+                        ) >=
+                        85
+                            ? "warning"
+                            : "good"
 
             });
 
         }
 
+        const topCategory =
+            Array.isArray(
+                categories
+            )
+                ? categories[0]
+                : null;
+
         if (
-            categories.length >
-            0 &&
-            summary.monthlyExpenses >
+            topCategory &&
+            this.number(
+                summary.monthlyExpenses
+            ) >
             0
         ) {
 
-            const top =
-                categories[0];
-
             const share =
                 (
-                    top.amount /
-                    summary.monthlyExpenses
+                    this.number(
+                        topCategory.amount
+                    ) /
+                    this.number(
+                        summary.monthlyExpenses
+                    )
                 ) * 100;
 
             insights.push({
@@ -2624,7 +3583,7 @@ const AtlasAnalysisUI = {
 
                 text:
                     (
-                        `${top.label} concentra ` +
+                        `${topCategory.label} concentra ` +
                         `${this.percent(
                             share
                         )} del gasto neto.`
@@ -2640,19 +3599,24 @@ const AtlasAnalysisUI = {
         }
 
         if (
-            forecast.pending.count >
+            mode === "forecast" &&
+            this.number(
+                forecast?.pending
+                    ?.count
+            ) >
             0
         ) {
 
-            const difference =
-                forecast.estimated
-                    .savings -
-                summary.monthlySavings;
+            const impact =
+                this.number(
+                    forecast?.pending
+                        ?.savingsImpact
+                );
 
             insights.push({
 
                 icon:
-                    difference >= 0
+                    impact >= 0
                         ? "↗"
                         : "↘",
 
@@ -2661,135 +3625,120 @@ const AtlasAnalysisUI = {
 
                 text:
                     (
-                        `La previsión cambiaría el ahorro en ` +
-                        `${this.currency(
-                            difference
+                        `Los movimientos pendientes cambiarían ` +
+                        `el ahorro en ${this.currency(
+                            impact
                         )}.`
                     ),
 
                 tone:
-                    difference >= 0
+                    impact >= 0
                         ? "good"
                         : "warning"
 
             });
 
-        } else if (
-            comparison.expenses
-                .difference !==
-            0
-        ) {
+        } else {
 
-            insights.push({
+            const expenseDifference =
+                this.number(
+                    comparison
+                        ?.expenses
+                        ?.difference
+                );
 
-                icon:
-                    comparison.expenses
-                        .difference >
-                    0
-                        ? "↑"
-                        : "↓",
+            if (
+                expenseDifference !==
+                0
+            ) {
 
-                title:
-                    "Cambio del gasto",
+                insights.push({
 
-                text:
-                    (
-                        `El gasto neto es ` +
-                        `${this.currency(
-                            Math.abs(
-                                comparison
-                                    .expenses
-                                    .difference
-                            )
-                        )} ` +
-                        `${
-                            comparison
-                                .expenses
-                                .difference >
-                            0
-                                ? "mayor"
-                                : "menor"
-                        } que el mes anterior.`
-                    ),
+                    icon:
+                        expenseDifference >
+                        0
+                            ? "↑"
+                            : "↓",
 
-                tone:
-                    comparison.expenses
-                        .difference >
-                    0
-                        ? "warning"
-                        : "good"
+                    title:
+                        "Cambio del gasto",
 
-            });
+                    text:
+                        (
+                            `El gasto neto es ` +
+                            `${this.currency(
+                                Math.abs(
+                                    expenseDifference
+                                )
+                            )} ` +
+                            `${
+                                expenseDifference >
+                                0
+                                    ? "mayor"
+                                    : "menor"
+                            } que el mes anterior.`
+                        ),
+
+                    tone:
+                        expenseDifference >
+                        0
+                            ? "warning"
+                            : "good"
+
+                });
+
+            }
 
         }
-
-        return insights
-            .slice(
-                0,
-                4
-            );
-
-    },
-
-    qualityPanel(
-        summary,
-        comparison,
-        budget,
-        categories,
-        forecast
-    ) {
-
-        const insights =
-            this.monthlyInsights(
-                summary,
-                comparison,
-                budget,
-                categories,
-                forecast
-            );
 
         return `
 
             <section class="panel atlas-analysis-panel">
 
                 ${this.panelHeader(
-                    "Calidad del mes",
-                    "Conclusiones derivadas de los datos"
+                    "Lectura del mes",
+                    "Conclusiones derivadas de los datos seleccionados"
                 )}
 
                 <div class="atlas-analysis-insights">
 
-                    ${insights.map(
-                        insight => `
+                    ${insights
+                        .slice(
+                            0,
+                            4
+                        )
+                        .map(
+                            insight => `
 
-                            <article class="${
-                                insight.tone
-                            }">
+                                <article class="${
+                                    insight.tone
+                                }">
 
-                                <span>
-                                    ${insight.icon}
-                                </span>
+                                    <span>
+                                        ${insight.icon}
+                                    </span>
 
-                                <div>
+                                    <div>
 
-                                    <strong>
-                                        ${this.escape(
-                                            insight.title
-                                        )}
-                                    </strong>
+                                        <strong>
+                                            ${this.escape(
+                                                insight.title
+                                            )}
+                                        </strong>
 
-                                    <p>
-                                        ${this.escape(
-                                            insight.text
-                                        )}
-                                    </p>
+                                        <p>
+                                            ${this.escape(
+                                                insight.text
+                                            )}
+                                        </p>
 
-                                </div>
+                                    </div>
 
-                            </article>
+                                </article>
 
-                        `
-                    ).join("")}
+                            `
+                        )
+                        .join("")}
 
                 </div>
 
@@ -2813,6 +3762,15 @@ const AtlasAnalysisUI = {
             options.currentMonth ||
             AtlasCalculations
                 .monthKey();
+
+        const mode =
+            options.analysisMode ||
+            "real";
+
+        const distributionLevel =
+            options
+                .analysisDistributionLevel ||
+            "category";
 
         const summary =
             AtlasCalculations
@@ -2863,6 +3821,13 @@ const AtlasAnalysisUI = {
                     analysisMonth
                 );
 
+        const displaySummary =
+            this.monthlyDisplaySummary(
+                summary,
+                forecast,
+                mode
+            );
+
         return `
 
             <div class="atlas-analysis-context">
@@ -2872,17 +3837,21 @@ const AtlasAnalysisUI = {
                     currentMonth
                 )}
 
-                ${this.modeSelector()}
+                ${this.modeSelector(
+                    mode
+                )}
 
             </div>
 
             ${this.monthlySummary(
                 summary,
-                comparison
+                comparison,
+                forecast,
+                mode
             )}
 
             ${
-                this.state.monthlyMode ===
+                mode ===
                 "forecast"
                     ? this.forecastPanel(
                         forecast
@@ -2892,20 +3861,23 @@ const AtlasAnalysisUI = {
 
             ${this.budgetPanel(
                 budget,
-                forecast
+                forecast,
+                mode
             )}
 
             ${this.distributionPanel(
                 categories,
-                subcategories
+                subcategories,
+                distributionLevel
             )}
 
             ${this.flowPanel(
-                summary
+                displaySummary
             )}
 
             ${this.recurringPanel(
-                forecast
+                forecast,
+                analysisMonth
             )}
 
             ${this.activityPanel(
@@ -2921,7 +3893,8 @@ const AtlasAnalysisUI = {
                 comparison,
                 budget,
                 categories,
-                forecast
+                forecast,
+                mode
             )}
 
         `;
@@ -2930,53 +3903,65 @@ const AtlasAnalysisUI = {
 
     periodSelector(activePeriod) {
 
+        const periods = [
+
+            {
+                value:
+                    "3",
+
+                label:
+                    "3 meses"
+            },
+
+            {
+                value:
+                    "6",
+
+                label:
+                    "6 meses"
+            },
+
+            {
+                value:
+                    "12",
+
+                label:
+                    "12 meses"
+            },
+
+            {
+                value:
+                    "all",
+
+                label:
+                    "Todo"
+            }
+
+        ];
+
         return `
 
             <div class="atlas-analysis-period">
 
-                ${[
-                    {
-                        value:
-                            "3",
-                        label:
-                            "3 meses"
-                    },
-                    {
-                        value:
-                            "6",
-                        label:
-                            "6 meses"
-                    },
-                    {
-                        value:
-                            "12",
-                        label:
-                            "12 meses"
-                    },
-                    {
-                        value:
-                            "all",
-                        label:
-                            "Todo"
-                    }
-                ].map(
-                    item => `
+                ${periods.map(
+                    period => `
 
                         <button
                             type="button"
-                            data-trends-period="${
-                                item.value
+                            data-action="setTrendsPeriod"
+                            data-period="${
+                                period.value
                             }"
                             class="${
                                 String(
                                     activePeriod
                                 ) ===
-                                item.value
+                                period.value
                                     ? "active"
                                     : ""
                             }"
                         >
-                            ${item.label}
+                            ${period.label}
                         </button>
 
                     `
@@ -2988,181 +3973,11 @@ const AtlasAnalysisUI = {
 
     },
 
-    metricDefinitions() {
-
-        return {
-
-            savings: {
-
-                label:
-                    "Ahorro",
-
-                property:
-                    "savings",
-
-                positiveIsGood:
-                    true,
-
-                percent:
-                    false
-
-            },
-
-            income: {
-
-                label:
-                    "Ingresos",
-
-                property:
-                    "income",
-
-                positiveIsGood:
-                    true,
-
-                percent:
-                    false
-
-            },
-
-            expenses: {
-
-                label:
-                    "Gasto neto",
-
-                property:
-                    "expenses",
-
-                positiveIsGood:
-                    false,
-
-                percent:
-                    false
-
-            },
-
-            grossExpenses: {
-
-                label:
-                    "Gasto bruto",
-
-                property:
-                    "grossExpenses",
-
-                positiveIsGood:
-                    false,
-
-                percent:
-                    false
-
-            },
-
-            reimbursements: {
-
-                label:
-                    "Reembolsos",
-
-                property:
-                    "reimbursements",
-
-                positiveIsGood:
-                    true,
-
-                percent:
-                    false
-
-            },
-
-            invested: {
-
-                label:
-                    "Invertido",
-
-                property:
-                    "invested",
-
-                positiveIsGood:
-                    true,
-
-                percent:
-                    false
-
-            },
-
-            savingRate: {
-
-                label:
-                    "Tasa de ahorro",
-
-                property:
-                    "savingRate",
-
-                positiveIsGood:
-                    true,
-
-                percent:
-                    true
-
-            },
-
-            debtPayments: {
-
-                label:
-                    "Pagos de deuda",
-
-                property:
-                    "debtPayments",
-
-                positiveIsGood:
-                    true,
-
-                percent:
-                    false
-
-            },
-
-            cashOutflow: {
-
-                label:
-                    "Salidas de caja",
-
-                property:
-                    "cashOutflow",
-
-                positiveIsGood:
-                    false,
-
-                percent:
-                    false
-
-            },
-
-            cashResult: {
-
-                label:
-                    "Resultado de caja",
-
-                property:
-                    "cashResult",
-
-                positiveIsGood:
-                    true,
-
-                percent:
-                    false
-
-            }
-
-        };
-
-    },
-
     metricOptions(
         selected,
-        allowNone = false
+        allowNone = false,
+        excluded = ""
     ) {
-
-        const definitions =
-            this.metricDefinitions();
 
         return `
 
@@ -3179,7 +3994,7 @@ const AtlasAnalysisUI = {
                                     : ""
                             }
                         >
-                            Sin comparación
+                            Sin segunda variable
                         </option>
 
                     `
@@ -3187,37 +4002,114 @@ const AtlasAnalysisUI = {
             }
 
             ${Object.entries(
-                definitions
-            ).map(
-                ([
-                    key,
-                    definition
-                ]) => `
+                this.metricDefinitions()
+            )
+                .filter(
+                    ([
+                        key
+                    ]) =>
+                        key !== excluded
+                )
+                .map(
+                    ([
+                        key,
+                        definition
+                    ]) => `
 
-                    <option
-                        value="${key}"
-                        ${
-                            selected ===
-                            key
-                                ? "selected"
-                                : ""
-                        }
-                    >
-                        ${definition.label}
-                    </option>
+                        <option
+                            value="${key}"
+                            ${
+                                selected ===
+                                key
+                                    ? "selected"
+                                    : ""
+                            }
+                        >
+                            ${definition.label}
+                        </option>
 
-                `
-            ).join("")}
+                    `
+                )
+                .join("")}
 
         `;
 
     },
 
-    trendsControls(period) {
+    viewSelector(activeMode) {
+
+        const views = [
+
+            {
+                value:
+                    "monthly",
+
+                label:
+                    "Mensual"
+            },
+
+            {
+                value:
+                    "smoothed",
+
+                label:
+                    "Media suavizada"
+            },
+
+            {
+                value:
+                    "accumulated",
+
+                label:
+                    "Acumulado"
+            }
+
+        ];
+
+        return `
+
+            <div class="atlas-analysis-view-selector">
+
+                ${views.map(
+                    view => `
+
+                        <button
+                            type="button"
+                            data-action="setTrendDisplayMode"
+                            data-mode="${view.value}"
+                            class="${
+                                activeMode ===
+                                view.value
+                                    ? "active"
+                                    : ""
+                            }"
+                        >
+                            ${view.label}
+                        </button>
+
+                    `
+                ).join("")}
+
+            </div>
+
+        `;
+
+    },
+
+    trendsControls(
+        period,
+        primaryMetric,
+        comparisonMetric,
+        displayMode
+    ) {
 
         return `
 
             <section class="atlas-analysis-controls">
+
+                <span class="atlas-analysis-control-label">
+                    Periodo
+                </span>
 
                 ${this.periodSelector(
                     period
@@ -3232,11 +4124,10 @@ const AtlasAnalysisUI = {
                         </span>
 
                         <select
-                            id="atlas-analysis-primary-metric"
+                            data-analysis-primary-metric
                         >
                             ${this.metricOptions(
-                                this.state
-                                    .trendMetric
+                                primaryMetric
                             )}
                         </select>
 
@@ -3245,20 +4136,606 @@ const AtlasAnalysisUI = {
                     <label>
 
                         <span>
-                            Comparar con
+                            Segunda variable
                         </span>
 
                         <select
-                            id="atlas-analysis-comparison-metric"
+                            data-analysis-comparison-metric
                         >
                             ${this.metricOptions(
-                                this.state
-                                    .comparisonMetric,
-                                true
+                                comparisonMetric,
+                                true,
+                                primaryMetric
                             )}
                         </select>
 
                     </label>
+
+                </div>
+
+                <span class="atlas-analysis-control-label atlas-analysis-control-label-spaced">
+                    Vista
+                </span>
+
+                ${this.viewSelector(
+                    displayMode
+                )}
+
+            </section>
+
+        `;
+
+    },
+
+    meaningfulMonths(months) {
+
+        return (
+            Array.isArray(months)
+                ? months
+                : []
+        ).filter(
+            month => [
+
+                month.income,
+
+                month.expenses,
+
+                month.invested,
+
+                month.savings,
+
+                month.debtPayments,
+
+                month.reimbursements,
+
+                month.cashOutflow
+
+            ].some(
+                value =>
+                    Math.abs(
+                        this.number(value)
+                    ) >
+                    0.0001
+            )
+        );
+
+    },
+
+    normalizedMonthSummary(
+        summary
+    ) {
+
+        return {
+
+            monthKey:
+                summary.monthKey,
+
+            income:
+                summary.monthlyIncome,
+
+            grossExpenses:
+                summary.monthlyGrossExpenses,
+
+            reimbursements:
+                summary.monthlyReimbursements,
+
+            expenses:
+                summary.monthlyExpenses,
+
+            invested:
+                summary.monthlyInvested,
+
+            savings:
+                summary.monthlySavings,
+
+            savingRate:
+                summary.monthlySavingRate,
+
+            debtPayments:
+                summary.monthlyDebtPayments,
+
+            cashOutflow:
+                summary.monthlyCashOutflow,
+
+            cashResult:
+                summary.monthlyCashResult
+
+        };
+
+    },
+
+    comparisonPeriods(
+        data,
+        months,
+        period
+    ) {
+
+        if (
+            String(period) ===
+            "all"
+        ) {
+
+            const meaningful =
+                this.meaningfulMonths(
+                    months
+                );
+
+            if (
+                meaningful.length <
+                6
+            ) {
+
+                return {
+
+                    available:
+                        false,
+
+                    current:
+                        [],
+
+                    previous:
+                        [],
+
+                    currentLabel:
+                        "",
+
+                    previousLabel:
+                        ""
+
+                };
+
+            }
+
+            const previous =
+                meaningful.slice(
+                    0,
+                    3
+                );
+
+            const current =
+                meaningful.slice(
+                    -3
+                );
+
+            return {
+
+                available:
+                    true,
+
+                current,
+
+                previous,
+
+                currentLabel:
+                    (
+                        `${this.formatMonth(
+                            current[0]
+                                .monthKey
+                        )} — ` +
+                        `${this.formatMonth(
+                            current[
+                                current.length -
+                                1
+                            ].monthKey
+                        )}`
+                    ),
+
+                previousLabel:
+                    (
+                        `${this.formatMonth(
+                            previous[0]
+                                .monthKey
+                        )} — ` +
+                        `${this.formatMonth(
+                            previous[
+                                previous.length -
+                                1
+                            ].monthKey
+                        )}`
+                    )
+
+            };
+
+        }
+
+        const count =
+            Number(period);
+
+        const current =
+            months.slice(
+                -count
+            );
+
+        if (
+            current.length ===
+            0
+        ) {
+
+            return {
+
+                available:
+                    false,
+
+                current:
+                    [],
+
+                previous:
+                    [],
+
+                currentLabel:
+                    "",
+
+                previousLabel:
+                    ""
+
+            };
+
+        }
+
+        const previousEnd =
+            this.shiftMonth(
+                current[0]
+                    .monthKey,
+                -1
+            );
+
+        const previousStart =
+            this.shiftMonth(
+                previousEnd,
+                -(count - 1)
+            );
+
+        const previous =
+            [];
+
+        for (
+            let index = 0;
+            index < count;
+            index += 1
+        ) {
+
+            const monthKey =
+                this.shiftMonth(
+                    previousStart,
+                    index
+                );
+
+            const summary =
+                AtlasCalculations
+                    .financialSummary(
+                        data,
+                        monthKey
+                    );
+
+            previous.push(
+                this.normalizedMonthSummary(
+                    summary
+                )
+            );
+
+        }
+
+        return {
+
+            available:
+                previous.length ===
+                current.length,
+
+            current,
+
+            previous,
+
+            currentLabel:
+                (
+                    `${this.formatMonth(
+                        current[0]
+                            .monthKey
+                    )} — ` +
+                    `${this.formatMonth(
+                        current[
+                            current.length -
+                            1
+                        ].monthKey
+                    )}`
+                ),
+
+            previousLabel:
+                (
+                    `${this.formatMonth(
+                        previous[0]
+                            .monthKey
+                    )} — ` +
+                    `${this.formatMonth(
+                        previous[
+                            previous.length -
+                            1
+                        ].monthKey
+                    )}`
+                )
+
+        };
+
+    },
+
+    periodTotals(months) {
+
+        const income =
+            this.sum(
+                months,
+                "income"
+            );
+
+        const expenses =
+            this.sum(
+                months,
+                "expenses"
+            );
+
+        const invested =
+            this.sum(
+                months,
+                "invested"
+            );
+
+        const savings =
+            this.sum(
+                months,
+                "savings"
+            );
+
+        const debtPayments =
+            this.sum(
+                months,
+                "debtPayments"
+            );
+
+        return {
+
+            income,
+
+            expenses,
+
+            invested,
+
+            savings,
+
+            debtPayments,
+
+            savingRate:
+                income > 0
+                    ? (
+                        savings /
+                        income
+                    ) * 100
+                    : 0
+
+        };
+
+    },
+
+    periodSummaryPanel(
+        months,
+        periodComparison
+    ) {
+
+        const totals =
+            this.periodTotals(
+                months
+            );
+
+        const previousTotals =
+            periodComparison.available
+                ? this.periodTotals(
+                    periodComparison
+                        .previous
+                )
+                : null;
+
+        const cards = [
+
+            {
+                label:
+                    "Ingresos acumulados",
+
+                value:
+                    totals.income,
+
+                previous:
+                    previousTotals
+                        ?.income,
+
+                positiveIsGood:
+                    true
+            },
+
+            {
+                label:
+                    "Gasto neto",
+
+                value:
+                    totals.expenses,
+
+                previous:
+                    previousTotals
+                        ?.expenses,
+
+                positiveIsGood:
+                    false
+            },
+
+            {
+                label:
+                    "Invertido",
+
+                value:
+                    totals.invested,
+
+                previous:
+                    previousTotals
+                        ?.invested,
+
+                positiveIsGood:
+                    true
+            },
+
+            {
+                label:
+                    "Ahorro acumulado",
+
+                value:
+                    totals.savings,
+
+                previous:
+                    previousTotals
+                        ?.savings,
+
+                positiveIsGood:
+                    true
+            },
+
+            {
+                label:
+                    "Tasa media de ahorro",
+
+                value:
+                    totals.savingRate,
+
+                previous:
+                    previousTotals
+                        ?.savingRate,
+
+                positiveIsGood:
+                    true,
+
+                percent:
+                    true,
+
+                percentagePoint:
+                    true
+            },
+
+            {
+                label:
+                    "Deuda pagada",
+
+                value:
+                    totals.debtPayments,
+
+                previous:
+                    previousTotals
+                        ?.debtPayments,
+
+                positiveIsGood:
+                    true
+            }
+
+        ];
+
+        return `
+
+            <section class="panel atlas-analysis-panel">
+
+                ${this.panelHeader(
+                    "Resumen del periodo",
+                    periodComparison.available
+                        ? (
+                            `Comparado con ${periodComparison.previousLabel}`
+                        )
+                        : "Totales del periodo seleccionado"
+                )}
+
+                <div class="atlas-analysis-period-summary">
+
+                    ${cards.map(
+                        card => {
+
+                            const comparison =
+                                card.previous ===
+                                    undefined ||
+                                card.previous ===
+                                    null
+                                    ? null
+                                    : AtlasCalculations
+                                        .metricComparison(
+                                            card.value,
+                                            card.previous
+                                        );
+
+                            const information =
+                                comparison
+                                    ? this.comparisonInformation(
+                                        comparison,
+                                        card
+                                            .positiveIsGood,
+                                        card
+                                            .percentagePoint
+                                    )
+                                    : null;
+
+                            return `
+
+                                <article>
+
+                                    <small>
+                                        ${card.label}
+                                    </small>
+
+                                    <strong
+                                        style="
+                                            color:
+                                                ${
+                                                    card.label.includes(
+                                                        "Ahorro"
+                                                    )
+                                                        ? this.statusColor(
+                                                            card.value,
+                                                            true
+                                                        )
+                                                        : "var(--color-text)"
+                                                };
+                                        "
+                                    >
+                                        ${
+                                            card.percent
+                                                ? this.percent(
+                                                    card.value
+                                                )
+                                                : this.currency(
+                                                    card.value
+                                                )
+                                        }
+                                    </strong>
+
+                                    ${
+                                        information
+                                            ? `
+
+                                                <span
+                                                    style="
+                                                        color:
+                                                            ${information.color};
+                                                    "
+                                                >
+                                                    ${information.icon}
+                                                    ${information.text}
+                                                </span>
+
+                                            `
+                                            : `
+
+                                                <span>
+                                                    Sin comparación disponible
+                                                </span>
+
+                                            `
+                                    }
+
+                                </article>
+
+                            `;
+
+                        }
+                    ).join("")}
 
                 </div>
 
@@ -3268,344 +4745,268 @@ const AtlasAnalysisUI = {
 
     },
 
-    trendLineChart(
+    transformValues(
         months,
-        primaryDefinition,
-        comparisonDefinition,
-        statistics
+        definition,
+        mode
     ) {
 
+        const raw =
+            months.map(
+                month =>
+                    this.metricValue(
+                        month,
+                        definition
+                    )
+            );
+
         if (
-            months.length ===
-            0
+            mode === "monthly"
         ) {
 
-            return this.emptyState(
-                "⌁",
-                "Sin histórico",
-                "Todavía no hay meses suficientes para crear la gráfica."
+            return raw;
+
+        }
+
+        if (
+            mode === "smoothed"
+        ) {
+
+            return raw.map(
+                (
+                    value,
+                    index
+                ) =>
+                    this.average(
+                        raw.slice(
+                            Math.max(
+                                0,
+                                index - 2
+                            ),
+                            index + 1
+                        )
+                    )
             );
 
         }
 
-        const primaryValues =
-            months.map(
-                month =>
-                    this.number(
-                        month[
-                            primaryDefinition
-                                .property
-                        ]
-                    )
-            );
+        let accumulated =
+            0;
 
-        const secondaryValues =
-            comparisonDefinition
-                ? months.map(
-                    month =>
-                        this.number(
-                            month[
-                                comparisonDefinition
-                                    .property
-                            ]
-                        )
-                )
-                : [];
-
-        const movingValues =
-            statistics
-                .movingAverage
-                .map(
-                    item =>
-                        this.number(
-                            item.value
-                        )
-                );
-
-        const allValues = [
-            ...primaryValues,
-            ...secondaryValues,
-            ...movingValues
-        ];
-
-        const minimum =
-            Math.min(
-                0,
-                ...allValues
-            );
-
-        const maximum =
-            Math.max(
-                1,
-                ...allValues
-            );
-
-        const range =
-            maximum -
-            minimum ||
-            1;
-
-        const width =
-            680;
-
-        const height =
-            240;
-
-        const paddingX =
-            28;
-
-        const paddingY =
-            24;
-
-        const chartWidth =
-            width -
-            paddingX *
-            2;
-
-        const chartHeight =
-            height -
-            paddingY *
-            2;
-
-        const pointFor =
+        return raw.map(
             (
                 value,
                 index
             ) => {
 
-                const x =
-                    months.length ===
-                    1
-                        ? width / 2
-                        : (
-                            paddingX +
-                            (
-                                index /
-                                (
-                                    months.length -
-                                    1
-                                )
-                            ) *
-                            chartWidth
-                        );
+                if (
+                    definition.accumulable
+                ) {
 
-                const y =
-                    paddingY +
-                    (
-                        (
-                            maximum -
-                            value
-                        ) /
-                        range
-                    ) *
-                    chartHeight;
+                    accumulated +=
+                        value;
 
-                return {
-                    x,
-                    y
-                };
+                    return accumulated;
 
-            };
+                }
 
-        const polyline =
-            values =>
-                values.map(
-                    (
-                        value,
-                        index
-                    ) => {
+                return this.average(
+                    raw.slice(
+                        0,
+                        index + 1
+                    )
+                );
 
-                        const point =
-                            pointFor(
-                                value,
-                                index
-                            );
-
-                        return (
-                            `${point.x},` +
-                            `${point.y}`
-                        );
-
-                    }
-                ).join(" ");
-
-        const zeroY =
-            pointFor(
-                0,
-                0
-            ).y;
-
-        return `
-
-            <div class="atlas-analysis-line-chart">
-
-                <svg
-                    viewBox="
-                        0 0
-                        ${width}
-                        ${height}
-                    "
-                    role="img"
-                    aria-label="
-                        Evolución de
-                        ${primaryDefinition.label}
-                    "
-                >
-
-                    <line
-                        x1="${paddingX}"
-                        y1="${zeroY}"
-                        x2="${
-                            width -
-                            paddingX
-                        }"
-                        y2="${zeroY}"
-                        class="zero"
-                    ></line>
-
-                    <polyline
-                        points="${
-                            polyline(
-                                movingValues
-                            )
-                        }"
-                        class="moving"
-                    ></polyline>
-
-                    ${
-                        comparisonDefinition
-                            ? `
-
-                                <polyline
-                                    points="${
-                                        polyline(
-                                            secondaryValues
-                                        )
-                                    }"
-                                    class="secondary"
-                                ></polyline>
-
-                            `
-                            : ""
-                    }
-
-                    <polyline
-                        points="${
-                            polyline(
-                                primaryValues
-                            )
-                        }"
-                        class="primary"
-                    ></polyline>
-
-                    ${primaryValues.map(
-                        (
-                            value,
-                            index
-                        ) => {
-
-                            const point =
-                                pointFor(
-                                    value,
-                                    index
-                                );
-
-                            return `
-
-                                <circle
-                                    cx="${point.x}"
-                                    cy="${point.y}"
-                                    r="4"
-                                    class="point"
-                                ></circle>
-
-                            `;
-
-                        }
-                    ).join("")}
-
-                </svg>
-
-                <div
-                    class="atlas-analysis-chart-labels"
-                    style="
-                        grid-template-columns:
-                            repeat(
-                                ${months.length},
-                                minmax(
-                                    46px,
-                                    1fr
-                                )
-                            );
-                    "
-                >
-
-                    ${months.map(
-                        month => `
-
-                            <span>
-                                ${this.formatShortMonth(
-                                    month.monthKey
-                                )}
-                            </span>
-
-                        `
-                    ).join("")}
-
-                </div>
-
-            </div>
-
-        `;
+            }
+        );
 
     },
 
-    trendsSummary(
-        trend,
+    variableStatistics(
+        months,
         definition,
-        statistics
+        displayMode
     ) {
 
-        const latest =
-            statistics.latest;
+        const values =
+            this.transformValues(
+                months,
+                definition,
+                displayMode
+            );
 
         const first =
-            trend.months[0];
+            values[0] || 0;
 
-        const firstToLast =
+        const latest =
+            values[
+                values.length - 1
+            ] || 0;
+
+        const average =
+            this.average(values);
+
+        const maximum =
+            values.length >
+            0
+                ? Math.max(
+                    ...values
+                )
+                : 0;
+
+        const minimum =
+            values.length >
+            0
+                ? Math.min(
+                    ...values
+                )
+                : 0;
+
+        const change =
+            latest - first;
+
+        const reference =
+            Math.max(
+                Math.abs(first),
+                Math.abs(average),
+                1
+            );
+
+        const relative =
+            (
+                change /
+                reference
+            ) * 100;
+
+        let classification;
+
+        if (
+            values.length <
+            2
+        ) {
+
+            classification = {
+
+                label:
+                    "Sin histórico suficiente",
+
+                detail:
+                    "Se necesitan al menos dos meses",
+
+                color:
+                    "var(--color-text-muted)"
+
+            };
+
+        } else if (
+            Math.abs(relative) <
+            5
+        ) {
+
+            classification = {
+
+                label:
+                    "Sin variación significativa",
+
+                detail:
+                    "El cambio del periodo es reducido",
+
+                color:
+                    "var(--color-text-muted)"
+
+            };
+
+        } else {
+
+            const improving =
+                definition.positiveIsGood
+                    ? change > 0
+                    : change < 0;
+
+            classification = {
+
+                label:
+                    improving
+                        ? "Tendencia favorable"
+                        : "Tendencia desfavorable",
+
+                detail:
+                    (
+                        `${change > 0 ? "Aumento" : "Descenso"} ` +
+                        `de ${Math.abs(
+                            relative
+                        ).toFixed(0)}%`
+                    ),
+
+                color:
+                    improving
+                        ? "var(--color-success)"
+                        : "var(--color-danger)"
+
+            };
+
+        }
+
+        return {
+
+            values,
+
+            first,
+
+            latest,
+
+            average,
+
+            median:
+                this.median(values),
+
+            maximum,
+
+            minimum,
+
+            range:
+                maximum -
+                minimum,
+
+            change,
+
+            classification
+
+        };
+
+    },
+
+    variableSummaryPanel(
+        months,
+        definition,
+        displayMode
+    ) {
+
+        const statistics =
+            this.variableStatistics(
+                months,
+                definition,
+                displayMode
+            );
+
+        const comparison =
             AtlasCalculations
                 .metricComparison(
-                    latest?.[
-                        definition.property
-                    ],
-                    first?.[
-                        definition.property
-                    ]
+                    statistics.latest,
+                    statistics.first
                 );
 
         const change =
             this.comparisonInformation(
-                firstToLast,
+                comparison,
                 definition
                     .positiveIsGood,
                 definition.percent
             );
 
-        const classification =
-            this.classificationLabel(
-                statistics
-                    .classification
-                    .key
-            );
-
-        const valueFormatter =
-            definition.percent
-                ? this.percent.bind(this)
-                : this.currency.bind(this);
-
         return `
 
-            <section class="atlas-analysis-grid">
+            <section class="atlas-analysis-variable-summary">
 
                 <article class="atlas-analysis-metric atlas-analysis-metric-wide">
 
@@ -3614,18 +5015,21 @@ const AtlasAnalysisUI = {
                     </span>
 
                     <strong class="atlas-analysis-metric-value">
-                        ${valueFormatter(
-                            latest?.[
-                                definition.property
-                            ]
+                        ${this.formatMetric(
+                            statistics.latest,
+                            definition
                         )}
                     </strong>
 
                     <small>
                         ${
-                            latest
+                            months.length >
+                            0
                                 ? this.formatMonth(
-                                    latest.monthKey
+                                    months[
+                                        months.length -
+                                        1
+                                    ].monthKey
                                 )
                                 : "Sin datos"
                         }
@@ -3636,11 +5040,36 @@ const AtlasAnalysisUI = {
                 <article class="atlas-analysis-metric">
 
                     <span class="atlas-analysis-metric-label">
-                        Cambio del periodo
+                        Media del periodo
+                    </span>
+
+                    <strong class="atlas-analysis-metric-value">
+                        ${this.formatMetric(
+                            statistics.average,
+                            definition
+                        )}
+                    </strong>
+
+                    <small>
+                        ${months.length}
+                        ${
+                            months.length ===
+                            1
+                                ? "mes"
+                                : "meses"
+                        }
+                    </small>
+
+                </article>
+
+                <article class="atlas-analysis-metric">
+
+                    <span class="atlas-analysis-metric-label">
+                        Cambio desde el inicio
                     </span>
 
                     <strong
-                        class="atlas-analysis-metric-value"
+                        class="atlas-analysis-metric-value atlas-analysis-text-value"
                         style="
                             color:
                                 ${change.color};
@@ -3656,23 +5085,30 @@ const AtlasAnalysisUI = {
 
                 </article>
 
-                <article class="atlas-analysis-metric">
+                <article class="atlas-analysis-metric atlas-analysis-metric-wide">
 
                     <span class="atlas-analysis-metric-label">
                         Tendencia
                     </span>
 
-                    <strong class="atlas-analysis-metric-value atlas-analysis-text-value">
-                        ${classification.label}
-                    </strong>
-
-                    <small
+                    <strong
+                        class="atlas-analysis-metric-value atlas-analysis-text-value"
                         style="
                             color:
-                                ${classification.color};
+                                ${statistics
+                                    .classification
+                                    .color};
                         "
                     >
-                        ${classification.detail}
+                        ${statistics
+                            .classification
+                            .label}
+                    </strong>
+
+                    <small>
+                        ${statistics
+                            .classification
+                            .detail}
                     </small>
 
                 </article>
@@ -3683,143 +5119,461 @@ const AtlasAnalysisUI = {
 
     },
 
-    classificationLabel(key) {
+    chartPoints(
+        values,
+        minimum,
+        maximum,
+        width,
+        height
+    ) {
 
-        const labels = {
+        const paddingX =
+            26;
 
-            strong_improvement: {
+        const paddingY =
+            22;
 
-                label:
-                    "Mejora fuerte",
+        const range =
+            maximum -
+            minimum ||
+            1;
 
-                detail:
-                    "Avance claro durante el periodo",
+        const chartWidth =
+            width -
+            paddingX *
+            2;
 
-                color:
-                    "var(--color-success)"
+        const chartHeight =
+            height -
+            paddingY *
+            2;
 
-            },
+        return values.map(
+            (
+                value,
+                index
+            ) => ({
 
-            improvement: {
+                x:
+                    values.length ===
+                    1
+                        ? width / 2
+                        : (
+                            paddingX +
+                            (
+                                index /
+                                (
+                                    values.length -
+                                    1
+                                )
+                            ) *
+                            chartWidth
+                        ),
 
-                label:
-                    "Mejorando",
+                y:
+                    paddingY +
+                    (
+                        (
+                            maximum -
+                            value
+                        ) /
+                        range
+                    ) *
+                    chartHeight,
 
-                detail:
-                    "Evolución favorable",
+                value
 
-                color:
-                    "var(--color-success)"
-
-            },
-
-            stable: {
-
-                label:
-                    "Estable",
-
-                detail:
-                    "Sin cambio sostenido relevante",
-
-                color:
-                    "var(--color-text-muted)"
-
-            },
-
-            decline: {
-
-                label:
-                    "Empeorando",
-
-                detail:
-                    "Evolución desfavorable",
-
-                color:
-                    "#f4b95e"
-
-            },
-
-            strong_decline: {
-
-                label:
-                    "Deterioro fuerte",
-
-                detail:
-                    "Cambio desfavorable acusado",
-
-                color:
-                    "var(--color-danger)"
-
-            }
-
-        };
-
-        return (
-            labels[key] ||
-            labels.stable
+            })
         );
 
     },
 
+    polyline(points) {
+
+        return points
+            .map(
+                point =>
+                    `${point.x},${point.y}`
+            )
+            .join(" ");
+
+    },
+
     historicalPanel(
-        trend,
-        definition,
-        comparisonDefinition,
-        statistics
+        months,
+        primaryDefinition,
+        secondaryDefinition,
+        displayMode
     ) {
+
+        if (
+            months.length ===
+            0
+        ) {
+
+            return `
+
+                <section class="panel atlas-analysis-panel">
+
+                    ${this.panelHeader(
+                        `Evolución de ${primaryDefinition.label.toLowerCase()}`,
+                        "Sin periodo disponible"
+                    )}
+
+                    ${this.emptyState(
+                        "⌁",
+                        "Sin histórico",
+                        "Todavía no hay meses suficientes para crear la gráfica."
+                    )}
+
+                </section>
+
+            `;
+
+        }
+
+        const primaryValues =
+            this.transformValues(
+                months,
+                primaryDefinition,
+                displayMode
+            );
+
+        const secondaryValues =
+            secondaryDefinition
+                ? this.transformValues(
+                    months,
+                    secondaryDefinition,
+                    displayMode
+                )
+                : [];
+
+        const allValues = [
+
+            ...primaryValues,
+
+            ...secondaryValues,
+
+            0
+
+        ];
+
+        let minimum =
+            Math.min(
+                ...allValues
+            );
+
+        let maximum =
+            Math.max(
+                ...allValues
+            );
+
+        if (
+            minimum === maximum
+        ) {
+
+            const padding =
+                Math.max(
+                    Math.abs(minimum) *
+                        0.15,
+                    1
+                );
+
+            minimum -=
+                padding;
+
+            maximum +=
+                padding;
+
+        } else {
+
+            const padding =
+                (
+                    maximum -
+                    minimum
+                ) * 0.12;
+
+            minimum -=
+                padding;
+
+            maximum +=
+                padding;
+
+        }
+
+        const width =
+            Math.max(
+                320,
+                months.length *
+                    62
+            );
+
+        const height =
+            220;
+
+        const primaryPoints =
+            this.chartPoints(
+                primaryValues,
+                minimum,
+                maximum,
+                width,
+                height
+            );
+
+        const secondaryPoints =
+            secondaryDefinition
+                ? this.chartPoints(
+                    secondaryValues,
+                    minimum,
+                    maximum,
+                    width,
+                    height
+                )
+                : [];
+
+        const zeroPoint =
+            this.chartPoints(
+                [0],
+                minimum,
+                maximum,
+                width,
+                height
+            )[0];
+
+        const flat =
+            Math.max(
+                ...primaryValues
+            ) -
+            Math.min(
+                ...primaryValues
+            ) <
+            0.0001;
+
+        const viewLabels = {
+
+            monthly:
+                "Valores mensuales",
+
+            smoothed:
+                "Media suavizada de hasta tres meses",
+
+            accumulated:
+                "Valores acumulados durante el periodo"
+
+        };
 
         return `
 
             <section class="panel atlas-analysis-panel">
 
                 ${this.panelHeader(
-                    `Evolución de ${definition.label.toLowerCase()}`,
+                    `Evolución de ${primaryDefinition.label.toLowerCase()}`,
                     (
                         `${this.formatMonth(
-                            trend.startMonthKey
+                            months[0]
+                                .monthKey
                         )} — ` +
                         `${this.formatMonth(
-                            trend.endMonthKey
+                            months[
+                                months.length -
+                                1
+                            ].monthKey
                         )}`
-                    ),
-                    `
-
-                        <div class="atlas-analysis-legend">
-
-                            <span class="primary">
-                                ${definition.label}
-                            </span>
-
-                            <span class="moving">
-                                Media móvil
-                            </span>
-
-                            ${
-                                comparisonDefinition
-                                    ? `
-
-                                        <span class="secondary">
-                                            ${
-                                                comparisonDefinition
-                                                    .label
-                                            }
-                                        </span>
-
-                                    `
-                                    : ""
-                            }
-
-                        </div>
-
-                    `
+                    )
                 )}
 
-                ${this.trendLineChart(
-                    trend.months,
-                    definition,
-                    comparisonDefinition,
-                    statistics
-                )}
+                <div class="atlas-analysis-legend">
+
+                    <span class="primary">
+                        ${primaryDefinition.label}
+                    </span>
+
+                    ${
+                        secondaryDefinition
+                            ? `
+
+                                <span class="secondary">
+                                    ${secondaryDefinition.label}
+                                </span>
+
+                            `
+                            : ""
+                    }
+
+                    <span class="view">
+                        ${
+                            viewLabels[
+                                displayMode
+                            ] ||
+                            viewLabels.monthly
+                        }
+                    </span>
+
+                </div>
+
+                ${
+                    flat
+                        ? `
+
+                            <div class="atlas-analysis-flat-note">
+                                Sin variación significativa
+                            </div>
+
+                        `
+                        : ""
+                }
+
+                <div class="atlas-analysis-chart-scroll">
+
+                    <svg
+                        viewBox="
+                            0 0
+                            ${width}
+                            ${height}
+                        "
+                        style="
+                            width:
+                                ${width}px;
+                        "
+                        role="img"
+                        aria-label="
+                            Evolución de
+                            ${primaryDefinition.label}
+                        "
+                    >
+
+                        <line
+                            x1="26"
+                            y1="${zeroPoint.y}"
+                            x2="${
+                                width -
+                                26
+                            }"
+                            y2="${zeroPoint.y}"
+                            class="zero"
+                        ></line>
+
+                        ${
+                            secondaryDefinition
+                                ? `
+
+                                    <polyline
+                                        points="${
+                                            this.polyline(
+                                                secondaryPoints
+                                            )
+                                        }"
+                                        class="secondary"
+                                    ></polyline>
+
+                                    ${secondaryPoints.map(
+                                        (
+                                            point,
+                                            index
+                                        ) => `
+
+                                            <circle
+                                                cx="${point.x}"
+                                                cy="${point.y}"
+                                                r="3.5"
+                                                class="secondary-point"
+                                            >
+
+                                                <title>
+                                                    ${secondaryDefinition.label}
+                                                    ·
+                                                    ${this.formatMonth(
+                                                        months[index]
+                                                            .monthKey
+                                                    )}:
+                                                    ${this.formatMetric(
+                                                        point.value,
+                                                        secondaryDefinition
+                                                    )}
+                                                </title>
+
+                                            </circle>
+
+                                        `
+                                    ).join("")}
+
+                                `
+                                : ""
+                        }
+
+                        <polyline
+                            points="${
+                                this.polyline(
+                                    primaryPoints
+                                )
+                            }"
+                            class="primary"
+                        ></polyline>
+
+                        ${primaryPoints.map(
+                            (
+                                point,
+                                index
+                            ) => `
+
+                                <circle
+                                    cx="${point.x}"
+                                    cy="${point.y}"
+                                    r="4"
+                                    class="point"
+                                >
+
+                                    <title>
+                                        ${primaryDefinition.label}
+                                        ·
+                                        ${this.formatMonth(
+                                            months[index]
+                                                .monthKey
+                                        )}:
+                                        ${this.formatMetric(
+                                            point.value,
+                                            primaryDefinition
+                                        )}
+                                    </title>
+
+                                </circle>
+
+                            `
+                        ).join("")}
+
+                    </svg>
+
+                    <div
+                        class="atlas-analysis-chart-labels"
+                        style="
+                            width:
+                                ${width}px;
+                            grid-template-columns:
+                                repeat(
+                                    ${months.length},
+                                    minmax(
+                                        0,
+                                        1fr
+                                    )
+                                );
+                        "
+                    >
+
+                        ${months.map(
+                            month => `
+
+                                <span>
+                                    ${this.formatShortMonth(
+                                        month.monthKey
+                                    )}
+                                </span>
+
+                            `
+                        ).join("")}
+
+                    </div>
+
+                </div>
 
             </section>
 
@@ -3828,70 +5582,100 @@ const AtlasAnalysisUI = {
     },
 
     statisticsPanel(
+        months,
         definition,
-        statistics
+        displayMode
     ) {
 
-        const formatter =
-            definition.percent
-                ? this.percent.bind(this)
-                : this.currency.bind(this);
+        const statistics =
+            this.variableStatistics(
+                months,
+                definition,
+                displayMode
+            );
 
-        const maximumValue =
-            statistics.maximum?.[
-                definition.property
-            ];
+        const maximumIndex =
+            statistics
+                .values
+                .indexOf(
+                    statistics.maximum
+                );
 
-        const minimumValue =
-            statistics.minimum?.[
-                definition.property
-            ];
+        const minimumIndex =
+            statistics
+                .values
+                .indexOf(
+                    statistics.minimum
+                );
 
         const rows = [
 
-            {
-                label:
-                    "Total",
-                value:
-                    statistics.total ===
-                    null
-                        ? "No aplica"
-                        : formatter(
-                            statistics.total
+            definition.accumulable &&
+            displayMode ===
+            "monthly"
+                ? {
+
+                    label:
+                        "Total",
+
+                    value:
+                        this.formatMetric(
+                            statistics
+                                .values
+                                .reduce(
+                                    (
+                                        total,
+                                        value
+                                    ) =>
+                                        total +
+                                        value,
+                                    0
+                                ),
+                            definition
                         )
-            },
+
+                }
+                : null,
 
             {
                 label:
                     "Promedio",
+
                 value:
-                    formatter(
-                        statistics.average
+                    this.formatMetric(
+                        statistics.average,
+                        definition
                     )
             },
 
             {
                 label:
                     "Mediana",
+
                 value:
-                    formatter(
-                        statistics.median
+                    this.formatMetric(
+                        statistics.median,
+                        definition
                     )
             },
 
             {
                 label:
                     "Máximo",
+
                 value:
-                    formatter(
-                        maximumValue
+                    this.formatMetric(
+                        statistics.maximum,
+                        definition
                     ),
+
                 detail:
-                    statistics.maximum
+                    maximumIndex >=
+                    0
                         ? this.formatMonth(
-                            statistics
-                                .maximum
-                                .monthKey
+                            months[
+                                maximumIndex
+                            ].monthKey
                         )
                         : ""
             },
@@ -3899,16 +5683,20 @@ const AtlasAnalysisUI = {
             {
                 label:
                     "Mínimo",
+
                 value:
-                    formatter(
-                        minimumValue
+                    this.formatMetric(
+                        statistics.minimum,
+                        definition
                     ),
+
                 detail:
-                    statistics.minimum
+                    minimumIndex >=
+                    0
                         ? this.formatMonth(
-                            statistics
-                                .minimum
-                                .monthKey
+                            months[
+                                minimumIndex
+                            ].monthKey
                         )
                         : ""
             },
@@ -3916,53 +5704,70 @@ const AtlasAnalysisUI = {
             {
                 label:
                     "Rango",
+
                 value:
-                    formatter(
-                        statistics.range
+                    this.formatMetric(
+                        statistics.range,
+                        definition
                     )
             },
 
             {
                 label:
-                    "Volatilidad",
+                    "Meses sobre la media",
+
                 value:
-                    this.percent(
-                        statistics.volatility
+                    (
+                        `${statistics.values.filter(
+                            value =>
+                                value >
+                                statistics.average
+                        ).length} meses`
                     )
             },
 
             {
                 label:
-                    "Sobre la media",
-                value:
-                    `${statistics
-                        .monthsAboveAverage} meses`
-            },
+                    "Meses bajo la media",
 
-            {
-                label:
-                    "Bajo la media",
                 value:
-                    `${statistics
-                        .monthsBelowAverage} meses`
+                    (
+                        `${statistics.values.filter(
+                            value =>
+                                value <
+                                statistics.average
+                        ).length} meses`
+                    )
             }
 
-        ];
+        ].filter(Boolean);
+
+        const panelId =
+            (
+                `trend-statistics-` +
+                `${definition.property}`
+            );
 
         return `
 
-            <details class="panel atlas-analysis-panel atlas-analysis-details">
+            <details
+                class="panel atlas-analysis-panel atlas-analysis-details"
+                data-analysis-panel="${panelId}"
+                ${this.openAttribute(
+                    panelId
+                )}
+            >
 
                 <summary>
 
                     <div>
 
                         <strong>
-                            Estadísticas y tendencia
+                            Estadísticas de ${definition.label}
                         </strong>
 
                         <small>
-                            Distribución, extremos y regularidad
+                            Distribución y extremos de la variable principal
                         </small>
 
                     </div>
@@ -3975,7 +5780,7 @@ const AtlasAnalysisUI = {
 
                 <div class="atlas-analysis-details-content">
 
-                    <div class="atlas-analysis-statistics">
+                    <div class="atlas-analysis-card-grid">
 
                         ${rows.map(
                             row => `
@@ -4017,84 +5822,149 @@ const AtlasAnalysisUI = {
 
     },
 
-    periodComparisonPanel(
-        comparison
+    variablePeriodComparisonPanel(
+        periodComparison,
+        definition
     ) {
 
-        const rows = [
+        const panelId =
+            (
+                `trend-period-` +
+                `${definition.property}`
+            );
 
-            {
-                label:
-                    "Ingresos",
-                comparison:
-                    comparison.income,
-                positiveIsGood:
-                    true
-            },
+        if (
+            !periodComparison.available
+        ) {
 
-            {
-                label:
-                    "Gastos",
-                comparison:
-                    comparison.expenses,
-                positiveIsGood:
-                    false
-            },
+            return `
 
-            {
-                label:
-                    "Inversión",
-                comparison:
-                    comparison.invested,
-                positiveIsGood:
-                    true
-            },
+                <details
+                    class="panel atlas-analysis-panel atlas-analysis-details"
+                    data-analysis-panel="${panelId}"
+                    ${this.openAttribute(
+                        panelId
+                    )}
+                >
 
-            {
-                label:
-                    "Ahorro",
-                comparison:
-                    comparison.savings,
-                positiveIsGood:
-                    true
-            },
+                    <summary>
 
-            {
-                label:
-                    "Tasa de ahorro",
-                comparison:
-                    comparison.savingRate,
-                positiveIsGood:
-                    true,
-                percentagePoint:
-                    true
-            },
+                        <div>
 
-            {
-                label:
-                    "Deuda pagada",
-                comparison:
-                    comparison.debtPayments,
-                positiveIsGood:
-                    true
-            }
+                            <strong>
+                                Comparación del periodo
+                            </strong>
 
-        ];
+                            <small>
+                                No hay historial suficiente
+                            </small>
+
+                        </div>
+
+                        <span>
+                            +
+                        </span>
+
+                    </summary>
+
+                    <div class="atlas-analysis-details-content">
+
+                        ${this.emptyState(
+                            "⌛",
+                            "Historial insuficiente",
+                            "Se necesitan más meses con actividad para comparar periodos equivalentes."
+                        )}
+
+                    </div>
+
+                </details>
+
+            `;
+
+        }
+
+        const currentValues =
+            periodComparison
+                .current
+                .map(
+                    month =>
+                        this.metricValue(
+                            month,
+                            definition
+                        )
+                );
+
+        const previousValues =
+            periodComparison
+                .previous
+                .map(
+                    month =>
+                        this.metricValue(
+                            month,
+                            definition
+                        )
+                );
+
+        const currentValue =
+            definition.accumulable
+                ? currentValues.reduce(
+                    (
+                        total,
+                        value
+                    ) =>
+                        total + value,
+                    0
+                )
+                : this.average(
+                    currentValues
+                );
+
+        const previousValue =
+            definition.accumulable
+                ? previousValues.reduce(
+                    (
+                        total,
+                        value
+                    ) =>
+                        total + value,
+                    0
+                )
+                : this.average(
+                    previousValues
+                );
+
+        const information =
+            this.comparisonInformation(
+                AtlasCalculations
+                    .metricComparison(
+                        currentValue,
+                        previousValue
+                    ),
+                definition
+                    .positiveIsGood,
+                definition.percent
+            );
 
         return `
 
-            <details class="panel atlas-analysis-panel atlas-analysis-details">
+            <details
+                class="panel atlas-analysis-panel atlas-analysis-details"
+                data-analysis-panel="${panelId}"
+                ${this.openAttribute(
+                    panelId
+                )}
+            >
 
                 <summary>
 
                     <div>
 
                         <strong>
-                            Comparación entre periodos
+                            Comparación del periodo
                         </strong>
 
                         <small>
-                            Periodo actual frente al anterior equivalente
+                            Bloques temporales equivalentes
                         </small>
 
                     </div>
@@ -4107,47 +5977,59 @@ const AtlasAnalysisUI = {
 
                 <div class="atlas-analysis-details-content">
 
-                    <div class="atlas-analysis-comparison-list">
+                    <div class="atlas-analysis-period-comparison">
 
-                        ${rows.map(
-                            row => {
+                        <article>
 
-                                const information =
-                                    this
-                                        .comparisonInformation(
-                                            row.comparison,
-                                            row.positiveIsGood,
-                                            row.percentagePoint
-                                        );
+                            <small>
+                                Periodo seleccionado
+                            </small>
 
-                                return `
+                            <strong>
+                                ${this.formatMetric(
+                                    currentValue,
+                                    definition
+                                )}
+                            </strong>
 
-                                    <div>
+                            <span>
+                                ${periodComparison
+                                    .currentLabel}
+                            </span>
 
-                                        <span>
-                                            ${row.label}
-                                        </span>
+                        </article>
 
-                                        <strong
-                                            style="
-                                                color:
-                                                    ${
-                                                        information
-                                                            .color
-                                                    };
-                                            "
-                                        >
-                                            ${information.icon}
-                                            ${information.text}
-                                        </strong>
+                        <article>
 
-                                    </div>
+                            <small>
+                                Periodo anterior
+                            </small>
 
-                                `;
+                            <strong>
+                                ${this.formatMetric(
+                                    previousValue,
+                                    definition
+                                )}
+                            </strong>
 
-                            }
-                        ).join("")}
+                            <span>
+                                ${periodComparison
+                                    .previousLabel}
+                            </span>
 
+                        </article>
+
+                    </div>
+
+                    <div
+                        class="atlas-analysis-period-result"
+                        style="
+                            color:
+                                ${information.color};
+                        "
+                    >
+                        ${information.icon}
+                        ${information.text}
                     </div>
 
                 </div>
@@ -4158,84 +6040,236 @@ const AtlasAnalysisUI = {
 
     },
 
-    budgetTrendChart(budget) {
+    twoVariablePanel(
+        months,
+        primaryDefinition,
+        secondaryDefinition
+    ) {
 
-        const maximum =
-            Math.max(
-                100,
-                ...budget.months.map(
-                    month =>
-                        this.number(
-                            month.usedPercent
-                        )
+        if (
+            !secondaryDefinition ||
+            months.length ===
+            0
+        ) {
+
+            return "";
+
+        }
+
+        const primaryValues =
+            months.map(
+                month =>
+                    this.metricValue(
+                        month,
+                        primaryDefinition
+                    )
+            );
+
+        const secondaryValues =
+            months.map(
+                month =>
+                    this.metricValue(
+                        month,
+                        secondaryDefinition
+                    )
+            );
+
+        const primaryChange =
+            primaryValues[
+                primaryValues.length -
+                1
+            ] -
+            primaryValues[0];
+
+        const secondaryChange =
+            secondaryValues[
+                secondaryValues.length -
+                1
+            ] -
+            secondaryValues[0];
+
+        const averageDifference =
+            this.average(
+                primaryValues.map(
+                    (
+                        value,
+                        index
+                    ) =>
+                        value -
+                        secondaryValues[
+                            index
+                        ]
                 )
             );
 
+        const primaryWins =
+            primaryValues.filter(
+                (
+                    value,
+                    index
+                ) =>
+                    value >
+                    secondaryValues[
+                        index
+                    ]
+            ).length;
+
+        const secondaryWins =
+            secondaryValues.filter(
+                (
+                    value,
+                    index
+                ) =>
+                    value <
+                    secondaryValues[
+                        index
+                    ]
+            ).length;
+
         return `
 
-            <div class="atlas-analysis-budget-trend">
+            <section class="panel atlas-analysis-panel">
 
-                ${budget.months.map(
-                    month => {
+                ${this.panelHeader(
+                    `${primaryDefinition.label} frente a ${secondaryDefinition.label}`,
+                    "Comparación compacta de ambas variables"
+                )}
 
-                        const status =
-                            this
-                                .budgetStatusInformation(
-                                    month.status
-                                );
+                <div class="atlas-analysis-dual-comparison">
 
-                        const height =
-                            (
-                                this.number(
-                                    month.usedPercent
-                                ) /
-                                maximum
-                            ) * 120;
+                    <div>
 
-                        return `
+                        <small>
+                            Media de ${primaryDefinition.label}
+                        </small>
 
-                            <div>
+                        <strong>
+                            ${this.formatMetric(
+                                this.average(
+                                    primaryValues
+                                ),
+                                primaryDefinition
+                            )}
+                        </strong>
 
-                                <strong>
-                                    ${
-                                        month.usedPercent ===
-                                        null
-                                            ? "—"
-                                            : `${this.number(
-                                                month
-                                                    .usedPercent
-                                            ).toFixed(
-                                                0
-                                            )}%`
-                                    }
-                                </strong>
+                    </div>
 
-                                <i
-                                    style="
-                                        height:
-                                            ${Math.max(
-                                                3,
-                                                height
-                                            )}px;
-                                        background:
-                                            ${status.color};
-                                    "
-                                ></i>
+                    <div>
 
-                                <small>
-                                    ${this.formatShortMonth(
-                                        month.monthKey
-                                    )}
-                                </small>
+                        <small>
+                            Media de ${secondaryDefinition.label}
+                        </small>
 
-                            </div>
+                        <strong>
+                            ${this.formatMetric(
+                                this.average(
+                                    secondaryValues
+                                ),
+                                secondaryDefinition
+                            )}
+                        </strong>
 
-                        `;
+                    </div>
 
-                    }
-                ).join("")}
+                    <div>
 
-            </div>
+                        <small>
+                            Cambio de ${primaryDefinition.label}
+                        </small>
+
+                        <strong>
+                            ${this.formatMetric(
+                                primaryChange,
+                                primaryDefinition
+                            )}
+                        </strong>
+
+                    </div>
+
+                    <div>
+
+                        <small>
+                            Cambio de ${secondaryDefinition.label}
+                        </small>
+
+                        <strong>
+                            ${this.formatMetric(
+                                secondaryChange,
+                                secondaryDefinition
+                            )}
+                        </strong>
+
+                    </div>
+
+                    <div>
+
+                        <small>
+                            Diferencia media
+                        </small>
+
+                        <strong>
+                            ${this.currency(
+                                averageDifference
+                            )}
+                        </strong>
+
+                    </div>
+
+                    <div>
+
+                        <small>
+                            Último mes
+                        </small>
+
+                        <strong class="atlas-analysis-small-text">
+                            ${this.formatMetric(
+                                primaryValues[
+                                    primaryValues.length -
+                                    1
+                                ],
+                                primaryDefinition
+                            )}
+                            ·
+                            ${this.formatMetric(
+                                secondaryValues[
+                                    secondaryValues.length -
+                                    1
+                                ],
+                                secondaryDefinition
+                            )}
+                        </strong>
+
+                    </div>
+
+                    <div>
+
+                        <small>
+                            ${primaryDefinition.label} superior
+                        </small>
+
+                        <strong>
+                            ${primaryWins}
+                            meses
+                        </strong>
+
+                    </div>
+
+                    <div>
+
+                        <small>
+                            ${secondaryDefinition.label} superior
+                        </small>
+
+                        <strong>
+                            ${secondaryWins}
+                            meses
+                        </strong>
+
+                    </div>
+
+                </div>
+
+            </section>
 
         `;
 
@@ -4243,9 +6277,43 @@ const AtlasAnalysisUI = {
 
     budgetTrendPanel(budget) {
 
+        const months =
+            Array.isArray(
+                budget?.months
+            )
+                ? budget.months
+                : [];
+
+        const maximum =
+            Math.max(
+                100,
+                ...months
+                    .map(
+                        month =>
+                            month.usedPercent
+                    )
+                    .filter(
+                        value =>
+                            value !==
+                                null &&
+                            value !==
+                                undefined
+                    )
+                    .map(
+                        value =>
+                            this.number(value)
+                    )
+            );
+
         return `
 
-            <details class="panel atlas-analysis-panel atlas-analysis-details">
+            <details
+                class="panel atlas-analysis-panel atlas-analysis-details"
+                data-analysis-panel="global-budget"
+                ${this.openAttribute(
+                    "global-budget"
+                )}
+            >
 
                 <summary>
 
@@ -4256,7 +6324,7 @@ const AtlasAnalysisUI = {
                         </strong>
 
                         <small>
-                            Control histórico sin repetir la página de Presupuestos
+                            Interpretación histórica de límites y desviaciones
                         </small>
 
                     </div>
@@ -4269,17 +6337,103 @@ const AtlasAnalysisUI = {
 
                 <div class="atlas-analysis-details-content">
 
-                    ${this.budgetTrendChart(
-                        budget
-                    )}
+                    ${
+                        months.length ===
+                        0
+                            ? this.emptyState(
+                                "▥",
+                                "Sin histórico presupuestario",
+                                "No hay meses suficientes para interpretar el cumplimiento."
+                            )
+                            : `
+
+                                <div
+                                    class="atlas-analysis-bar-chart"
+                                    style="
+                                        --atlas-columns:
+                                            ${months.length};
+                                    "
+                                >
+
+                                    ${months.map(
+                                        month => {
+
+                                            const used =
+                                                month.usedPercent ===
+                                                null
+                                                    ? null
+                                                    : this.number(
+                                                        month
+                                                            .usedPercent
+                                                    );
+
+                                            const status =
+                                                this
+                                                    .budgetStatusInformation(
+                                                        month.status
+                                                    );
+
+                                            return `
+
+                                                <div>
+
+                                                    <strong>
+                                                        ${
+                                                            used ===
+                                                            null
+                                                                ? "—"
+                                                                : `${used.toFixed(
+                                                                    0
+                                                                )}%`
+                                                        }
+                                                    </strong>
+
+                                                    <i
+                                                        style="
+                                                            height:
+                                                                ${Math.max(
+                                                                    3,
+                                                                    used ===
+                                                                    null
+                                                                        ? 3
+                                                                        : (
+                                                                            used /
+                                                                            maximum
+                                                                        ) *
+                                                                        100
+                                                                )}px;
+                                                            background:
+                                                                ${status.color};
+                                                        "
+                                                    ></i>
+
+                                                    <small>
+                                                        ${this.formatShortMonth(
+                                                            month.monthKey
+                                                        )}
+                                                    </small>
+
+                                                </div>
+
+                                            `;
+
+                                        }
+                                    ).join("")}
+
+                                </div>
+
+                            `
+                    }
 
                     <div class="atlas-analysis-inline-facts">
 
                         <span>
                             Dentro del límite
                             <strong>
-                                ${budget
-                                    .withinBudget}
+                                ${this.number(
+                                    budget
+                                        ?.withinBudget
+                                )}
                                 meses
                             </strong>
                         </span>
@@ -4287,7 +6441,10 @@ const AtlasAnalysisUI = {
                         <span>
                             Superados
                             <strong>
-                                ${budget.exceeded}
+                                ${this.number(
+                                    budget
+                                        ?.exceeded
+                                )}
                                 meses
                             </strong>
                         </span>
@@ -4297,7 +6454,7 @@ const AtlasAnalysisUI = {
                             <strong>
                                 ${this.percent(
                                     budget
-                                        .averageUsedPercent
+                                        ?.averageUsedPercent
                                 )}
                             </strong>
                         </span>
@@ -4312,10 +6469,20 @@ const AtlasAnalysisUI = {
 
     },
 
-    categoryEvolutionPanel(trend) {
+    categoryEvolutionPanel(
+        trend,
+        selectedCategory
+    ) {
+
+        const categories =
+            Array.isArray(
+                trend?.categories
+            )
+                ? trend.categories
+                : [];
 
         if (
-            trend.categories.length ===
+            categories.length ===
             0
         ) {
 
@@ -4323,37 +6490,44 @@ const AtlasAnalysisUI = {
 
         }
 
-        const selectedKey =
-            this.state
-                .selectedCategory ||
-            trend.categories[0].key;
-
         const selected =
-            trend.categories.find(
+            categories.find(
                 category =>
                     category.key ===
-                    selectedKey
+                    selectedCategory
             ) ||
-            trend.categories[0];
+            categories[0];
 
-        this.state.selectedCategory =
-            selected.key;
+        const monthly =
+            Array.isArray(
+                selected.monthly
+            )
+                ? selected.monthly
+                : [];
 
         const maximum =
             Math.max(
                 1,
-                ...selected.monthly.map(
+                ...monthly.map(
                     month =>
                         Math.max(
                             0,
-                            month.amount
+                            this.number(
+                                month.amount
+                            )
                         )
                 )
             );
 
         return `
 
-            <details class="panel atlas-analysis-panel atlas-analysis-details">
+            <details
+                class="panel atlas-analysis-panel atlas-analysis-details"
+                data-analysis-panel="global-categories"
+                ${this.openAttribute(
+                    "global-categories"
+                )}
+            >
 
                 <summary>
 
@@ -4364,7 +6538,7 @@ const AtlasAnalysisUI = {
                         </strong>
 
                         <small>
-                            Tendencia de una categoría concreta
+                            Cambios del gasto durante el periodo
                         </small>
 
                     </div>
@@ -4383,9 +6557,9 @@ const AtlasAnalysisUI = {
                             Categoría
                         </span>
 
-                        <select id="atlas-analysis-category">
+                        <select data-analysis-category>
 
-                            ${trend.categories.map(
+                            ${categories.map(
                                 category => `
 
                                     <option
@@ -4414,9 +6588,15 @@ const AtlasAnalysisUI = {
 
                     </label>
 
-                    <div class="atlas-analysis-category-trend">
+                    <div
+                        class="atlas-analysis-bar-chart"
+                        style="
+                            --atlas-columns:
+                                ${monthly.length};
+                        "
+                    >
 
-                        ${selected.monthly.map(
+                        ${monthly.map(
                             month => `
 
                                 <div>
@@ -4435,12 +6615,13 @@ const AtlasAnalysisUI = {
                                                     (
                                                         Math.max(
                                                             0,
-                                                            month
-                                                                .amount
+                                                            this.number(
+                                                                month.amount
+                                                            )
                                                         ) /
                                                         maximum
                                                     ) *
-                                                    110
+                                                    100
                                                 )}px;
                                         "
                                     ></i>
@@ -4503,22 +6684,31 @@ const AtlasAnalysisUI = {
 
     },
 
-    investmentDebtPanel(trend) {
+    investmentPanel(trend) {
+
+        const investment =
+            trend?.investment || {};
 
         return `
 
-            <details class="panel atlas-analysis-panel atlas-analysis-details">
+            <details
+                class="panel atlas-analysis-panel atlas-analysis-details"
+                data-analysis-panel="global-investment"
+                ${this.openAttribute(
+                    "global-investment"
+                )}
+            >
 
                 <summary>
 
                     <div>
 
                         <strong>
-                            Inversión y deuda
+                            Evolución de la inversión
                         </strong>
 
                         <small>
-                            Regularidad de aportaciones y pagos
+                            Aportaciones, peso y regularidad
                         </small>
 
                     </div>
@@ -4531,169 +6721,186 @@ const AtlasAnalysisUI = {
 
                 <div class="atlas-analysis-details-content">
 
-                    <div class="atlas-analysis-dual-summary">
+                    <div class="atlas-analysis-summary-list">
 
-                        <section>
+                        <div>
 
-                            <h3>
-                                Inversión
-                            </h3>
+                            <span>
+                                Total aportado
+                            </span>
 
-                            <div class="atlas-analysis-summary-list">
+                            <strong>
+                                ${this.currency(
+                                    investment.total
+                                )}
+                            </strong>
 
-                                <div>
+                        </div>
 
-                                    <span>
-                                        Total aportado
-                                    </span>
+                        <div>
 
-                                    <strong>
-                                        ${this.currency(
-                                            trend
-                                                .investment
-                                                .total
-                                        )}
-                                    </strong>
+                            <span>
+                                Media mensual
+                            </span>
 
-                                </div>
+                            <strong>
+                                ${this.currency(
+                                    investment.average
+                                )}
+                            </strong>
 
-                                <div>
+                        </div>
 
-                                    <span>
-                                        Media mensual
-                                    </span>
+                        <div>
 
-                                    <strong>
-                                        ${this.currency(
-                                            trend
-                                                .investment
-                                                .average
-                                        )}
-                                    </strong>
+                            <span>
+                                Meses con inversión
+                            </span>
 
-                                </div>
+                            <strong>
+                                ${this.number(
+                                    investment
+                                        .monthsWithInvestment
+                                )}
+                            </strong>
 
-                                <div>
+                        </div>
 
-                                    <span>
-                                        Meses con inversión
-                                    </span>
+                        <div>
 
-                                    <strong>
-                                        ${trend
-                                            .investment
-                                            .monthsWithInvestment}
-                                    </strong>
+                            <span>
+                                Regularidad
+                            </span>
 
-                                </div>
+                            <strong>
+                                ${this.percent(
+                                    investment
+                                        .regularity
+                                )}
+                            </strong>
 
-                                <div>
+                        </div>
 
-                                    <span>
-                                        Regularidad
-                                    </span>
+                        <div>
 
-                                    <strong>
-                                        ${this.percent(
-                                            trend
-                                                .investment
-                                                .regularity
-                                        )}
-                                    </strong>
+                            <span>
+                                Peso sobre ingresos
+                            </span>
 
-                                </div>
+                            <strong>
+                                ${this.percent(
+                                    investment
+                                        .incomeShare
+                                )}
+                            </strong>
 
-                                <div>
+                        </div>
 
-                                    <span>
-                                        Peso sobre ingresos
-                                    </span>
+                    </div>
 
-                                    <strong>
-                                        ${this.percent(
-                                            trend
-                                                .investment
-                                                .incomeShare
-                                        )}
-                                    </strong>
+                </div>
 
-                                </div>
+            </details>
 
-                            </div>
+        `;
 
-                        </section>
+    },
 
-                        <section>
+    debtPanel(trend) {
 
-                            <h3>
-                                Deuda
-                            </h3>
+        const debt =
+            trend?.debt || {};
 
-                            <div class="atlas-analysis-summary-list">
+        return `
 
-                                <div>
+            <details
+                class="panel atlas-analysis-panel atlas-analysis-details"
+                data-analysis-panel="global-debt"
+                ${this.openAttribute(
+                    "global-debt"
+                )}
+            >
 
-                                    <span>
-                                        Total pagado
-                                    </span>
+                <summary>
 
-                                    <strong>
-                                        ${this.currency(
-                                            trend.debt.total
-                                        )}
-                                    </strong>
+                    <div>
 
-                                </div>
+                        <strong>
+                            Evolución de la deuda
+                        </strong>
 
-                                <div>
+                        <small>
+                            Pagos realizados y deuda pendiente
+                        </small>
 
-                                    <span>
-                                        Media mensual
-                                    </span>
+                    </div>
 
-                                    <strong>
-                                        ${this.currency(
-                                            trend
-                                                .debt
-                                                .average
-                                        )}
-                                    </strong>
+                    <span>
+                        +
+                    </span>
 
-                                </div>
+                </summary>
 
-                                <div>
+                <div class="atlas-analysis-details-content">
 
-                                    <span>
-                                        Meses con pagos
-                                    </span>
+                    <div class="atlas-analysis-summary-list">
 
-                                    <strong>
-                                        ${trend
-                                            .debt
-                                            .monthsWithPayments}
-                                    </strong>
+                        <div>
 
-                                </div>
+                            <span>
+                                Total pagado
+                            </span>
 
-                                <div>
+                            <strong>
+                                ${this.currency(
+                                    debt.total
+                                )}
+                            </strong>
 
-                                    <span>
-                                        Deuda actual
-                                    </span>
+                        </div>
 
-                                    <strong>
-                                        ${this.currency(
-                                            trend
-                                                .debt
-                                                .currentDebt
-                                        )}
-                                    </strong>
+                        <div>
 
-                                </div>
+                            <span>
+                                Media mensual
+                            </span>
 
-                            </div>
+                            <strong>
+                                ${this.currency(
+                                    debt.average
+                                )}
+                            </strong>
 
-                        </section>
+                        </div>
+
+                        <div>
+
+                            <span>
+                                Meses con pagos
+                            </span>
+
+                            <strong>
+                                ${this.number(
+                                    debt
+                                        .monthsWithPayments
+                                )}
+                            </strong>
+
+                        </div>
+
+                        <div>
+
+                            <span>
+                                Deuda actual
+                            </span>
+
+                            <strong>
+                                ${this.currency(
+                                    debt.currentDebt
+                                )}
+                            </strong>
+
+                        </div>
 
                     </div>
 
@@ -4707,10 +6914,15 @@ const AtlasAnalysisUI = {
 
     consistencyPanel(consistency) {
 
-        const total =
+        const months =
+            this.number(
+                consistency?.months
+            );
+
+        const denominator =
             Math.max(
                 1,
-                consistency.months
+                months
             );
 
         const indicators = [
@@ -4718,40 +6930,58 @@ const AtlasAnalysisUI = {
             {
                 label:
                     "Ahorro positivo",
+
                 value:
-                    consistency
-                        .positiveSavings
+                    this.number(
+                        consistency
+                            ?.positiveSavings
+                    )
             },
 
             {
                 label:
                     "Dentro del presupuesto",
+
                 value:
-                    consistency
-                        .withinBudget
+                    this.number(
+                        consistency
+                            ?.withinBudget
+                    )
             },
 
             {
                 label:
                     "Con inversión",
+
                 value:
-                    consistency
-                        .withInvestment
+                    this.number(
+                        consistency
+                            ?.withInvestment
+                    )
             },
 
             {
                 label:
                     "Objetivo de ahorro",
+
                 value:
-                    consistency
-                        .savingTargetMet
+                    this.number(
+                        consistency
+                            ?.savingTargetMet
+                    )
             }
 
         ];
 
         return `
 
-            <details class="panel atlas-analysis-panel atlas-analysis-details">
+            <details
+                class="panel atlas-analysis-panel atlas-analysis-details"
+                data-analysis-panel="global-consistency"
+                ${this.openAttribute(
+                    "global-consistency"
+                )}
+            >
 
                 <summary>
 
@@ -4783,7 +7013,7 @@ const AtlasAnalysisUI = {
                                 const percentage =
                                     (
                                         indicator.value /
-                                        total
+                                        denominator
                                     ) * 100;
 
                                 return `
@@ -4799,7 +7029,7 @@ const AtlasAnalysisUI = {
                                             <strong>
                                                 ${indicator.value}
                                                 /
-                                                ${consistency.months}
+                                                ${months}
                                             </strong>
 
                                         </div>
@@ -4809,9 +7039,9 @@ const AtlasAnalysisUI = {
                                             <b
                                                 style="
                                                     width:
-                                                        ${
+                                                        ${this.clamp(
                                                             percentage
-                                                        }%;
+                                                        )}%;
                                                 "
                                             ></b>
 
@@ -4833,7 +7063,7 @@ const AtlasAnalysisUI = {
                             <strong>
                                 ${this.percent(
                                     consistency
-                                        .expenseVolatility
+                                        ?.expenseVolatility
                                 )}
                             </strong>
                         </span>
@@ -4843,7 +7073,7 @@ const AtlasAnalysisUI = {
                             <strong>
                                 ${this.percent(
                                     consistency
-                                        .savingsVolatility
+                                        ?.savingsVolatility
                                 )}
                             </strong>
                         </span>
@@ -4865,9 +7095,11 @@ const AtlasAnalysisUI = {
             {
                 label:
                     "Mayor ahorro",
+
                 month:
                     trend
-                        .bestSavingsMonth,
+                        ?.bestSavingsMonth,
+
                 property:
                     "savings"
             },
@@ -4875,9 +7107,11 @@ const AtlasAnalysisUI = {
             {
                 label:
                     "Peor ahorro",
+
                 month:
                     trend
-                        .worstSavingsMonth,
+                        ?.worstSavingsMonth,
+
                 property:
                     "savings"
             },
@@ -4885,9 +7119,11 @@ const AtlasAnalysisUI = {
             {
                 label:
                     "Menor gasto",
+
                 month:
                     trend
-                        .lowestExpenseMonth,
+                        ?.lowestExpenseMonth,
+
                 property:
                     "expenses"
             },
@@ -4895,9 +7131,11 @@ const AtlasAnalysisUI = {
             {
                 label:
                     "Mayor inversión",
+
                 month:
                     trend
-                        .highestInvestmentMonth,
+                        ?.highestInvestmentMonth,
+
                 property:
                     "invested"
             },
@@ -4905,11 +7143,14 @@ const AtlasAnalysisUI = {
             {
                 label:
                     "Mejor tasa de ahorro",
+
                 month:
                     trend
-                        .bestSavingRateMonth,
+                        ?.bestSavingRateMonth,
+
                 property:
                     "savingRate",
+
                 percent:
                     true
             },
@@ -4917,9 +7158,11 @@ const AtlasAnalysisUI = {
             {
                 label:
                     "Mayor salida de caja",
+
                 month:
                     trend
-                        .highestCashOutflowMonth,
+                        ?.highestCashOutflowMonth,
+
                 property:
                     "cashOutflow"
             }
@@ -4928,7 +7171,13 @@ const AtlasAnalysisUI = {
 
         return `
 
-            <details class="panel atlas-analysis-panel atlas-analysis-details">
+            <details
+                class="panel atlas-analysis-panel atlas-analysis-details"
+                data-analysis-panel="global-highlights"
+                ${this.openAttribute(
+                    "global-highlights"
+                )}
+            >
 
                 <summary>
 
@@ -4952,7 +7201,7 @@ const AtlasAnalysisUI = {
 
                 <div class="atlas-analysis-details-content">
 
-                    <div class="atlas-analysis-highlights">
+                    <div class="atlas-analysis-card-grid">
 
                         ${items.map(
                             item => `
@@ -5012,134 +7261,27 @@ const AtlasAnalysisUI = {
 
     },
 
-    accumulatedPanel(trend) {
-
-        const totals =
-            trend.totals;
-
-        return `
-
-            <section class="panel atlas-analysis-panel">
-
-                ${this.panelHeader(
-                    "Resumen acumulado",
-                    "Totales del periodo seleccionado"
-                )}
-
-                <div class="atlas-analysis-accumulated">
-
-                    <div>
-
-                        <small>
-                            Ingresos
-                        </small>
-
-                        <strong>
-                            ${this.currency(
-                                totals.income
-                            )}
-                        </strong>
-
-                    </div>
-
-                    <div>
-
-                        <small>
-                            Gasto neto
-                        </small>
-
-                        <strong>
-                            ${this.currency(
-                                totals.expenses
-                            )}
-                        </strong>
-
-                    </div>
-
-                    <div>
-
-                        <small>
-                            Reembolsos
-                        </small>
-
-                        <strong>
-                            ${this.currency(
-                                totals.reimbursements
-                            )}
-                        </strong>
-
-                    </div>
-
-                    <div>
-
-                        <small>
-                            Invertido
-                        </small>
-
-                        <strong>
-                            ${this.currency(
-                                totals.invested
-                            )}
-                        </strong>
-
-                    </div>
-
-                    <div>
-
-                        <small>
-                            Ahorro
-                        </small>
-
-                        <strong
-                            style="
-                                color:
-                                    ${this.statusColor(
-                                        totals.savings,
-                                        true
-                                    )};
-                            "
-                        >
-                            ${this.currency(
-                                totals.savings
-                            )}
-                        </strong>
-
-                    </div>
-
-                    <div>
-
-                        <small>
-                            Deuda pagada
-                        </small>
-
-                        <strong>
-                            ${this.currency(
-                                totals.debtPayments
-                            )}
-                        </strong>
-
-                    </div>
-
-                </div>
-
-            </section>
-
-        `;
-
-    },
-
     trendsView(
         data,
         options
     ) {
 
-        const optionPeriod =
-            options.trendsPeriod;
-
         const period =
-            this.state.trendsPeriod ||
-            optionPeriod ||
+            options.trendsPeriod ||
             6;
+
+        const primaryMetric =
+            options.trendMetric ||
+            "savings";
+
+        const comparisonMetric =
+            options
+                .trendComparisonMetric ||
+            "none";
+
+        const displayMode =
+            options.trendDisplayMode ||
+            "monthly";
 
         const endMonth =
             options.analysisMonth ||
@@ -5155,58 +7297,97 @@ const AtlasAnalysisUI = {
                     endMonth
                 );
 
-        const definitions =
-            this.metricDefinitions();
+        const months =
+            Array.isArray(
+                trend?.months
+            )
+                ? trend.months
+                : [];
 
-        const definition =
-            definitions[
-                this.state
-                    .trendMetric
-            ] ||
-            definitions.savings;
+        const primaryDefinition =
+            this.metricDefinition(
+                primaryMetric
+            );
 
-        const comparisonDefinition =
-            this.state
-                .comparisonMetric ===
-            "none"
+        const secondaryDefinition =
+            comparisonMetric ===
+                "none" ||
+            comparisonMetric ===
+                primaryMetric
                 ? null
-                : definitions[
-                    this.state
-                        .comparisonMetric
-                ] ||
-                null;
+                : this.metricDefinition(
+                    comparisonMetric
+                );
 
-        const statistics =
-            trend.statistics[
-                definition.property
-            ];
+        const comparisonPeriods =
+            this.comparisonPeriods(
+                data,
+                months,
+                period
+            );
+
+        const selectedCategory =
+            options.trendCategory ||
+            trend
+                ?.categories
+                ?.[0]
+                ?.key ||
+            "";
 
         return `
 
             ${this.trendsControls(
-                period
+                period,
+                primaryMetric,
+                comparisonMetric,
+                displayMode
             )}
 
-            ${this.trendsSummary(
-                trend,
-                definition,
-                statistics
+            ${this.periodSummaryPanel(
+                months,
+                comparisonPeriods
+            )}
+
+            ${this.sectionHeading(
+                "VARIABLE SELECCIONADA",
+                primaryDefinition.label,
+                "Lectura detallada de la variable principal"
+            )}
+
+            ${this.variableSummaryPanel(
+                months,
+                primaryDefinition,
+                displayMode
             )}
 
             ${this.historicalPanel(
-                trend,
-                definition,
-                comparisonDefinition,
-                statistics
+                months,
+                primaryDefinition,
+                secondaryDefinition,
+                displayMode
             )}
 
             ${this.statisticsPanel(
-                definition,
-                statistics
+                months,
+                primaryDefinition,
+                displayMode
             )}
 
-            ${this.periodComparisonPanel(
-                trend.comparison
+            ${this.variablePeriodComparisonPanel(
+                comparisonPeriods,
+                primaryDefinition
+            )}
+
+            ${this.twoVariablePanel(
+                months,
+                primaryDefinition,
+                secondaryDefinition
+            )}
+
+            ${this.sectionHeading(
+                "VISIÓN GLOBAL DEL PERIODO",
+                "Contexto financiero",
+                "Presupuestos, categorías, inversión, deuda y consistencia"
             )}
 
             ${this.budgetTrendPanel(
@@ -5214,10 +7395,15 @@ const AtlasAnalysisUI = {
             )}
 
             ${this.categoryEvolutionPanel(
+                trend,
+                selectedCategory
+            )}
+
+            ${this.investmentPanel(
                 trend
             )}
 
-            ${this.investmentDebtPanel(
+            ${this.debtPanel(
                 trend
             )}
 
@@ -5226,10 +7412,6 @@ const AtlasAnalysisUI = {
             )}
 
             ${this.bestWorstPanel(
-                trend
-            )}
-
-            ${this.accumulatedPanel(
                 trend
             )}
 
@@ -5251,24 +7433,6 @@ const AtlasAnalysisUI = {
         const activeView =
             options.analysisView ||
             "monthly";
-
-        if (
-            options.trendsPeriod
-        ) {
-
-            this.state.trendsPeriod =
-                options.trendsPeriod;
-
-        }
-
-        if (
-            options.trendMetric
-        ) {
-
-            this.state.trendMetric =
-                options.trendMetric;
-
-        }
 
         return `
 
@@ -5307,219 +7471,6 @@ const AtlasAnalysisUI = {
 
     },
 
-    rerender() {
-
-        const app =
-            document.getElementById(
-                "app"
-            );
-
-        if (
-            !app ||
-            !this.data
-        ) {
-
-            return;
-
-        }
-
-        app.innerHTML =
-            this.render(
-                this.data,
-                this.options
-            );
-
-        document
-            .querySelectorAll(
-                ".tabbar button[data-route]"
-            )
-            .forEach(
-                button => {
-
-                    button.classList.toggle(
-                        "active",
-                        button.dataset.route ===
-                            "analysis"
-                    );
-
-                }
-            );
-
-        AtlasUI.bindDynamicControls();
-
-        this.bindControls();
-
-    },
-
-    bindControls() {
-
-        document
-            .querySelectorAll(
-                "[data-analysis-mode]"
-            )
-            .forEach(
-                button => {
-
-                    button.addEventListener(
-                        "click",
-                        () => {
-
-                            this.state
-                                .monthlyMode =
-                                button.dataset
-                                    .analysisMode;
-
-                            this.rerender();
-
-                        }
-                    );
-
-                }
-            );
-
-        document
-            .querySelectorAll(
-                "[data-distribution-level]"
-            )
-            .forEach(
-                button => {
-
-                    button.addEventListener(
-                        "click",
-                        () => {
-
-                            this.state
-                                .distributionLevel =
-                                button.dataset
-                                    .distributionLevel;
-
-                            this.rerender();
-
-                        }
-                    );
-
-                }
-            );
-
-        document
-            .querySelectorAll(
-                "[data-trends-period]"
-            )
-            .forEach(
-                button => {
-
-                    button.addEventListener(
-                        "click",
-                        () => {
-
-                            const value =
-                                button.dataset
-                                    .trendsPeriod;
-
-                            this.state
-                                .trendsPeriod =
-                                value ===
-                                "all"
-                                    ? "all"
-                                    : Number(
-                                        value
-                                    );
-
-                            this.rerender();
-
-                        }
-                    );
-
-                }
-            );
-
-        const primaryMetric =
-            document.getElementById(
-                "atlas-analysis-primary-metric"
-            );
-
-        if (primaryMetric) {
-
-            primaryMetric
-                .addEventListener(
-                    "change",
-                    event => {
-
-                        this.state
-                            .trendMetric =
-                            event.target
-                                .value;
-
-                        if (
-                            this.state
-                                .comparisonMetric ===
-                            this.state
-                                .trendMetric
-                        ) {
-
-                            this.state
-                                .comparisonMetric =
-                                "none";
-
-                        }
-
-                        this.rerender();
-
-                    }
-                );
-
-        }
-
-        const comparisonMetric =
-            document.getElementById(
-                "atlas-analysis-comparison-metric"
-            );
-
-        if (comparisonMetric) {
-
-            comparisonMetric
-                .addEventListener(
-                    "change",
-                    event => {
-
-                        this.state
-                            .comparisonMetric =
-                            event.target
-                                .value;
-
-                        this.rerender();
-
-                    }
-                );
-
-        }
-
-        const categorySelector =
-            document.getElementById(
-                "atlas-analysis-category"
-            );
-
-        if (categorySelector) {
-
-            categorySelector
-                .addEventListener(
-                    "change",
-                    event => {
-
-                        this.state
-                            .selectedCategory =
-                            event.target
-                                .value;
-
-                        this.rerender();
-
-                    }
-                );
-
-        }
-
-    },
-
     installStyles() {
 
         const previous =
@@ -5554,7 +7505,7 @@ const AtlasAnalysisUI = {
                 --atlas-chart-8: #d993e8;
                 padding-bottom:
                     calc(
-                        110px +
+                        116px +
                         env(
                             safe-area-inset-bottom
                         )
@@ -5564,7 +7515,8 @@ const AtlasAnalysisUI = {
             .atlas-analysis-tabs,
             .atlas-analysis-mode,
             .atlas-analysis-period,
-            .atlas-analysis-mini-tabs {
+            .atlas-analysis-mini-tabs,
+            .atlas-analysis-view-selector {
                 display: grid;
                 gap: 6px;
                 padding: 5px;
@@ -5586,15 +7538,7 @@ const AtlasAnalysisUI = {
                     );
             }
 
-            .atlas-analysis-tabs {
-                grid-template-columns:
-                    repeat(
-                        2,
-                        minmax(0, 1fr)
-                    );
-                margin-bottom: 16px;
-            }
-
+            .atlas-analysis-tabs,
             .atlas-analysis-mode {
                 grid-template-columns:
                     repeat(
@@ -5610,7 +7554,15 @@ const AtlasAnalysisUI = {
                         4,
                         minmax(0, 1fr)
                     );
-                margin-bottom: 12px;
+                margin-bottom: 14px;
+            }
+
+            .atlas-analysis-view-selector {
+                grid-template-columns:
+                    repeat(
+                        3,
+                        minmax(0, 1fr)
+                    );
             }
 
             .atlas-analysis-mini-tabs {
@@ -5626,9 +7578,13 @@ const AtlasAnalysisUI = {
             .atlas-analysis-tabs button,
             .atlas-analysis-mode button,
             .atlas-analysis-period button,
-            .atlas-analysis-mini-tabs button {
+            .atlas-analysis-mini-tabs button,
+            .atlas-analysis-view-selector button {
+                min-width: 0;
                 min-height: 42px;
-                padding: 0 8px;
+                padding:
+                    0
+                    8px;
                 border-radius: 13px;
                 color:
                     var(
@@ -5637,6 +7593,7 @@ const AtlasAnalysisUI = {
                 background: transparent;
                 font-size: 12px;
                 font-weight: 750;
+                line-height: 1.2;
             }
 
             .atlas-analysis-mini-tabs button {
@@ -5647,7 +7604,8 @@ const AtlasAnalysisUI = {
             .atlas-analysis-tabs button.active,
             .atlas-analysis-mode button.active,
             .atlas-analysis-period button.active,
-            .atlas-analysis-mini-tabs button.active {
+            .atlas-analysis-mini-tabs button.active,
+            .atlas-analysis-view-selector button.active {
                 color: #ffffff;
                 border:
                     1px solid
@@ -5672,6 +7630,7 @@ const AtlasAnalysisUI = {
 
             .atlas-analysis-section-title {
                 display: flex;
+                align-items: flex-start;
                 justify-content:
                     space-between;
                 gap: 12px;
@@ -5691,7 +7650,35 @@ const AtlasAnalysisUI = {
                 font-size: 10px;
             }
 
-            .atlas-analysis-grid {
+            .atlas-analysis-section-heading {
+                margin:
+                    25px
+                    3px
+                    13px;
+            }
+
+            .atlas-analysis-section-heading small {
+                color:
+                    var(
+                        --color-primary
+                    );
+                font-size: 9px;
+                font-weight: 850;
+                letter-spacing: 0.12em;
+            }
+
+            .atlas-analysis-section-heading h2 {
+                margin-top: 5px;
+                font-size: 19px;
+            }
+
+            .atlas-analysis-section-heading p {
+                margin-top: 5px;
+                font-size: 10px;
+            }
+
+            .atlas-analysis-grid,
+            .atlas-analysis-variable-summary {
                 display: grid;
                 grid-template-columns:
                     repeat(
@@ -5700,10 +7687,6 @@ const AtlasAnalysisUI = {
                     );
                 gap: 10px;
                 margin-bottom: 14px;
-            }
-
-            .atlas-analysis-grid-compact {
-                margin-bottom: 4px;
             }
 
             .atlas-analysis-metric {
@@ -5739,42 +7722,57 @@ const AtlasAnalysisUI = {
                         --color-text-muted
                     );
                 font-size: 10px;
+                line-height: 1.35;
             }
 
             .atlas-analysis-metric-value {
                 display: block;
                 margin-top: 7px;
-                overflow: hidden;
                 font-size: 19px;
-                line-height: 1.1;
-                text-overflow: ellipsis;
-                white-space: nowrap;
+                line-height: 1.12;
+                overflow-wrap: anywhere;
             }
 
             .atlas-analysis-text-value {
-                font-size: 16px;
+                font-size: 15px;
+            }
+
+            .atlas-analysis-small-text {
+                font-size: 10px !important;
+                line-height: 1.4;
+                overflow-wrap: anywhere;
             }
 
             .atlas-analysis-metric small {
                 display: block;
                 margin-top: 6px;
                 font-size: 9px;
-                line-height: 1.35;
+                line-height: 1.4;
             }
 
             .atlas-analysis-metric-detail {
                 display: block;
-                margin-top: 6px;
+                margin-top: 7px;
                 color:
                     var(
                         --color-text-muted
                     );
                 font-size: 8px;
-                line-height: 1.4;
+                line-height: 1.45;
+                overflow-wrap: anywhere;
             }
 
             .atlas-analysis-panel {
                 margin-bottom: 14px;
+            }
+
+            .atlas-analysis-panel-head {
+                align-items: flex-start;
+            }
+
+            .atlas-analysis-panel-head h2,
+            .atlas-analysis-panel-head p {
+                line-height: 1.4;
             }
 
             .atlas-analysis-panel-right {
@@ -5785,7 +7783,9 @@ const AtlasAnalysisUI = {
                 display: inline-flex;
                 align-items: center;
                 min-height: 27px;
-                padding: 0 9px;
+                padding:
+                    0
+                    9px;
                 border-radius: 99px;
                 color: #ffffff;
                 background:
@@ -5800,7 +7800,9 @@ const AtlasAnalysisUI = {
             }
 
             .atlas-analysis-empty {
-                padding: 24px 10px;
+                padding:
+                    24px
+                    10px;
                 text-align: center;
             }
 
@@ -5811,28 +7813,81 @@ const AtlasAnalysisUI = {
 
             .atlas-analysis-empty p {
                 margin-top: 6px;
+                line-height: 1.5;
+            }
+
+            .atlas-analysis-forecast-legend {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: flex-end;
+                gap:
+                    8px
+                    13px;
+                margin-top: 14px;
+            }
+
+            .atlas-analysis-forecast-legend span {
+                display: inline-flex;
+                align-items: center;
+                gap: 5px;
+                color:
+                    var(
+                        --color-text-muted
+                    );
+                font-size: 8px;
+            }
+
+            .atlas-analysis-forecast-legend span::before {
+                width: 9px;
+                height: 9px;
+                border-radius: 3px;
+                content: "";
+            }
+
+            .atlas-analysis-forecast-legend .real::before {
+                background:
+                    var(
+                        --color-primary
+                    );
+            }
+
+            .atlas-analysis-forecast-legend .pending::before {
+                background:
+                    var(
+                        --atlas-chart-3
+                    );
+            }
+
+            .atlas-analysis-forecast-legend .negative::before {
+                background:
+                    var(
+                        --color-danger
+                    );
             }
 
             .atlas-analysis-forecast-chart {
                 display: grid;
-                gap: 16px;
-                margin-top: 17px;
+                gap: 15px;
+                margin-top: 14px;
             }
 
             .atlas-analysis-forecast-row {
                 display: grid;
                 grid-template-columns:
                     minmax(
-                        85px,
+                        82px,
                         1fr
                     )
                     minmax(
-                        90px,
-                        1.5fr
+                        88px,
+                        1.3fr
                     )
-                    auto;
+                    minmax(
+                        67px,
+                        auto
+                    );
                 align-items: center;
-                gap: 10px;
+                gap: 9px;
             }
 
             .atlas-analysis-forecast-label strong,
@@ -5851,16 +7906,12 @@ const AtlasAnalysisUI = {
                         --color-text-muted
                     );
                 font-size: 8px;
-                line-height: 1.3;
-            }
-
-            .atlas-analysis-forecast-row > strong {
-                font-size: 11px;
+                line-height: 1.35;
             }
 
             .atlas-analysis-forecast-track {
-                position: relative;
-                height: 10px;
+                display: flex;
+                height: 11px;
                 overflow: hidden;
                 border-radius: 99px;
                 background:
@@ -5873,39 +7924,59 @@ const AtlasAnalysisUI = {
             }
 
             .atlas-analysis-forecast-track i {
-                position: absolute;
-                inset:
-                    0
-                    auto
-                    0
-                    0;
                 display: block;
-                border-radius: inherit;
+                flex: 0 0 auto;
+                height: 100%;
             }
 
-            .atlas-analysis-forecast-track
-            .estimated {
-                background:
-                    rgba(
-                        169,
-                        133,
-                        255,
-                        0.38
-                    );
-            }
-
-            .atlas-analysis-forecast-track
-            .real {
-                height: 5px;
-                margin-top: 2.5px;
+            .atlas-analysis-forecast-track .real {
                 background:
                     var(
                         --color-primary
                     );
             }
 
+            .atlas-analysis-forecast-track .pending {
+                background:
+                    var(
+                        --atlas-chart-3
+                    );
+            }
+
+            .atlas-analysis-forecast-track .pending.negative {
+                background:
+                    var(
+                        --color-danger
+                    );
+            }
+
+            .atlas-analysis-forecast-result {
+                min-width: 0;
+                text-align: right;
+            }
+
+            .atlas-analysis-forecast-result small,
+            .atlas-analysis-forecast-result strong {
+                display: block;
+            }
+
+            .atlas-analysis-forecast-result small {
+                color:
+                    var(
+                        --color-text-muted
+                    );
+                font-size: 7px;
+            }
+
+            .atlas-analysis-forecast-result strong {
+                margin-top: 3px;
+                font-size: 11px;
+                overflow-wrap: anywhere;
+            }
+
             .atlas-analysis-budget-summary,
-            .atlas-analysis-accumulated {
+            .atlas-analysis-period-comparison,
+            .atlas-analysis-dual-comparison {
                 display: grid;
                 grid-template-columns:
                     repeat(
@@ -5917,7 +7988,8 @@ const AtlasAnalysisUI = {
             }
 
             .atlas-analysis-budget-summary div,
-            .atlas-analysis-accumulated div {
+            .atlas-analysis-period-comparison article,
+            .atlas-analysis-dual-comparison div {
                 min-width: 0;
                 padding: 11px;
                 border-radius: 14px;
@@ -5932,27 +8004,57 @@ const AtlasAnalysisUI = {
 
             .atlas-analysis-budget-summary small,
             .atlas-analysis-budget-summary strong,
-            .atlas-analysis-accumulated small,
-            .atlas-analysis-accumulated strong {
+            .atlas-analysis-period-comparison small,
+            .atlas-analysis-period-comparison strong,
+            .atlas-analysis-period-comparison span,
+            .atlas-analysis-dual-comparison small,
+            .atlas-analysis-dual-comparison strong {
                 display: block;
             }
 
             .atlas-analysis-budget-summary small,
-            .atlas-analysis-accumulated small {
+            .atlas-analysis-period-comparison small,
+            .atlas-analysis-dual-comparison small {
                 color:
                     var(
                         --color-text-muted
                     );
-                font-size: 9px;
+                font-size: 8px;
+                line-height: 1.35;
             }
 
             .atlas-analysis-budget-summary strong,
-            .atlas-analysis-accumulated strong {
+            .atlas-analysis-period-comparison strong,
+            .atlas-analysis-dual-comparison strong {
                 margin-top: 5px;
-                overflow: hidden;
-                font-size: 14px;
-                text-overflow: ellipsis;
-                white-space: nowrap;
+                font-size: 13px;
+                overflow-wrap: anywhere;
+            }
+
+            .atlas-analysis-period-comparison span {
+                margin-top: 5px;
+                color:
+                    var(
+                        --color-text-muted
+                    );
+                font-size: 8px;
+                line-height: 1.4;
+            }
+
+            .atlas-analysis-period-result {
+                margin-top: 12px;
+                padding: 11px;
+                border-radius: 13px;
+                background:
+                    rgba(
+                        255,
+                        255,
+                        255,
+                        0.03
+                    );
+                font-size: 12px;
+                font-weight: 750;
+                text-align: center;
             }
 
             .atlas-analysis-budget-progress {
@@ -5975,26 +8077,14 @@ const AtlasAnalysisUI = {
                 border-radius: inherit;
             }
 
-            .atlas-analysis-budget-footer {
-                display: flex;
-                align-items: center;
-                justify-content:
-                    space-between;
-                gap: 12px;
-                margin-top: 10px;
-                font-size: 10px;
-                font-weight: 700;
-            }
-
-            .atlas-analysis-link {
-                padding: 0;
+            .atlas-analysis-budget-note {
+                margin-top: 9px;
                 color:
                     var(
-                        --color-primary
+                        --color-text-muted
                     );
-                background: transparent;
-                font-size: 10px;
-                font-weight: 750;
+                font-size: 9px;
+                line-height: 1.4;
             }
 
             .atlas-analysis-alerts {
@@ -6021,23 +8111,40 @@ const AtlasAnalysisUI = {
                 font-size: 10px;
             }
 
+            .atlas-analysis-primary-link {
+                width: 100%;
+                min-height: 43px;
+                margin-top: 14px;
+                border-radius: 14px;
+                color: #ffffff;
+                background:
+                    rgba(
+                        77,
+                        163,
+                        255,
+                        0.18
+                    );
+                font-size: 12px;
+                font-weight: 750;
+            }
+
             .atlas-analysis-distribution {
                 display: grid;
                 grid-template-columns:
-                    128px
+                    124px
                     minmax(
                         0,
                         1fr
                     );
                 align-items: center;
-                gap: 16px;
+                gap: 15px;
                 margin-top: 15px;
             }
 
             .atlas-analysis-donut-wrap {
                 position: relative;
-                width: 128px;
-                height: 128px;
+                width: 124px;
+                height: 124px;
             }
 
             .atlas-analysis-donut {
@@ -6069,7 +8176,9 @@ const AtlasAnalysisUI = {
 
             .atlas-analysis-donut-center strong {
                 margin-top: 4px;
-                font-size: 13px;
+                max-width: 82px;
+                font-size: 12px;
+                overflow-wrap: anywhere;
             }
 
             .atlas-analysis-distribution-list {
@@ -6087,7 +8196,9 @@ const AtlasAnalysisUI = {
                     auto;
                 align-items: center;
                 gap: 8px;
-                padding: 7px 0;
+                padding:
+                    7px
+                    0;
                 border-bottom:
                     1px solid
                     rgba(
@@ -6115,9 +8226,7 @@ const AtlasAnalysisUI = {
             .atlas-analysis-distribution-row div strong,
             .atlas-analysis-distribution-row div small {
                 display: block;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
+                overflow-wrap: anywhere;
             }
 
             .atlas-analysis-distribution-row div strong {
@@ -6131,10 +8240,12 @@ const AtlasAnalysisUI = {
                         --color-text-muted
                     );
                 font-size: 7px;
+                line-height: 1.35;
             }
 
             .atlas-analysis-distribution-row > strong {
                 font-size: 10px;
+                text-align: right;
             }
 
             .atlas-analysis-inline-facts {
@@ -6171,18 +8282,18 @@ const AtlasAnalysisUI = {
             .atlas-analysis-inline-facts strong {
                 display: block;
                 margin-top: 4px;
-                overflow: hidden;
                 color:
                     var(
                         --color-text
                     );
                 font-size: 10px;
-                text-overflow: ellipsis;
+                line-height: 1.35;
+                overflow-wrap: anywhere;
             }
 
             .atlas-analysis-flow {
                 display: flex;
-                min-height: 84px;
+                min-height: 80px;
                 margin-top: 16px;
                 overflow: hidden;
                 border-radius: 16px;
@@ -6190,25 +8301,27 @@ const AtlasAnalysisUI = {
 
             .atlas-analysis-flow div {
                 display: flex;
-                min-width: 50px;
+                min-width: 38px;
                 flex-direction: column;
                 align-items: center;
                 justify-content: center;
-                padding: 9px 5px;
+                padding:
+                    8px
+                    4px;
                 text-align: center;
             }
 
             .atlas-analysis-flow strong {
-                font-size: 12px;
+                font-size: 11px;
             }
 
             .atlas-analysis-flow small {
                 margin-top: 5px;
-                font-size: 8px;
+                font-size: 7px;
+                line-height: 1.2;
             }
 
-            .atlas-analysis-flow
-            .expense {
+            .atlas-analysis-flow .expense {
                 background:
                     rgba(
                         255,
@@ -6218,8 +8331,7 @@ const AtlasAnalysisUI = {
                     );
             }
 
-            .atlas-analysis-flow
-            .investment {
+            .atlas-analysis-flow .investment {
                 background:
                     rgba(
                         77,
@@ -6229,8 +8341,7 @@ const AtlasAnalysisUI = {
                     );
             }
 
-            .atlas-analysis-flow
-            .debt {
+            .atlas-analysis-flow .debt {
                 background:
                     rgba(
                         244,
@@ -6240,8 +8351,7 @@ const AtlasAnalysisUI = {
                     );
             }
 
-            .atlas-analysis-flow
-            .saving {
+            .atlas-analysis-flow .saving {
                 background:
                     rgba(
                         95,
@@ -6251,14 +8361,24 @@ const AtlasAnalysisUI = {
                     );
             }
 
+            .atlas-analysis-flow .deficit {
+                background:
+                    rgba(
+                        255,
+                        113,
+                        137,
+                        0.52
+                    );
+            }
+
             .atlas-analysis-flow-values {
                 display: grid;
                 grid-template-columns:
                     repeat(
-                        4,
+                        5,
                         minmax(0, 1fr)
                     );
-                gap: 6px;
+                gap: 5px;
                 margin-top: 11px;
             }
 
@@ -6268,19 +8388,19 @@ const AtlasAnalysisUI = {
                         --color-text-muted
                     );
                 font-size: 7px;
+                line-height: 1.3;
                 text-align: center;
             }
 
             .atlas-analysis-flow-values strong {
                 display: block;
                 margin-top: 3px;
-                overflow: hidden;
                 color:
                     var(
                         --color-text
                     );
-                font-size: 9px;
-                text-overflow: ellipsis;
+                font-size: 8px;
+                overflow-wrap: anywhere;
             }
 
             .atlas-analysis-details {
@@ -6303,6 +8423,10 @@ const AtlasAnalysisUI = {
                 display: none;
             }
 
+            .atlas-analysis-details summary div {
+                min-width: 0;
+            }
+
             .atlas-analysis-details summary div strong,
             .atlas-analysis-details summary div small {
                 display: block;
@@ -6310,6 +8434,7 @@ const AtlasAnalysisUI = {
 
             .atlas-analysis-details summary div strong {
                 font-size: 15px;
+                line-height: 1.3;
             }
 
             .atlas-analysis-details summary div small {
@@ -6319,14 +8444,19 @@ const AtlasAnalysisUI = {
                         --color-text-muted
                     );
                 font-size: 9px;
+                line-height: 1.4;
             }
 
             .atlas-analysis-details summary > span {
+                flex: 0 0 auto;
                 color:
                     var(
                         --color-primary
                     );
                 font-size: 20px;
+                transition:
+                    transform
+                    0.18s ease;
             }
 
             .atlas-analysis-details[open]
@@ -6344,14 +8474,15 @@ const AtlasAnalysisUI = {
                     17px;
             }
 
-            .atlas-analysis-summary-list > div,
-            .atlas-analysis-comparison-list > div {
+            .atlas-analysis-summary-list > div {
                 display: flex;
                 align-items: center;
                 justify-content:
                     space-between;
                 gap: 12px;
-                padding: 12px 0;
+                padding:
+                    12px
+                    0;
                 border-bottom:
                     1px solid
                     rgba(
@@ -6362,13 +8493,11 @@ const AtlasAnalysisUI = {
                     );
             }
 
-            .atlas-analysis-summary-list > div:last-child,
-            .atlas-analysis-comparison-list > div:last-child {
+            .atlas-analysis-summary-list > div:last-child {
                 border-bottom: 0;
             }
 
-            .atlas-analysis-summary-list span,
-            .atlas-analysis-comparison-list span {
+            .atlas-analysis-summary-list span {
                 color:
                     var(
                         --color-text-muted
@@ -6376,9 +8505,10 @@ const AtlasAnalysisUI = {
                 font-size: 10px;
             }
 
-            .atlas-analysis-summary-list strong,
-            .atlas-analysis-comparison-list strong {
+            .atlas-analysis-summary-list strong {
                 font-size: 11px;
+                text-align: right;
+                overflow-wrap: anywhere;
             }
 
             .atlas-analysis-upcoming {
@@ -6400,7 +8530,9 @@ const AtlasAnalysisUI = {
                     )
                     auto;
                 gap: 8px;
-                padding: 10px 0;
+                padding:
+                    10px
+                    0;
                 border-bottom:
                     1px solid
                     rgba(
@@ -6413,30 +8545,10 @@ const AtlasAnalysisUI = {
             }
 
             .atlas-analysis-upcoming > div strong {
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
+                overflow-wrap: anywhere;
             }
 
-            .atlas-analysis-primary-link {
-                width: 100%;
-                min-height: 43px;
-                margin-top: 14px;
-                border-radius: 14px;
-                color: #ffffff;
-                background:
-                    rgba(
-                        77,
-                        163,
-                        255,
-                        0.18
-                    );
-                font-weight: 750;
-            }
-
-            .atlas-analysis-activity-grid,
-            .atlas-analysis-statistics,
-            .atlas-analysis-highlights {
+            .atlas-analysis-card-grid {
                 display: grid;
                 grid-template-columns:
                     repeat(
@@ -6446,9 +8558,7 @@ const AtlasAnalysisUI = {
                 gap: 9px;
             }
 
-            .atlas-analysis-activity-grid div,
-            .atlas-analysis-statistics div,
-            .atlas-analysis-highlights div {
+            .atlas-analysis-card-grid div {
                 min-width: 0;
                 padding: 11px;
                 border-radius: 14px;
@@ -6461,100 +8571,103 @@ const AtlasAnalysisUI = {
                     );
             }
 
-            .atlas-analysis-activity-grid small,
-            .atlas-analysis-activity-grid strong,
-            .atlas-analysis-activity-grid span,
-            .atlas-analysis-statistics small,
-            .atlas-analysis-statistics strong,
-            .atlas-analysis-statistics span,
-            .atlas-analysis-highlights small,
-            .atlas-analysis-highlights strong,
-            .atlas-analysis-highlights span {
+            .atlas-analysis-card-grid small,
+            .atlas-analysis-card-grid strong,
+            .atlas-analysis-card-grid span {
                 display: block;
             }
 
-            .atlas-analysis-activity-grid small,
-            .atlas-analysis-statistics small,
-            .atlas-analysis-highlights small {
+            .atlas-analysis-card-grid small {
                 color:
                     var(
                         --color-text-muted
                     );
                 font-size: 8px;
+                line-height: 1.35;
             }
 
-            .atlas-analysis-activity-grid strong,
-            .atlas-analysis-statistics strong,
-            .atlas-analysis-highlights strong {
+            .atlas-analysis-card-grid strong {
                 margin-top: 5px;
-                overflow: hidden;
                 font-size: 12px;
-                text-overflow: ellipsis;
-                white-space: nowrap;
+                overflow-wrap: anywhere;
             }
 
-            .atlas-analysis-activity-grid span,
-            .atlas-analysis-statistics span,
-            .atlas-analysis-highlights span {
+            .atlas-analysis-card-grid span {
                 margin-top: 4px;
-                overflow: hidden;
                 color:
                     var(
                         --color-text-muted
                     );
                 font-size: 8px;
-                text-overflow: ellipsis;
-                white-space: nowrap;
+                line-height: 1.4;
+                overflow-wrap: anywhere;
             }
 
-            .atlas-analysis-daily-chart {
+            .atlas-analysis-daily-chart,
+            .atlas-analysis-bar-chart {
                 display: grid;
                 grid-template-columns:
                     repeat(
-                        31,
+                        var(
+                            --atlas-columns,
+                            6
+                        ),
                         minmax(
-                            7px,
+                            40px,
                             1fr
                         )
                     );
                 align-items: end;
-                gap: 3px;
-                min-height: 145px;
+                gap: 7px;
+                min-height: 128px;
                 overflow-x: auto;
+                -webkit-overflow-scrolling:
+                    touch;
             }
 
-            .atlas-analysis-daily-chart > div {
+            .atlas-analysis-daily-chart > div,
+            .atlas-analysis-bar-chart > div {
                 display: flex;
-                min-width: 7px;
+                min-width: 40px;
                 flex-direction: column;
                 align-items: center;
                 justify-content: flex-end;
-                gap: 5px;
+                gap: 6px;
             }
 
-            .atlas-analysis-daily-chart i {
+            .atlas-analysis-daily-chart i,
+            .atlas-analysis-bar-chart i {
                 display: block;
-                width: 100%;
-                min-width: 5px;
-                max-width: 10px;
+                width: 24px;
                 border-radius:
-                    5px
-                    5px
-                    2px
-                    2px;
+                    7px
+                    7px
+                    3px
+                    3px;
                 background:
                     var(
                         --color-primary
                     );
             }
 
-            .atlas-analysis-daily-chart small {
-                min-height: 10px;
+            .atlas-analysis-daily-chart i {
+                width: 8px;
+            }
+
+            .atlas-analysis-daily-chart strong,
+            .atlas-analysis-bar-chart strong {
+                font-size: 8px;
+                white-space: nowrap;
+            }
+
+            .atlas-analysis-daily-chart small,
+            .atlas-analysis-bar-chart small {
                 color:
                     var(
                         --color-text-muted
                     );
-                font-size: 7px;
+                font-size: 8px;
+                white-space: nowrap;
             }
 
             .atlas-analysis-insights {
@@ -6614,24 +8727,21 @@ const AtlasAnalysisUI = {
                         --color-text-muted
                     );
                 font-size: 9px;
-                line-height: 1.45;
+                line-height: 1.5;
             }
 
-            .atlas-analysis-insights
-            .good > span {
+            .atlas-analysis-insights .good > span {
                 color:
                     var(
                         --color-success
                     );
             }
 
-            .atlas-analysis-insights
-            .warning > span {
+            .atlas-analysis-insights .warning > span {
                 color: #f4b95e;
             }
 
-            .atlas-analysis-insights
-            .bad > span {
+            .atlas-analysis-insights .bad > span {
                 color:
                     var(
                         --color-danger
@@ -6639,7 +8749,42 @@ const AtlasAnalysisUI = {
             }
 
             .atlas-analysis-controls {
-                margin-bottom: 14px;
+                margin-bottom: 15px;
+                padding: 14px;
+                border:
+                    1px solid
+                    rgba(
+                        145,
+                        164,
+                        202,
+                        0.14
+                    );
+                border-radius: 19px;
+                background:
+                    rgba(
+                        255,
+                        255,
+                        255,
+                        0.025
+                    );
+            }
+
+            .atlas-analysis-control-label {
+                display: block;
+                margin:
+                    1px
+                    3px
+                    7px;
+                color:
+                    var(
+                        --color-text-muted
+                    );
+                font-size: 9px;
+                font-weight: 750;
+            }
+
+            .atlas-analysis-control-label-spaced {
+                margin-top: 14px;
             }
 
             .atlas-analysis-selectors {
@@ -6675,7 +8820,9 @@ const AtlasAnalysisUI = {
             .atlas-analysis-selector select {
                 width: 100%;
                 min-height: 47px;
-                padding: 0 12px;
+                padding:
+                    0
+                    12px;
                 border:
                     1px solid
                     rgba(
@@ -6691,75 +8838,158 @@ const AtlasAnalysisUI = {
                 font-size: 13px;
             }
 
+            .atlas-analysis-period-summary {
+                display: grid;
+                grid-template-columns:
+                    repeat(
+                        2,
+                        minmax(0, 1fr)
+                    );
+                gap: 9px;
+                margin-top: 14px;
+            }
+
+            .atlas-analysis-period-summary article {
+                min-width: 0;
+                padding: 12px;
+                border-radius: 15px;
+                background:
+                    rgba(
+                        255,
+                        255,
+                        255,
+                        0.03
+                    );
+            }
+
+            .atlas-analysis-period-summary small,
+            .atlas-analysis-period-summary strong,
+            .atlas-analysis-period-summary span {
+                display: block;
+            }
+
+            .atlas-analysis-period-summary small {
+                color:
+                    var(
+                        --color-text-muted
+                    );
+                font-size: 8px;
+                line-height: 1.35;
+            }
+
+            .atlas-analysis-period-summary strong {
+                margin-top: 6px;
+                font-size: 15px;
+                line-height: 1.2;
+                overflow-wrap: anywhere;
+            }
+
+            .atlas-analysis-period-summary span {
+                margin-top: 5px;
+                color:
+                    var(
+                        --color-text-muted
+                    );
+                font-size: 8px;
+                line-height: 1.35;
+            }
+
             .atlas-analysis-legend {
                 display: flex;
                 flex-wrap: wrap;
-                justify-content: flex-end;
-                gap: 7px;
-                max-width: 150px;
+                gap:
+                    8px
+                    13px;
+                margin-top: 13px;
             }
 
             .atlas-analysis-legend span {
                 display: inline-flex;
                 align-items: center;
-                gap: 4px;
+                gap: 5px;
                 color:
                     var(
                         --color-text-muted
                     );
-                font-size: 7px;
+                font-size: 8px;
             }
 
             .atlas-analysis-legend span::before {
-                width: 7px;
-                height: 7px;
+                width: 8px;
+                height: 8px;
                 border-radius: 50%;
                 content: "";
             }
 
-            .atlas-analysis-legend
-            .primary::before {
+            .atlas-analysis-legend .primary::before {
                 background:
                     var(
                         --color-primary
                     );
             }
 
-            .atlas-analysis-legend
-            .secondary::before {
+            .atlas-analysis-legend .secondary::before {
                 background:
                     var(
                         --atlas-chart-3
                     );
             }
 
-            .atlas-analysis-legend
-            .moving::before {
-                background:
-                    var(
-                        --atlas-chart-2
+            .atlas-analysis-legend .view::before {
+                border:
+                    1px solid
+                    rgba(
+                        255,
+                        255,
+                        255,
+                        0.3
                     );
+                background: transparent;
             }
 
-            .atlas-analysis-line-chart {
-                margin-top: 14px;
+            .atlas-analysis-flat-note {
+                margin-top: 12px;
+                padding:
+                    8px
+                    10px;
+                border-radius: 12px;
+                color:
+                    var(
+                        --color-text-muted
+                    );
+                background:
+                    rgba(
+                        255,
+                        255,
+                        255,
+                        0.03
+                    );
+                font-size: 9px;
+                text-align: center;
+            }
+
+            .atlas-analysis-chart-scroll {
+                max-width: 100%;
+                margin-top: 12px;
                 overflow-x: auto;
+                overflow-y: hidden;
+                -webkit-overflow-scrolling:
+                    touch;
             }
 
-            .atlas-analysis-line-chart svg {
-                width: 100%;
-                min-width: 560px;
-                height: auto;
+            .atlas-analysis-chart-scroll svg {
+                display: block;
+                height: 220px;
+                max-height: 220px;
             }
 
-            .atlas-analysis-line-chart
-            line.zero {
+            .atlas-analysis-chart-scroll line.zero {
                 stroke:
                     rgba(
                         255,
                         255,
                         255,
-                        0.13
+                        0.16
                     );
                 stroke-width: 1;
                 stroke-dasharray:
@@ -6767,47 +8997,30 @@ const AtlasAnalysisUI = {
                     5;
             }
 
-            .atlas-analysis-line-chart
-            polyline {
+            .atlas-analysis-chart-scroll polyline {
                 fill: none;
                 stroke-linecap: round;
                 stroke-linejoin: round;
             }
 
-            .atlas-analysis-line-chart
-            .primary {
+            .atlas-analysis-chart-scroll .primary {
                 stroke:
                     var(
                         --color-primary
                     );
-                stroke-width: 4;
+                stroke-width: 3.5;
             }
 
-            .atlas-analysis-line-chart
-            .secondary {
+            .atlas-analysis-chart-scroll .secondary {
                 stroke:
                     var(
                         --atlas-chart-3
                     );
-                stroke-width: 3;
-                opacity: 0.8;
+                stroke-width: 2.8;
+                opacity: 0.92;
             }
 
-            .atlas-analysis-line-chart
-            .moving {
-                stroke:
-                    var(
-                        --atlas-chart-2
-                    );
-                stroke-width: 2;
-                stroke-dasharray:
-                    7
-                    6;
-                opacity: 0.85;
-            }
-
-            .atlas-analysis-line-chart
-            .point {
+            .atlas-analysis-chart-scroll .point {
                 fill:
                     var(
                         --color-primary
@@ -6816,11 +9029,24 @@ const AtlasAnalysisUI = {
                 stroke-width: 2;
             }
 
+            .atlas-analysis-chart-scroll .secondary-point {
+                fill:
+                    var(
+                        --atlas-chart-3
+                    );
+                stroke: #19243a;
+                stroke-width: 2;
+            }
+
             .atlas-analysis-chart-labels {
                 display: grid;
-                min-width: 560px;
-                gap: 3px;
-                margin-top: 3px;
+                gap: 0;
+                margin-top: 4px;
+                padding:
+                    0
+                    26px;
+                box-sizing:
+                    border-box;
             }
 
             .atlas-analysis-chart-labels span {
@@ -6830,85 +9056,7 @@ const AtlasAnalysisUI = {
                     );
                 font-size: 8px;
                 text-align: center;
-            }
-
-            .atlas-analysis-budget-trend,
-            .atlas-analysis-category-trend {
-                display: grid;
-                grid-template-columns:
-                    repeat(
-                        var(
-                            --atlas-history-columns,
-                            6
-                        ),
-                        minmax(
-                            38px,
-                            1fr
-                        )
-                    );
-                align-items: end;
-                gap: 8px;
-                min-height: 170px;
-                overflow-x: auto;
-            }
-
-            .atlas-analysis-budget-trend > div,
-            .atlas-analysis-category-trend > div {
-                display: flex;
-                min-width: 38px;
-                flex-direction: column;
-                align-items: center;
-                justify-content: flex-end;
-                gap: 7px;
-            }
-
-            .atlas-analysis-budget-trend strong,
-            .atlas-analysis-category-trend strong {
-                font-size: 8px;
                 white-space: nowrap;
-            }
-
-            .atlas-analysis-budget-trend i,
-            .atlas-analysis-category-trend i {
-                display: block;
-                width: 25px;
-                border-radius:
-                    7px
-                    7px
-                    3px
-                    3px;
-                background:
-                    var(
-                        --color-primary
-                    );
-            }
-
-            .atlas-analysis-budget-trend small,
-            .atlas-analysis-category-trend small {
-                color:
-                    var(
-                        --color-text-muted
-                    );
-                font-size: 8px;
-            }
-
-            .atlas-analysis-category-trend {
-                margin-top: 15px;
-            }
-
-            .atlas-analysis-dual-summary {
-                display: grid;
-                grid-template-columns:
-                    repeat(
-                        2,
-                        minmax(0, 1fr)
-                    );
-                gap: 14px;
-            }
-
-            .atlas-analysis-dual-summary h3 {
-                margin-bottom: 7px;
-                font-size: 13px;
             }
 
             .atlas-analysis-consistency {
@@ -6916,9 +9064,7 @@ const AtlasAnalysisUI = {
                 gap: 13px;
             }
 
-            .atlas-analysis-consistency
-            > div
-            > div {
+            .atlas-analysis-consistency > div > div {
                 display: flex;
                 align-items: center;
                 justify-content:
@@ -6958,22 +9104,34 @@ const AtlasAnalysisUI = {
 
                 .atlas-analysis-distribution {
                     grid-template-columns:
-                        108px
+                        104px
                         minmax(
                             0,
                             1fr
                         );
-                    gap: 11px;
+                    gap: 10px;
                 }
 
                 .atlas-analysis-donut-wrap {
-                    width: 108px;
-                    height: 108px;
+                    width: 104px;
+                    height: 104px;
                 }
 
-                .atlas-analysis-dual-summary {
+                .atlas-analysis-forecast-row {
                     grid-template-columns:
-                        1fr;
+                        minmax(
+                            76px,
+                            1fr
+                        )
+                        minmax(
+                            70px,
+                            1fr
+                        )
+                        minmax(
+                            60px,
+                            auto
+                        );
+                    gap: 7px;
                 }
 
             }
@@ -6990,6 +9148,7 @@ const AtlasAnalysisUI = {
                         );
                 }
 
+                .atlas-analysis-view-selector,
                 .atlas-analysis-selectors {
                     grid-template-columns:
                         1fr;
@@ -7009,6 +9168,15 @@ const AtlasAnalysisUI = {
                 .atlas-analysis-inline-facts {
                     grid-template-columns:
                         1fr;
+                }
+
+                .atlas-analysis-forecast-row {
+                    grid-template-columns:
+                        1fr;
+                }
+
+                .atlas-analysis-forecast-result {
+                    text-align: left;
                 }
 
             }
@@ -7085,28 +9253,6 @@ const AtlasAnalysisUI = {
                 );
 
             AtlasUI.bindDynamicControls();
-
-            this.bindControls();
-
-            document
-                .querySelectorAll(
-                    ".atlas-analysis-budget-trend, " +
-                    ".atlas-analysis-category-trend"
-                )
-                .forEach(
-                    chart => {
-
-                        chart.style.setProperty(
-                            "--atlas-history-columns",
-                            Math.max(
-                                1,
-                                chart.children
-                                    .length
-                            )
-                        );
-
-                    }
-                );
 
         };
 
