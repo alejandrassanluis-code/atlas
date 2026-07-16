@@ -1,42 +1,76 @@
 /* ==========================================================
    ATLAS
    app.js
-   Atlas v1.0 — Integración de movimientos recurrentes
+   Atlas v1.0 — Estado global, navegación y recurrentes
 ========================================================== */
 
 const AtlasApp = {
 
-    data: null,
+    data:
+        null,
 
-    route: "home",
+    route:
+        "home",
 
-    analysisMonth: null,
+    analysisMonth:
+        null,
 
-    movementsMonth: null,
+    movementsMonth:
+        null,
 
-    budgetMonth: null,
+    budgetMonth:
+        null,
 
-    analysisView: "monthly",
+    analysisView:
+        "monthly",
 
-    trendsPeriod: 6,
+    analysisMode:
+        "real",
 
-    trendMetric: "savings",
+    analysisDistributionLevel:
+        "category",
 
-    movementSearch: "",
+    trendsPeriod:
+        6,
 
-    movementTypeFilter: "all",
+    trendMetric:
+        "savings",
 
-    movementAccountFilter: "all",
+    trendComparisonMetric:
+        "none",
 
-    movementMinimumAmount: "",
+    trendDisplayMode:
+        "monthly",
 
-    movementMaximumAmount: "",
+    trendCategory:
+        "",
 
-    movementDateFrom: "",
+    analysisOpenPanels:
+        new Set(),
 
-    movementDateTo: "",
+    movementSearch:
+        "",
 
-    modalObserver: null,
+    movementTypeFilter:
+        "all",
+
+    movementAccountFilter:
+        "all",
+
+    movementMinimumAmount:
+        "",
+
+    movementMaximumAmount:
+        "",
+
+    movementDateFrom:
+        "",
+
+    movementDateTo:
+        "",
+
+    modalObserver:
+        null,
 
     init() {
 
@@ -55,14 +89,7 @@ const AtlasApp = {
         this.budgetMonth =
             currentMonth;
 
-        this.analysisView =
-            "monthly";
-
-        this.trendsPeriod =
-            6;
-
-        this.trendMetric =
-            "savings";
+        this.resetAnalysisState();
 
         this.resetMovementFiltersState();
 
@@ -102,6 +129,37 @@ const AtlasApp = {
             );
 
         }
+
+    },
+
+    resetAnalysisState() {
+
+        this.analysisView =
+            "monthly";
+
+        this.analysisMode =
+            "real";
+
+        this.analysisDistributionLevel =
+            "category";
+
+        this.trendsPeriod =
+            6;
+
+        this.trendMetric =
+            "savings";
+
+        this.trendComparisonMetric =
+            "none";
+
+        this.trendDisplayMode =
+            "monthly";
+
+        this.trendCategory =
+            "";
+
+        this.analysisOpenPanels =
+            new Set();
 
     },
 
@@ -151,7 +209,10 @@ const AtlasApp = {
         const date =
             new Date(
                 year,
-                month - 1 + difference,
+                month - 1 +
+                    Number(
+                        difference || 0
+                    ),
                 1
             );
 
@@ -214,6 +275,12 @@ const AtlasApp = {
                 created:
                     [],
 
+                updated:
+                    [],
+
+                removed:
+                    [],
+
                 skipped:
                     null
 
@@ -237,6 +304,12 @@ const AtlasApp = {
                 created:
                     [],
 
+                updated:
+                    [],
+
+                removed:
+                    [],
+
                 skipped:
                     null
 
@@ -251,9 +324,28 @@ const AtlasApp = {
                 ? result.created
                 : [];
 
-        if (
-            created.length > 0
-        ) {
+        const updated =
+            Array.isArray(
+                result.updated
+            )
+                ? result.updated
+                : [];
+
+        const removed =
+            Array.isArray(
+                result.removed
+            )
+                ? result.removed
+                : [];
+
+        const changed =
+            result.changed ===
+                true ||
+            created.length > 0 ||
+            updated.length > 0 ||
+            removed.length > 0;
+
+        if (changed) {
 
             this.data =
                 result.data;
@@ -265,6 +357,10 @@ const AtlasApp = {
         return {
 
             created,
+
+            updated,
+
+            removed,
 
             skipped:
                 result.skipped ||
@@ -669,6 +765,395 @@ const AtlasApp = {
 
     },
 
+    normalizeAnalysisMode(value) {
+
+        return [
+            "real",
+            "forecast"
+        ].includes(
+            value
+        )
+            ? value
+            : "real";
+
+    },
+
+    normalizeDistributionLevel(value) {
+
+        return [
+            "category",
+            "subcategory"
+        ].includes(
+            value
+        )
+            ? value
+            : "category";
+
+    },
+
+    normalizeTrendsPeriod(value) {
+
+        if (
+            String(value) ===
+            "all"
+        ) {
+
+            return "all";
+
+        }
+
+        const period =
+            Number(value);
+
+        return [
+            3,
+            6,
+            12
+        ].includes(
+            period
+        )
+            ? period
+            : 6;
+
+    },
+
+    allowedTrendMetrics() {
+
+        return [
+
+            "savings",
+
+            "income",
+
+            "expenses",
+
+            "grossExpenses",
+
+            "reimbursements",
+
+            "invested",
+
+            "savingRate",
+
+            "debtPayments",
+
+            "cashOutflow",
+
+            "cashResult"
+
+        ];
+
+    },
+
+    normalizeTrendMetric(
+        value,
+        allowNone = false
+    ) {
+
+        if (
+            allowNone &&
+            value === "none"
+        ) {
+
+            return "none";
+
+        }
+
+        return this
+            .allowedTrendMetrics()
+            .includes(
+                value
+            )
+                ? value
+                : "savings";
+
+    },
+
+    normalizeTrendDisplayMode(value) {
+
+        return [
+            "monthly",
+            "smoothed",
+            "accumulated"
+        ].includes(
+            value
+        )
+            ? value
+            : "monthly";
+
+    },
+
+    setAnalysisMode(value) {
+
+        this.analysisMode =
+            this.normalizeAnalysisMode(
+                value
+            );
+
+        this.analysisView =
+            "monthly";
+
+        this.route =
+            "analysis";
+
+        this.ensureRecurringMonth(
+            this.analysisMonth
+        );
+
+        this.render();
+
+    },
+
+    setAnalysisDistributionLevel(value) {
+
+        this.analysisDistributionLevel =
+            this.normalizeDistributionLevel(
+                value
+            );
+
+        this.analysisView =
+            "monthly";
+
+        this.route =
+            "analysis";
+
+        this.render();
+
+    },
+
+    setTrendsPeriod(value) {
+
+        this.trendsPeriod =
+            this.normalizeTrendsPeriod(
+                value
+            );
+
+        this.analysisView =
+            "trends";
+
+        this.route =
+            "analysis";
+
+        this.render();
+
+    },
+
+    setTrendMetric(metric) {
+
+        this.trendMetric =
+            this.normalizeTrendMetric(
+                metric
+            );
+
+        if (
+            this.trendComparisonMetric ===
+            this.trendMetric
+        ) {
+
+            this.trendComparisonMetric =
+                "none";
+
+        }
+
+        this.analysisView =
+            "trends";
+
+        this.route =
+            "analysis";
+
+        this.render();
+
+    },
+
+    setTrendComparisonMetric(metric) {
+
+        const normalized =
+            this.normalizeTrendMetric(
+                metric,
+                true
+            );
+
+        this.trendComparisonMetric =
+            normalized ===
+                this.trendMetric
+                ? "none"
+                : normalized;
+
+        this.analysisView =
+            "trends";
+
+        this.route =
+            "analysis";
+
+        this.render();
+
+    },
+
+    setTrendDisplayMode(value) {
+
+        this.trendDisplayMode =
+            this.normalizeTrendDisplayMode(
+                value
+            );
+
+        this.analysisView =
+            "trends";
+
+        this.route =
+            "analysis";
+
+        this.render();
+
+    },
+
+    setTrendCategory(value) {
+
+        this.trendCategory =
+            String(
+                value || ""
+            );
+
+        this.analysisView =
+            "trends";
+
+        this.route =
+            "analysis";
+
+        this.render();
+
+    },
+
+    rememberOpenAnalysisPanels() {
+
+        if (
+            this.route !==
+            "analysis"
+        ) {
+
+            return;
+
+        }
+
+        document
+            .querySelectorAll(
+                "details[data-analysis-panel]"
+            )
+            .forEach(
+                panel => {
+
+                    const panelId =
+                        panel.dataset
+                            .analysisPanel;
+
+                    if (!panelId) {
+
+                        return;
+
+                    }
+
+                    if (panel.open) {
+
+                        this.analysisOpenPanels
+                            .add(
+                                panelId
+                            );
+
+                    } else {
+
+                        this.analysisOpenPanels
+                            .delete(
+                                panelId
+                            );
+
+                    }
+
+                }
+            );
+
+    },
+
+    isAnalysisPanelOpen(
+        panelId,
+        defaultOpen = false
+    ) {
+
+        if (
+            this.analysisOpenPanels
+                .has(
+                    panelId
+                )
+        ) {
+
+            return true;
+
+        }
+
+        return defaultOpen;
+    },
+
+    openAnalysisBudgets() {
+
+        this.rememberOpenAnalysisPanels();
+
+        this.budgetMonth =
+            this.analysisMonth;
+
+        this.route =
+            "budgets";
+
+        this.render();
+
+        window.scrollTo({
+
+            top:
+                0,
+
+            behavior:
+                "smooth"
+
+        });
+
+    },
+
+    openAnalysisPendingMovements() {
+
+        this.rememberOpenAnalysisPanels();
+
+        this.movementsMonth =
+            this.analysisMonth;
+
+        this.route =
+            "movements";
+
+        this.ensureRecurringMonth(
+            this.movementsMonth
+        );
+
+        if (
+            typeof AtlasMovementFilters !==
+            "undefined"
+        ) {
+
+            AtlasMovementFilters
+                .activeView =
+                "pending";
+
+        }
+
+        this.render();
+
+        window.scrollTo({
+
+            top:
+                0,
+
+            behavior:
+                "smooth"
+
+        });
+
+    },
+
     bindEvents() {
 
         document.addEventListener(
@@ -724,6 +1209,8 @@ const AtlasApp = {
 
                     case "showMonthlyAnalysis":
 
+                        this.rememberOpenAnalysisPanels();
+
                         this.analysisView =
                             "monthly";
 
@@ -740,6 +1227,8 @@ const AtlasApp = {
 
                     case "showTrendsAnalysis":
 
+                        this.rememberOpenAnalysisPanels();
+
                         this.analysisView =
                             "trends";
 
@@ -750,10 +1239,29 @@ const AtlasApp = {
 
                         break;
 
+                    case "setAnalysisMode":
+
+                        this.setAnalysisMode(
+                            actionButton.dataset
+                                .mode
+                        );
+
+                        break;
+
+                    case "setAnalysisDistributionLevel":
+
+                        this.setAnalysisDistributionLevel(
+                            actionButton.dataset
+                                .level
+                        );
+
+                        break;
+
                     case "setTrendsPeriod":
 
                         this.setTrendsPeriod(
-                            actionButton.dataset.period
+                            actionButton.dataset
+                                .period
                         );
 
                         break;
@@ -761,12 +1269,45 @@ const AtlasApp = {
                     case "setTrendMetric":
 
                         this.setTrendMetric(
-                            actionButton.dataset.metric
+                            actionButton.dataset
+                                .metric
                         );
 
                         break;
 
+                    case "setTrendComparisonMetric":
+
+                        this.setTrendComparisonMetric(
+                            actionButton.dataset
+                                .metric
+                        );
+
+                        break;
+
+                    case "setTrendDisplayMode":
+
+                        this.setTrendDisplayMode(
+                            actionButton.dataset
+                                .mode
+                        );
+
+                        break;
+
+                    case "openAnalysisBudgets":
+
+                        this.openAnalysisBudgets();
+
+                        break;
+
+                    case "openAnalysisPendingMovements":
+
+                        this.openAnalysisPendingMovements();
+
+                        break;
+
                     case "previousAnalysisMonth":
+
+                        this.rememberOpenAnalysisPanels();
 
                         this.analysisMonth =
                             this.shiftMonth(
@@ -795,6 +1336,8 @@ const AtlasApp = {
                         break;
 
                     case "currentAnalysisMonth":
+
+                        this.rememberOpenAnalysisPanels();
 
                         this.analysisMonth =
                             this.currentMonthKey();
@@ -981,9 +1524,99 @@ const AtlasApp = {
                         form
                     );
 
+                    return;
+
+                }
+
+                const primaryMetric =
+                    event.target.closest(
+                        "[data-analysis-primary-metric]"
+                    );
+
+                if (primaryMetric) {
+
+                    this.setTrendMetric(
+                        primaryMetric.value
+                    );
+
+                    return;
+
+                }
+
+                const comparisonMetric =
+                    event.target.closest(
+                        "[data-analysis-comparison-metric]"
+                    );
+
+                if (comparisonMetric) {
+
+                    this.setTrendComparisonMetric(
+                        comparisonMetric.value
+                    );
+
+                    return;
+
+                }
+
+                const trendCategory =
+                    event.target.closest(
+                        "[data-analysis-category]"
+                    );
+
+                if (trendCategory) {
+
+                    this.setTrendCategory(
+                        trendCategory.value
+                    );
+
                 }
 
             }
+        );
+
+        document.addEventListener(
+            "toggle",
+            event => {
+
+                const panel =
+                    event.target.closest(
+                        "details[data-analysis-panel]"
+                    );
+
+                if (!panel) {
+
+                    return;
+
+                }
+
+                const panelId =
+                    panel.dataset
+                        .analysisPanel;
+
+                if (!panelId) {
+
+                    return;
+
+                }
+
+                if (panel.open) {
+
+                    this.analysisOpenPanels
+                        .add(
+                            panelId
+                        );
+
+                } else {
+
+                    this.analysisOpenPanels
+                        .delete(
+                            panelId
+                        );
+
+                }
+
+            },
+            true
         );
 
         document.addEventListener(
@@ -1094,6 +1727,17 @@ const AtlasApp = {
 
                 }
 
+                if (
+                    typeof AtlasMovementFilters !==
+                    "undefined"
+                ) {
+
+                    AtlasMovementFilters
+                        .activeView =
+                        "registered";
+
+                }
+
                 this.route =
                     "movements";
 
@@ -1137,6 +1781,19 @@ const AtlasApp = {
 
                 }
 
+                if (
+                    this.analysisMonth !==
+                    this.currentMonthKey() &&
+                    this.analysisMonth !==
+                    this.movementsMonth
+                ) {
+
+                    this.ensureRecurringMonth(
+                        this.analysisMonth
+                    );
+
+                }
+
                 this.render();
 
             }
@@ -1155,6 +1812,8 @@ const AtlasApp = {
             return;
 
         }
+
+        this.rememberOpenAnalysisPanels();
 
         this.analysisMonth =
             this.shiftMonth(
@@ -1256,93 +1915,6 @@ const AtlasApp = {
 
     },
 
-    setTrendsPeriod(value) {
-
-        const period =
-            Number(
-                value
-            );
-
-        const allowedPeriods = [
-
-            3,
-
-            6,
-
-            12
-
-        ];
-
-        if (
-            !allowedPeriods.includes(
-                period
-            )
-        ) {
-
-            return;
-
-        }
-
-        this.trendsPeriod =
-            period;
-
-        this.analysisView =
-            "trends";
-
-        this.route =
-            "analysis";
-
-        this.render();
-
-    },
-
-    setTrendMetric(metric) {
-
-        const allowedMetrics = [
-
-            "savings",
-
-            "income",
-
-            "expenses",
-
-            "invested",
-
-            "cashOutflow",
-
-            "liquidity",
-
-            "investments",
-
-            "debt",
-
-            "netWorth"
-
-        ];
-
-        if (
-            !allowedMetrics.includes(
-                metric
-            )
-        ) {
-
-            return;
-
-        }
-
-        this.trendMetric =
-            metric;
-
-        this.analysisView =
-            "trends";
-
-        this.route =
-            "analysis";
-
-        this.render();
-
-    },
-
     navigate(route) {
 
         const allowedRoutes = [
@@ -1358,6 +1930,8 @@ const AtlasApp = {
             "ai"
 
         ];
+
+        this.rememberOpenAnalysisPanels();
 
         this.route =
             allowedRoutes.includes(
@@ -1656,11 +2230,31 @@ const AtlasApp = {
                 analysisView:
                     this.analysisView,
 
+                analysisMode:
+                    this.analysisMode,
+
+                analysisDistributionLevel:
+                    this.analysisDistributionLevel,
+
                 trendsPeriod:
                     this.trendsPeriod,
 
                 trendMetric:
                     this.trendMetric,
+
+                trendComparisonMetric:
+                    this.trendComparisonMetric,
+
+                trendDisplayMode:
+                    this.trendDisplayMode,
+
+                trendCategory:
+                    this.trendCategory,
+
+                analysisOpenPanels:
+                    Array.from(
+                        this.analysisOpenPanels
+                    ),
 
                 movementSearch:
                     this.movementSearch,
@@ -1796,16 +2390,20 @@ const AtlasApp = {
         this.budgetMonth =
             currentMonth;
 
-        this.analysisView =
-            "monthly";
-
-        this.trendsPeriod =
-            6;
-
-        this.trendMetric =
-            "savings";
+        this.resetAnalysisState();
 
         this.resetMovementFiltersState();
+
+        if (
+            typeof AtlasMovementFilters !==
+            "undefined"
+        ) {
+
+            AtlasMovementFilters
+                .activeView =
+                "registered";
+
+        }
 
         this.ensureRecurringMonth(
             currentMonth
