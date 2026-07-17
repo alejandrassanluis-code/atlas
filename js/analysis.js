@@ -2796,65 +2796,205 @@ const AtlasAnalysisUI = {
         `;
     },
 
-    normalizedPoints(
-        values,
-        width,
-        height,
-        scaleValues = values
-    ) {
-        const paddingX = 28;
-        const paddingY = 22;
+    niceNumber(value, round = true) {
+        const absolute =
+            Math.abs(
+                this.number(value)
+            );
 
-        const scale = [
-            ...(
-                Array.isArray(scaleValues)
-                    ? scaleValues
-                    : values
-            ),
-            0
-        ].map(
+        if (!absolute) {
+            return 1;
+        }
+
+        const exponent =
+            Math.floor(
+                Math.log10(absolute)
+            );
+
+        const fraction =
+            absolute /
+            Math.pow(
+                10,
+                exponent
+            );
+
+        let niceFraction;
+
+        if (round) {
+            if (fraction < 1.5) {
+                niceFraction = 1;
+            } else if (fraction < 3) {
+                niceFraction = 2;
+            } else if (fraction < 7) {
+                niceFraction = 5;
+            } else {
+                niceFraction = 10;
+            }
+        } else if (fraction <= 1) {
+            niceFraction = 1;
+        } else if (fraction <= 2) {
+            niceFraction = 2;
+        } else if (fraction <= 5) {
+            niceFraction = 5;
+        } else {
+            niceFraction = 10;
+        }
+
+        return (
+            niceFraction *
+            Math.pow(
+                10,
+                exponent
+            )
+        );
+    },
+
+    createChartScale(values, tickTarget = 5) {
+        const clean = (
+            Array.isArray(values)
+                ? values
+                : []
+        ).map(
             value =>
                 this.number(value)
         );
 
+        clean.push(0);
+
         let minimum =
-            Math.min(...scale);
+            Math.min(...clean);
 
         let maximum =
-            Math.max(...scale);
+            Math.max(...clean);
 
         if (minimum === maximum) {
-            const padding =
+            const expansion =
                 Math.max(
-                    Math.abs(maximum) * 0.15,
+                    Math.abs(maximum) * 0.25,
                     1
                 );
 
-            minimum -= padding;
-            maximum += padding;
-        } else {
-            const padding =
-                (
-                    maximum -
-                    minimum
-                ) * 0.12;
-
-            minimum -= padding;
-            maximum += padding;
+            minimum -= expansion;
+            maximum += expansion;
         }
 
-        const range =
+        const rawRange =
             maximum -
-            minimum ||
-            1;
+            minimum;
 
-        const chartWidth =
-            width -
-            paddingX * 2;
+        const step =
+            this.niceNumber(
+                rawRange /
+                Math.max(
+                    1,
+                    tickTarget - 1
+                ),
+                true
+            );
+
+        let niceMinimum =
+            Math.floor(
+                minimum /
+                step
+            ) * step;
+
+        let niceMaximum =
+            Math.ceil(
+                maximum /
+                step
+            ) * step;
+
+        if (niceMinimum > 0) {
+            niceMinimum = 0;
+        }
+
+        if (niceMaximum < 0) {
+            niceMaximum = 0;
+        }
+
+        if (niceMinimum === niceMaximum) {
+            niceMaximum =
+                niceMinimum +
+                step;
+        }
+
+        const ticks = [];
+
+        let current =
+            niceMinimum;
+
+        let safety =
+            0;
+
+        while (
+            current <=
+                niceMaximum +
+                step * 0.0001 &&
+            safety < 20
+        ) {
+            ticks.push(
+                Math.abs(current) <
+                    step * 0.000001
+                    ? 0
+                    : current
+            );
+
+            current += step;
+            safety += 1;
+        }
+
+        return {
+            minimum: niceMinimum,
+            maximum: niceMaximum,
+            step,
+            ticks
+        };
+    },
+
+    chartY(
+        value,
+        scale,
+        height,
+        paddingTop,
+        paddingBottom
+    ) {
+        const range =
+            scale.maximum -
+            scale.minimum ||
+            1;
 
         const chartHeight =
             height -
-            paddingY * 2;
+            paddingTop -
+            paddingBottom;
+
+        return (
+            paddingTop +
+            (
+                (
+                    scale.maximum -
+                    this.number(value)
+                ) /
+                range
+            ) *
+            chartHeight
+        );
+    },
+
+    normalizedPoints(
+        values,
+        width,
+        height,
+        scale,
+        paddingLeft,
+        paddingRight,
+        paddingTop,
+        paddingBottom
+    ) {
+        const chartWidth =
+            width -
+            paddingLeft -
+            paddingRight;
 
         const points =
             values.map(
@@ -2864,9 +3004,12 @@ const AtlasAnalysisUI = {
 
                     x:
                         values.length === 1
-                            ? width / 2
+                            ? (
+                                paddingLeft +
+                                chartWidth / 2
+                            )
                             : (
-                                paddingX +
+                                paddingLeft +
                                 (
                                     index /
                                     (
@@ -2877,26 +3020,25 @@ const AtlasAnalysisUI = {
                             ),
 
                     y:
-                        paddingY +
-                        (
-                            (
-                                maximum -
-                                value
-                            ) /
-                            range
-                        ) *
-                        chartHeight
+                        this.chartY(
+                            value,
+                            scale,
+                            height,
+                            paddingTop,
+                            paddingBottom
+                        )
 
                 })
             );
 
         points.zeroY =
-            paddingY +
-            (
-                maximum /
-                range
-            ) *
-            chartHeight;
+            this.chartY(
+                0,
+                scale,
+                height,
+                paddingTop,
+                paddingBottom
+            );
 
         return points;
     },
@@ -2908,6 +3050,76 @@ const AtlasAnalysisUI = {
                     `${point.x},${point.y}`
             )
             .join(" ");
+    },
+
+    formatScaleNumber(value, definition) {
+        const number =
+            this.number(value);
+
+        if (definition.percent) {
+            const decimals =
+                Math.abs(number) < 10 &&
+                Math.abs(
+                    number -
+                    Math.round(number)
+                ) > 0.001
+                    ? 1
+                    : 0;
+
+            return (
+                `${number.toLocaleString(
+                    "es-ES",
+                    {
+                        maximumFractionDigits:
+                            decimals,
+                        minimumFractionDigits: 0
+                    }
+                )}%`
+            );
+        }
+
+        const absolute =
+            Math.abs(number);
+
+        if (absolute >= 1000000) {
+            return (
+                `${(
+                    number /
+                    1000000
+                ).toLocaleString(
+                    "es-ES",
+                    {
+                        maximumFractionDigits: 1
+                    }
+                )} M€`
+            );
+        }
+
+        if (absolute >= 1000) {
+            return (
+                `${(
+                    number /
+                    1000
+                ).toLocaleString(
+                    "es-ES",
+                    {
+                        maximumFractionDigits: 1
+                    }
+                )} mil €`
+            );
+        }
+
+        return (
+            `${number.toLocaleString(
+                "es-ES",
+                {
+                    maximumFractionDigits:
+                        absolute < 10
+                            ? 1
+                            : 0
+                }
+            )} €`
+        );
     },
 
     historicalPanel(
@@ -2953,18 +3165,37 @@ const AtlasAnalysisUI = {
                 )
                 : [];
 
-        const width =
-            Math.max(
-                340,
-                months.length * 58
-            );
-
-        const height = 210;
-
         const sharedScale =
             Boolean(secondaryDefinition) &&
             primaryDefinition.percent ===
                 secondaryDefinition.percent;
+
+        const dualScale =
+            Boolean(secondaryDefinition) &&
+            !sharedScale;
+
+        const width =
+            Math.max(
+                dualScale
+                    ? 410
+                    : 370,
+                months.length * 64 +
+                    (
+                        dualScale
+                            ? 104
+                            : 62
+                    )
+            );
+
+        const height = 240;
+
+        const paddingLeft = 58;
+        const paddingRight =
+            dualScale
+                ? 58
+                : 24;
+        const paddingTop = 20;
+        const paddingBottom = 22;
 
         const commonValues =
             sharedScale
@@ -2974,12 +3205,28 @@ const AtlasAnalysisUI = {
                 ]
                 : primaryValues;
 
+        const primaryScale =
+            this.createChartScale(
+                commonValues
+            );
+
+        const secondaryScale =
+            dualScale
+                ? this.createChartScale(
+                    secondaryValues
+                )
+                : primaryScale;
+
         const primaryPoints =
             this.normalizedPoints(
                 primaryValues,
                 width,
                 height,
-                commonValues
+                primaryScale,
+                paddingLeft,
+                paddingRight,
+                paddingTop,
+                paddingBottom
             );
 
         const secondaryPoints =
@@ -2988,9 +3235,11 @@ const AtlasAnalysisUI = {
                     secondaryValues,
                     width,
                     height,
-                    sharedScale
-                        ? commonValues
-                        : secondaryValues
+                    secondaryScale,
+                    paddingLeft,
+                    paddingRight,
+                    paddingTop,
+                    paddingBottom
                 )
                 : [];
 
@@ -3001,6 +3250,10 @@ const AtlasAnalysisUI = {
             secondaryDefinition
                 ? secondaryPoints.zeroY
                 : null;
+
+        const plotRight =
+            width -
+            paddingRight;
 
         const viewLabels = {
 
@@ -3024,7 +3277,10 @@ const AtlasAnalysisUI = {
                             ? "Las dos líneas utilizan la misma escala porcentual."
                             : "Las dos líneas utilizan la misma escala en euros."
                     )
-                    : "Los euros y los porcentajes utilizan escalas independientes.";
+                    : (
+                        `${primaryDefinition.label} usa la escala izquierda y ` +
+                        `${secondaryDefinition.label} la escala derecha.`
+                    );
 
         return `
 
@@ -3112,36 +3368,106 @@ const AtlasAnalysisUI = {
                             "
                         >
 
-                            <line
-                                x1="28"
-                                y1="${primaryZeroY}"
-                                x2="${width - 28}"
-                                y2="${primaryZeroY}"
-                                class="atlas-analysis-chart-midline"
-                            ></line>
+                            ${primaryScale.ticks.map(
+                                tick => {
+
+                                    const y =
+                                        this.chartY(
+                                            tick,
+                                            primaryScale,
+                                            height,
+                                            paddingTop,
+                                            paddingBottom
+                                        );
+
+                                    const zero =
+                                        Math.abs(tick) <
+                                        primaryScale.step *
+                                            0.000001;
+
+                                    return `
+
+                                        <line
+                                            x1="${paddingLeft}"
+                                            y1="${y}"
+                                            x2="${plotRight}"
+                                            y2="${y}"
+                                            class="${
+                                                zero
+                                                    ? "atlas-analysis-chart-zero-line"
+                                                    : "atlas-analysis-chart-grid-line"
+                                            }"
+                                        ></line>
+
+                                        <text
+                                            x="${paddingLeft - 8}"
+                                            y="${y + 3}"
+                                            text-anchor="end"
+                                            class="atlas-analysis-axis-label atlas-analysis-axis-primary"
+                                        >
+                                            ${this.escape(
+                                                this.formatScaleNumber(
+                                                    tick,
+                                                    primaryDefinition
+                                                )
+                                            )}
+                                        </text>
+
+                                    `;
+
+                                }
+                            ).join("")}
 
                             ${
-                                secondaryDefinition &&
-                                !sharedScale &&
+                                dualScale
+                                    ? secondaryScale.ticks.map(
+                                        tick => {
+
+                                            const y =
+                                                this.chartY(
+                                                    tick,
+                                                    secondaryScale,
+                                                    height,
+                                                    paddingTop,
+                                                    paddingBottom
+                                                );
+
+                                            return `
+
+                                                <text
+                                                    x="${plotRight + 8}"
+                                                    y="${y + 3}"
+                                                    text-anchor="start"
+                                                    class="atlas-analysis-axis-label atlas-analysis-axis-secondary"
+                                                >
+                                                    ${this.escape(
+                                                        this.formatScaleNumber(
+                                                            tick,
+                                                            secondaryDefinition
+                                                        )
+                                                    )}
+                                                </text>
+
+                                            `;
+
+                                        }
+                                    ).join("")
+                                    : ""
+                            }
+
+                            ${
+                                dualScale &&
                                 Math.abs(
                                     secondaryZeroY -
                                     primaryZeroY
                                 ) > 1
                                     ? `
                                         <line
-                                            x1="28"
+                                            x1="${paddingLeft}"
                                             y1="${secondaryZeroY}"
-                                            x2="${width - 28}"
+                                            x2="${plotRight}"
                                             y2="${secondaryZeroY}"
-                                            class="atlas-analysis-chart-midline"
-                                            style="
-                                                stroke:
-                                                    var(
-                                                        --atlas-chart-3
-                                                    );
-                                                opacity:
-                                                    0.35;
-                                            "
+                                            class="atlas-analysis-secondary-zero-line"
                                         ></line>
                                     `
                                     : ""
@@ -3234,6 +3560,10 @@ const AtlasAnalysisUI = {
                                             1fr
                                         )
                                     );
+                                padding-left:
+                                    ${paddingLeft}px;
+                                padding-right:
+                                    ${paddingRight}px;
                             "
                         >
 
@@ -3260,6 +3590,10 @@ const AtlasAnalysisUI = {
                                             1fr
                                         )
                                     );
+                                padding-left:
+                                    ${paddingLeft}px;
+                                padding-right:
+                                    ${paddingRight}px;
                             "
                         >
 
@@ -5747,6 +6081,7 @@ const AtlasAnalysisUI = {
             .atlas-analysis-chart-scroll {
                 max-width: 100%;
                 margin-top: 12px;
+                padding-bottom: 5px;
                 overflow-x: auto;
                 overflow-y: hidden;
                 -webkit-overflow-scrolling:
@@ -5755,26 +6090,75 @@ const AtlasAnalysisUI = {
 
             .atlas-analysis-chart-content {
                 min-width: 100%;
+                padding-bottom: 5px;
             }
 
             .atlas-analysis-chart-content svg {
                 display: block;
                 width: 100%;
-                height: 210px;
+                height: 240px;
+                overflow: visible;
             }
 
-            .atlas-analysis-chart-midline {
+            .atlas-analysis-chart-grid-line {
                 stroke:
                     rgba(
                         255,
                         255,
                         255,
-                        0.1
+                        0.07
+                    );
+                stroke-width: 1;
+            }
+
+            .atlas-analysis-chart-zero-line {
+                stroke:
+                    rgba(
+                        255,
+                        255,
+                        255,
+                        0.22
+                    );
+                stroke-width: 1.3;
+                stroke-dasharray:
+                    5
+                    5;
+            }
+
+            .atlas-analysis-secondary-zero-line {
+                stroke:
+                    var(
+                        --atlas-chart-3
                     );
                 stroke-width: 1;
                 stroke-dasharray:
-                    4
+                    3
                     6;
+                opacity: 0.45;
+            }
+
+            .atlas-analysis-axis-label {
+                font-family: inherit;
+                font-size: 8px;
+                dominant-baseline: middle;
+                pointer-events: none;
+            }
+
+            .atlas-analysis-axis-primary {
+                fill:
+                    rgba(
+                        167,
+                        193,
+                        225,
+                        0.82
+                    );
+            }
+
+            .atlas-analysis-axis-secondary {
+                fill:
+                    var(
+                        --atlas-chart-3
+                    );
             }
 
             .atlas-analysis-chart-content polyline {
@@ -5847,15 +6231,12 @@ const AtlasAnalysisUI = {
             .atlas-analysis-chart-months,
             .atlas-analysis-chart-values {
                 display: grid;
-                padding:
-                    0
-                    28px;
                 box-sizing:
                     border-box;
             }
 
             .atlas-analysis-chart-months {
-                margin-top: 4px;
+                margin-top: 5px;
             }
 
             .atlas-analysis-chart-months span {
@@ -5869,7 +6250,8 @@ const AtlasAnalysisUI = {
             }
 
             .atlas-analysis-chart-values {
-                margin-top: 9px;
+                margin-top: 10px;
+                margin-bottom: 7px;
             }
 
             .atlas-analysis-chart-values div {
