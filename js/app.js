@@ -1927,6 +1927,8 @@ const AtlasApp = {
 
             "analysis",
 
+            "goals",
+
             "ai"
 
         ];
