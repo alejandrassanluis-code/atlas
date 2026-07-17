@@ -3122,6 +3122,53 @@ const AtlasAnalysisUI = {
         );
     },
 
+    axisLabels(
+        scale,
+        definition,
+        height,
+        paddingTop,
+        paddingBottom,
+        side
+    ) {
+        return scale.ticks.map(
+            tick => {
+
+                const y =
+                    this.chartY(
+                        tick,
+                        scale,
+                        height,
+                        paddingTop,
+                        paddingBottom
+                    );
+
+                return `
+
+                    <span
+                        class="atlas-analysis-fixed-axis-label ${
+                            side === "right"
+                                ? "secondary"
+                                : "primary"
+                        }"
+                        style="
+                            top:
+                                ${y}px;
+                        "
+                    >
+                        ${this.escape(
+                            this.formatScaleNumber(
+                                tick,
+                                definition
+                            )
+                        )}
+                    </span>
+
+                `;
+
+            }
+        ).join("");
+    },
+
     historicalPanel(
         months,
         primaryDefinition,
@@ -3174,26 +3221,16 @@ const AtlasAnalysisUI = {
             Boolean(secondaryDefinition) &&
             !sharedScale;
 
-        const width =
+        const plotWidth =
             Math.max(
-                dualScale
-                    ? 410
-                    : 370,
-                months.length * 64 +
-                    (
-                        dualScale
-                            ? 104
-                            : 62
-                    )
+                300,
+                months.length * 64
             );
 
         const height = 240;
 
-        const paddingLeft = 58;
-        const paddingRight =
-            dualScale
-                ? 58
-                : 24;
+        const paddingLeft = 24;
+        const paddingRight = 24;
         const paddingTop = 20;
         const paddingBottom = 22;
 
@@ -3217,10 +3254,10 @@ const AtlasAnalysisUI = {
                 )
                 : primaryScale;
 
-        const primaryPoints =
+        let primaryPoints =
             this.normalizedPoints(
                 primaryValues,
-                width,
+                plotWidth,
                 height,
                 primaryScale,
                 paddingLeft,
@@ -3229,11 +3266,11 @@ const AtlasAnalysisUI = {
                 paddingBottom
             );
 
-        const secondaryPoints =
+        let secondaryPoints =
             secondaryDefinition
                 ? this.normalizedPoints(
                     secondaryValues,
-                    width,
+                    plotWidth,
                     height,
                     secondaryScale,
                     paddingLeft,
@@ -3243,16 +3280,88 @@ const AtlasAnalysisUI = {
                 )
                 : [];
 
+        const coincidentSeries =
+            Boolean(secondaryDefinition) &&
+            primaryPoints.length ===
+                secondaryPoints.length &&
+            primaryPoints.every(
+                (point, index) =>
+                    Math.abs(
+                        point.y -
+                        secondaryPoints[index].y
+                    ) < 2
+            );
+
+        if (coincidentSeries) {
+            primaryPoints =
+                primaryPoints.map(
+                    point => ({
+                        ...point,
+                        y:
+                            this.clamp(
+                                point.y + 4,
+                                paddingTop,
+                                height -
+                                    paddingBottom
+                            )
+                    })
+                );
+
+            primaryPoints.zeroY =
+                this.chartY(
+                    0,
+                    primaryScale,
+                    height,
+                    paddingTop,
+                    paddingBottom
+                );
+
+            secondaryPoints =
+                secondaryPoints.map(
+                    point => ({
+                        ...point,
+                        y:
+                            this.clamp(
+                                point.y - 4,
+                                paddingTop,
+                                height -
+                                    paddingBottom
+                            )
+                    })
+                );
+
+            secondaryPoints.zeroY =
+                this.chartY(
+                    0,
+                    secondaryScale,
+                    height,
+                    paddingTop,
+                    paddingBottom
+                );
+        }
+
         const primaryZeroY =
-            primaryPoints.zeroY;
+            this.chartY(
+                0,
+                primaryScale,
+                height,
+                paddingTop,
+                paddingBottom
+            );
 
         const secondaryZeroY =
             secondaryDefinition
-                ? secondaryPoints.zeroY
+                ? this.chartY(
+                    0,
+                    secondaryScale,
+                    height,
+                    paddingTop,
+                    paddingBottom
+                )
                 : null;
 
         const plotRight =
-            width -
+            plotWidth -
             paddingRight;
 
         const viewLabels = {
@@ -3343,293 +3452,292 @@ const AtlasAnalysisUI = {
                         : ""
                 }
 
-                <div class="atlas-analysis-chart-scroll">
+                <div
+                    class="atlas-analysis-chart-frame ${
+                        dualScale
+                            ? "dual-scale"
+                            : "single-scale"
+                    }"
+                >
 
                     <div
-                        class="atlas-analysis-chart-content"
+                        class="atlas-analysis-fixed-axis atlas-analysis-fixed-axis-left"
                         style="
-                            width:
-                                ${width}px;
+                            height:
+                                ${height}px;
                         "
                     >
+                        ${this.axisLabels(
+                            primaryScale,
+                            primaryDefinition,
+                            height,
+                            paddingTop,
+                            paddingBottom,
+                            "left"
+                        )}
+                    </div>
 
-                        <svg
-                            viewBox="
-                                0 0
-                                ${width}
-                                ${height}
-                            "
-                            role="img"
-                            aria-label="
-                                Evolución de
-                                ${this.escape(
-                                    primaryDefinition.label
-                                )}
+                    <div class="atlas-analysis-chart-scroll">
+
+                        <div
+                            class="atlas-analysis-chart-content"
+                            style="
+                                width:
+                                    ${plotWidth}px;
                             "
                         >
 
-                            ${primaryScale.ticks.map(
-                                tick => {
+                            <svg
+                                viewBox="
+                                    0 0
+                                    ${plotWidth}
+                                    ${height}
+                                "
+                                role="img"
+                                aria-label="
+                                    Evolución de
+                                    ${this.escape(
+                                        primaryDefinition.label
+                                    )}
+                                "
+                            >
 
-                                    const y =
-                                        this.chartY(
-                                            tick,
-                                            primaryScale,
-                                            height,
-                                            paddingTop,
-                                            paddingBottom
-                                        );
+                                ${primaryScale.ticks.map(
+                                    tick => {
 
-                                    const zero =
-                                        Math.abs(tick) <
-                                        primaryScale.step *
-                                            0.000001;
+                                        const y =
+                                            this.chartY(
+                                                tick,
+                                                primaryScale,
+                                                height,
+                                                paddingTop,
+                                                paddingBottom
+                                            );
 
-                                    return `
+                                        const zero =
+                                            Math.abs(tick) <
+                                            primaryScale.step *
+                                                0.000001;
 
-                                        <line
-                                            x1="${paddingLeft}"
-                                            y1="${y}"
-                                            x2="${plotRight}"
-                                            y2="${y}"
-                                            class="${
-                                                zero
-                                                    ? "atlas-analysis-chart-zero-line"
-                                                    : "atlas-analysis-chart-grid-line"
-                                            }"
-                                        ></line>
+                                        return `
 
-                                        <text
-                                            x="${paddingLeft - 8}"
-                                            y="${y + 3}"
-                                            text-anchor="end"
-                                            class="atlas-analysis-axis-label atlas-analysis-axis-primary"
-                                        >
-                                            ${this.escape(
-                                                this.formatScaleNumber(
-                                                    tick,
-                                                    primaryDefinition
-                                                )
-                                            )}
-                                        </text>
+                                            <line
+                                                x1="${paddingLeft}"
+                                                y1="${y}"
+                                                x2="${plotRight}"
+                                                y2="${y}"
+                                                class="${
+                                                    zero
+                                                        ? "atlas-analysis-chart-zero-line"
+                                                        : "atlas-analysis-chart-grid-line"
+                                                }"
+                                            ></line>
 
-                                    `;
+                                        `;
 
+                                    }
+                                ).join("")}
+
+                                ${
+                                    dualScale &&
+                                    Math.abs(
+                                        secondaryZeroY -
+                                        primaryZeroY
+                                    ) > 1
+                                        ? `
+                                            <line
+                                                x1="${paddingLeft}"
+                                                y1="${secondaryZeroY}"
+                                                x2="${plotRight}"
+                                                y2="${secondaryZeroY}"
+                                                class="atlas-analysis-secondary-zero-line"
+                                            ></line>
+                                        `
+                                        : ""
                                 }
-                            ).join("")}
 
-                            ${
-                                dualScale
-                                    ? secondaryScale.ticks.map(
-                                        tick => {
+                                ${
+                                    secondaryDefinition
+                                        ? `
+                                            <polyline
+                                                points="${
+                                                    this.polyline(
+                                                        secondaryPoints
+                                                    )
+                                                }"
+                                                class="atlas-analysis-secondary-line"
+                                            ></polyline>
 
-                                            const y =
-                                                this.chartY(
-                                                    tick,
-                                                    secondaryScale,
-                                                    height,
-                                                    paddingTop,
-                                                    paddingBottom
-                                                );
+                                            ${secondaryPoints.map(
+                                                (point, index) => `
 
-                                            return `
+                                                    <circle
+                                                        cx="${point.x}"
+                                                        cy="${point.y}"
+                                                        r="5"
+                                                        class="atlas-analysis-secondary-point"
+                                                    >
+                                                        <title>
+                                                            ${secondaryDefinition.label}
+                                                            ·
+                                                            ${this.formatMonth(
+                                                                months[index].monthKey
+                                                            )}:
+                                                            ${this.formatMetric(
+                                                                point.value,
+                                                                secondaryDefinition
+                                                            )}
+                                                        </title>
+                                                    </circle>
 
-                                                <text
-                                                    x="${plotRight + 8}"
-                                                    y="${y + 3}"
-                                                    text-anchor="start"
-                                                    class="atlas-analysis-axis-label atlas-analysis-axis-secondary"
-                                                >
-                                                    ${this.escape(
-                                                        this.formatScaleNumber(
-                                                            tick,
-                                                            secondaryDefinition
-                                                        )
-                                                    )}
-                                                </text>
-
-                                            `;
-
-                                        }
-                                    ).join("")
-                                    : ""
-                            }
-
-                            ${
-                                dualScale &&
-                                Math.abs(
-                                    secondaryZeroY -
-                                    primaryZeroY
-                                ) > 1
-                                    ? `
-                                        <line
-                                            x1="${paddingLeft}"
-                                            y1="${secondaryZeroY}"
-                                            x2="${plotRight}"
-                                            y2="${secondaryZeroY}"
-                                            class="atlas-analysis-secondary-zero-line"
-                                        ></line>
-                                    `
-                                    : ""
-                            }
-
-                            ${
-                                secondaryDefinition
-                                    ? `
-                                        <polyline
-                                            points="${
-                                                this.polyline(
-                                                    secondaryPoints
-                                                )
-                                            }"
-                                            class="atlas-analysis-secondary-line"
-                                        ></polyline>
-
-                                        ${secondaryPoints.map(
-                                            (point, index) => `
-
-                                                <circle
-                                                    cx="${point.x}"
-                                                    cy="${point.y}"
-                                                    r="5"
-                                                    class="atlas-analysis-secondary-point"
-                                                >
-                                                    <title>
-                                                        ${secondaryDefinition.label}
-                                                        ·
-                                                        ${this.formatMonth(
-                                                            months[index].monthKey
-                                                        )}:
-                                                        ${this.formatMetric(
-                                                            point.value,
-                                                            secondaryDefinition
-                                                        )}
-                                                    </title>
-                                                </circle>
-
-                                            `
-                                        ).join("")}
-                                    `
-                                    : ""
-                            }
-
-                            <polyline
-                                points="${
-                                    this.polyline(
-                                        primaryPoints
-                                    )
-                                }"
-                                class="atlas-analysis-primary-line"
-                            ></polyline>
-
-                            ${primaryPoints.map(
-                                (point, index) => `
-
-                                    <circle
-                                        cx="${point.x}"
-                                        cy="${point.y}"
-                                        r="5.5"
-                                        class="atlas-analysis-primary-point"
-                                    >
-                                        <title>
-                                            ${primaryDefinition.label}
-                                            ·
-                                            ${this.formatMonth(
-                                                months[index].monthKey
-                                            )}:
-                                            ${this.formatMetric(
-                                                point.value,
-                                                primaryDefinition
-                                            )}
-                                        </title>
-                                    </circle>
-
-                                `
-                            ).join("")}
-
-                        </svg>
-
-                        <div
-                            class="atlas-analysis-chart-months"
-                            style="
-                                grid-template-columns:
-                                    repeat(
-                                        ${months.length},
-                                        minmax(
-                                            0,
-                                            1fr
-                                        )
-                                    );
-                                padding-left:
-                                    ${paddingLeft}px;
-                                padding-right:
-                                    ${paddingRight}px;
-                            "
-                        >
-
-                            ${months.map(
-                                month => `
-                                    <span>
-                                        ${this.formatShortMonth(
-                                            month.monthKey
-                                        )}
-                                    </span>
-                                `
-                            ).join("")}
-
-                        </div>
-
-                        <div
-                            class="atlas-analysis-chart-values"
-                            style="
-                                grid-template-columns:
-                                    repeat(
-                                        ${months.length},
-                                        minmax(
-                                            0,
-                                            1fr
-                                        )
-                                    );
-                                padding-left:
-                                    ${paddingLeft}px;
-                                padding-right:
-                                    ${paddingRight}px;
-                            "
-                        >
-
-                            ${months.map(
-                                (month, index) => `
-
-                                    <div>
-
-                                        <strong>
-                                            ${this.formatMetric(
-                                                primaryValues[index],
-                                                primaryDefinition
-                                            )}
-                                        </strong>
-
-                                        ${
-                                            secondaryDefinition
-                                                ? `
-                                                    <span>
-                                                        ${this.formatMetric(
-                                                            secondaryValues[index],
-                                                            secondaryDefinition
-                                                        )}
-                                                    </span>
                                                 `
-                                                : ""
-                                        }
+                                            ).join("")}
+                                        `
+                                        : ""
+                                }
 
-                                    </div>
+                                <polyline
+                                    points="${
+                                        this.polyline(
+                                            primaryPoints
+                                        )
+                                    }"
+                                    class="atlas-analysis-primary-line"
+                                ></polyline>
 
-                                `
-                            ).join("")}
+                                ${primaryPoints.map(
+                                    (point, index) => `
+
+                                        <circle
+                                            cx="${point.x}"
+                                            cy="${point.y}"
+                                            r="5.5"
+                                            class="atlas-analysis-primary-point"
+                                        >
+                                            <title>
+                                                ${primaryDefinition.label}
+                                                ·
+                                                ${this.formatMonth(
+                                                    months[index].monthKey
+                                                )}:
+                                                ${this.formatMetric(
+                                                    point.value,
+                                                    primaryDefinition
+                                                )}
+                                            </title>
+                                        </circle>
+
+                                    `
+                                ).join("")}
+
+                            </svg>
+
+                            <div
+                                class="atlas-analysis-chart-months"
+                                style="
+                                    grid-template-columns:
+                                        repeat(
+                                            ${months.length},
+                                            minmax(
+                                                0,
+                                                1fr
+                                            )
+                                        );
+                                    padding-left:
+                                        ${paddingLeft}px;
+                                    padding-right:
+                                        ${paddingRight}px;
+                                "
+                            >
+
+                                ${months.map(
+                                    month => `
+                                        <span>
+                                            ${this.formatShortMonth(
+                                                month.monthKey
+                                            )}
+                                        </span>
+                                    `
+                                ).join("")}
+
+                            </div>
+
+                            <div
+                                class="atlas-analysis-chart-values"
+                                style="
+                                    grid-template-columns:
+                                        repeat(
+                                            ${months.length},
+                                            minmax(
+                                                0,
+                                                1fr
+                                            )
+                                        );
+                                    padding-left:
+                                        ${paddingLeft}px;
+                                    padding-right:
+                                        ${paddingRight}px;
+                                "
+                            >
+
+                                ${months.map(
+                                    (month, index) => `
+
+                                        <div>
+
+                                            <strong>
+                                                ${this.formatMetric(
+                                                    primaryValues[index],
+                                                    primaryDefinition
+                                                )}
+                                            </strong>
+
+                                            ${
+                                                secondaryDefinition
+                                                    ? `
+                                                        <span>
+                                                            ${this.formatMetric(
+                                                                secondaryValues[index],
+                                                                secondaryDefinition
+                                                            )}
+                                                        </span>
+                                                    `
+                                                    : ""
+                                            }
+
+                                        </div>
+
+                                    `
+                                ).join("")}
+
+                            </div>
 
                         </div>
 
                     </div>
+
+                    ${
+                        dualScale
+                            ? `
+                                <div
+                                    class="atlas-analysis-fixed-axis atlas-analysis-fixed-axis-right"
+                                    style="
+                                        height:
+                                            ${height}px;
+                                    "
+                                >
+                                    ${this.axisLabels(
+                                        secondaryScale,
+                                        secondaryDefinition,
+                                        height,
+                                        paddingTop,
+                                        paddingBottom,
+                                        "right"
+                                    )}
+                                </div>
+                            `
+                            : ""
+                    }
 
                 </div>
 
@@ -6078,10 +6186,89 @@ const AtlasAnalysisUI = {
                 line-height: 1.45;
             }
 
-            .atlas-analysis-chart-scroll {
-                max-width: 100%;
+            .atlas-analysis-chart-frame {
+                display: grid;
+                min-width: 0;
+                align-items: start;
                 margin-top: 12px;
-                padding-bottom: 5px;
+            }
+
+            .atlas-analysis-chart-frame.single-scale {
+                grid-template-columns:
+                    52px
+                    minmax(
+                        0,
+                        1fr
+                    );
+            }
+
+            .atlas-analysis-chart-frame.dual-scale {
+                grid-template-columns:
+                    52px
+                    minmax(
+                        0,
+                        1fr
+                    )
+                    52px;
+            }
+
+            .atlas-analysis-fixed-axis {
+                position: relative;
+                z-index: 4;
+                min-width: 0;
+                background:
+                    var(
+                        --color-surface,
+                        #19243a
+                    );
+            }
+
+            .atlas-analysis-fixed-axis-left {
+                padding-right: 5px;
+            }
+
+            .atlas-analysis-fixed-axis-right {
+                padding-left: 5px;
+            }
+
+            .atlas-analysis-fixed-axis-label {
+                position: absolute;
+                width: 100%;
+                transform:
+                    translateY(
+                        -50%
+                    );
+                font-size: 8px;
+                line-height: 1;
+                white-space: nowrap;
+                pointer-events: none;
+            }
+
+            .atlas-analysis-fixed-axis-label.primary {
+                right: 0;
+                color:
+                    rgba(
+                        167,
+                        193,
+                        225,
+                        0.82
+                    );
+                text-align: right;
+            }
+
+            .atlas-analysis-fixed-axis-label.secondary {
+                left: 0;
+                color:
+                    var(
+                        --atlas-chart-3
+                    );
+                text-align: left;
+            }
+
+            .atlas-analysis-chart-scroll {
+                min-width: 0;
+                max-width: 100%;
+                padding-bottom: 7px;
                 overflow-x: auto;
                 overflow-y: hidden;
                 -webkit-overflow-scrolling:
@@ -6090,7 +6277,7 @@ const AtlasAnalysisUI = {
 
             .atlas-analysis-chart-content {
                 min-width: 100%;
-                padding-bottom: 5px;
+                padding-bottom: 7px;
             }
 
             .atlas-analysis-chart-content svg {
@@ -6135,30 +6322,6 @@ const AtlasAnalysisUI = {
                     3
                     6;
                 opacity: 0.45;
-            }
-
-            .atlas-analysis-axis-label {
-                font-family: inherit;
-                font-size: 8px;
-                dominant-baseline: middle;
-                pointer-events: none;
-            }
-
-            .atlas-analysis-axis-primary {
-                fill:
-                    rgba(
-                        167,
-                        193,
-                        225,
-                        0.82
-                    );
-            }
-
-            .atlas-analysis-axis-secondary {
-                fill:
-                    var(
-                        --atlas-chart-3
-                    );
             }
 
             .atlas-analysis-chart-content polyline {
@@ -6251,7 +6414,7 @@ const AtlasAnalysisUI = {
 
             .atlas-analysis-chart-values {
                 margin-top: 10px;
-                margin-bottom: 7px;
+                margin-bottom: 10px;
             }
 
             .atlas-analysis-chart-values div {
@@ -6410,6 +6573,25 @@ const AtlasAnalysisUI = {
                 .atlas-analysis-view-selector {
                     grid-template-columns:
                         1fr;
+                }
+
+                .atlas-analysis-chart-frame.single-scale {
+                    grid-template-columns:
+                        47px
+                        minmax(
+                            0,
+                            1fr
+                        );
+                }
+
+                .atlas-analysis-chart-frame.dual-scale {
+                    grid-template-columns:
+                        47px
+                        minmax(
+                            0,
+                            1fr
+                        )
+                        47px;
                 }
 
             }
