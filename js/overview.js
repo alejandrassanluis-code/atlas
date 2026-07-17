@@ -1105,14 +1105,7 @@ const AtlasOverviewCards = {
 
                     </div>
 
-                    <button
-                        class="iconbtn atlas-home-settings"
-                        type="button"
-                        data-action="openSettings"
-                        aria-label="Abrir ajustes"
-                    >
-                        ⚙︎
-                    </button>
+                    ${AtlasUI.headerActions(40)}
 
                 </header>
 
@@ -1314,12 +1307,6 @@ const AtlasOverviewCards = {
             .atlas-home-logo {
                 width: 40px;
                 height: 40px;
-            }
-
-            .atlas-home-settings {
-                width: 40px;
-                height: 40px;
-                font-size: 20px;
             }
 
             .atlas-home-hero {
