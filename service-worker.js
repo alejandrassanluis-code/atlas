@@ -1,11 +1,11 @@
 /* ==========================================================
    ATLAS
    service-worker.js
-   Atlas v1.0 — Caché y funcionamiento sin conexión
+   Atlas v1.1 — Caché resistente y funcionamiento sin conexión
 ========================================================== */
 
 const ATLAS_CACHE =
-    "atlas-cache-v1";
+    "atlas-cache-v2";
 
 const ATLAS_FILES = [
 
@@ -51,6 +51,8 @@ const ATLAS_FILES = [
 
     "./js/backup.js",
 
+    "./js/pwa.js",
+
     "./js/app.js",
 
     "./icons/icon-192.png",
@@ -59,22 +61,72 @@ const ATLAS_FILES = [
 
 ];
 
+async function cacheAtlasFiles() {
+
+    const cache =
+        await caches.open(
+            ATLAS_CACHE
+        );
+
+    await Promise.all(
+
+        ATLAS_FILES.map(
+            async file => {
+
+                try {
+
+                    const response =
+                        await fetch(
+                            file,
+                            {
+                                cache:
+                                    "reload"
+                            }
+                        );
+
+                    if (
+                        !response ||
+                        !response.ok
+                    ) {
+
+                        console.warn(
+                            "AtlasSW: archivo no disponible:",
+                            file
+                        );
+
+                        return;
+
+                    }
+
+                    await cache.put(
+                        file,
+                        response
+                    );
+
+                } catch (error) {
+
+                    console.warn(
+                        "AtlasSW: no se pudo guardar:",
+                        file,
+                        error
+                    );
+
+                }
+
+            }
+        )
+
+    );
+
+}
+
 self.addEventListener(
     "install",
     event => {
 
         event.waitUntil(
 
-            caches
-                .open(
-                    ATLAS_CACHE
-                )
-                .then(
-                    cache =>
-                        cache.addAll(
-                            ATLAS_FILES
-                        )
-                )
+            cacheAtlasFiles()
                 .then(
                     () =>
                         self.skipWaiting()
@@ -160,32 +212,42 @@ self.addEventListener(
                     event.request
                 )
                     .then(
-                        response => {
+                        async response => {
 
-                            const copy =
-                                response.clone();
+                            if (
+                                response &&
+                                response.ok
+                            ) {
 
-                            caches
-                                .open(
-                                    ATLAS_CACHE
-                                )
-                                .then(
-                                    cache =>
-                                        cache.put(
-                                            "./index.html",
-                                            copy
-                                        )
+                                const cache =
+                                    await caches.open(
+                                        ATLAS_CACHE
+                                    );
+
+                                await cache.put(
+                                    "./index.html",
+                                    response.clone()
                                 );
+
+                            }
 
                             return response;
 
                         }
                     )
                     .catch(
-                        () =>
-                            caches.match(
-                                "./index.html"
-                            )
+                        async () => {
+
+                            return (
+                                await caches.match(
+                                    "./index.html"
+                                ) ||
+                                await caches.match(
+                                    "./"
+                                )
+                            );
+
+                        }
                     )
 
             );
@@ -203,53 +265,43 @@ self.addEventListener(
                 .then(
                     cachedResponse => {
 
-                        const networkResponse =
-                            fetch(
-                                event.request
-                            )
-                                .then(
-                                    response => {
+                        if (
+                            cachedResponse
+                        ) {
 
-                                        if (
-                                            !response ||
-                                            response.status !==
-                                                200 ||
-                                            response.type !==
-                                                "basic"
-                                        ) {
+                            return cachedResponse;
 
-                                            return response;
+                        }
 
-                                        }
+                        return fetch(
+                            event.request
+                        )
+                            .then(
+                                async response => {
 
-                                        const copy =
-                                            response.clone();
+                                    if (
+                                        response &&
+                                        response.ok &&
+                                        response.type ===
+                                            "basic"
+                                    ) {
 
-                                        caches
-                                            .open(
+                                        const cache =
+                                            await caches.open(
                                                 ATLAS_CACHE
-                                            )
-                                            .then(
-                                                cache =>
-                                                    cache.put(
-                                                        event.request,
-                                                        copy
-                                                    )
                                             );
 
-                                        return response;
+                                        await cache.put(
+                                            event.request,
+                                            response.clone()
+                                        );
 
                                     }
-                                )
-                                .catch(
-                                    () =>
-                                        cachedResponse
-                                );
 
-                        return (
-                            cachedResponse ||
-                            networkResponse
-                        );
+                                    return response;
+
+                                }
+                            );
 
                     }
                 )
