@@ -6195,7 +6195,7 @@ const AtlasAnalysisUI = {
 
             .atlas-analysis-chart-frame.single-scale {
                 grid-template-columns:
-                    52px
+                    38px
                     minmax(
                         0,
                         1fr
@@ -6204,42 +6204,49 @@ const AtlasAnalysisUI = {
 
             .atlas-analysis-chart-frame.dual-scale {
                 grid-template-columns:
-                    52px
+                    38px
                     minmax(
                         0,
                         1fr
                     )
-                    52px;
+                    38px;
             }
 
             .atlas-analysis-fixed-axis {
                 position: relative;
                 z-index: 4;
                 min-width: 0;
-                background:
-                    var(
-                        --color-surface,
-                        #19243a
-                    );
+                background: transparent;
             }
 
             .atlas-analysis-fixed-axis-left {
-                padding-right: 5px;
+                padding-right: 3px;
             }
 
             .atlas-analysis-fixed-axis-right {
-                padding-left: 5px;
+                padding-left: 3px;
             }
 
             .atlas-analysis-fixed-axis-label {
-                position: absolute;
-                width: 100%;
+                position: absolute !important;
+                display: block !important;
+                width: 100% !important;
+                min-width: 0 !important;
+                min-height: 0 !important;
+                height: auto !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                border: 0 !important;
+                border-radius: 0 !important;
+                box-shadow: none !important;
+                background: transparent !important;
                 transform:
                     translateY(
                         -50%
                     );
-                font-size: 8px;
-                line-height: 1;
+                font-size: 8px !important;
+                font-weight: 500 !important;
+                line-height: 1 !important;
                 white-space: nowrap;
                 pointer-events: none;
             }
@@ -6577,7 +6584,7 @@ const AtlasAnalysisUI = {
 
                 .atlas-analysis-chart-frame.single-scale {
                     grid-template-columns:
-                        47px
+                        35px
                         minmax(
                             0,
                             1fr
@@ -6586,12 +6593,12 @@ const AtlasAnalysisUI = {
 
                 .atlas-analysis-chart-frame.dual-scale {
                     grid-template-columns:
-                        47px
+                        35px
                         minmax(
                             0,
                             1fr
                         )
-                        47px;
+                        35px;
                 }
 
             }
