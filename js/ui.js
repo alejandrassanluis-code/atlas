@@ -168,6 +168,123 @@ const AtlasUI = {
 
     },
 
+    headerActions(size = 46) {
+
+        const iconSize =
+            size >= 46
+                ? 24
+                : 22;
+
+        return `
+
+            <div
+                style="
+                    display:flex;
+                    align-items:center;
+                    justify-content:flex-end;
+                    gap:8px;
+                    flex:0 0 auto;
+                "
+            >
+
+                <button
+                    class="iconbtn"
+                    type="button"
+                    data-route="ai"
+                    aria-label="Abrir Atlas IA"
+                    style="
+                        width:${size}px;
+                        height:${size}px;
+                        min-width:${size}px;
+                        min-height:${size}px;
+                        display:flex;
+                        align-items:center;
+                        justify-content:center;
+                        padding:0;
+                        color:#d9b45f;
+                    "
+                >
+
+                    <svg
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                        style="
+                            width:${iconSize}px;
+                            height:${iconSize}px;
+                            display:block;
+                            fill:none;
+                            stroke:currentColor;
+                            stroke-width:1.9;
+                            stroke-linecap:round;
+                            stroke-linejoin:round;
+                        "
+                    >
+
+                        <path
+                            d="M12 2.8c.7 4.1 2.9 6.3 7 7-.1.1-.1.1 0 0-4.1.7-6.3 2.9-7 7-.7-4.1-2.9-6.3-7-7 4.1-.7 6.3-2.9 7-7Z"
+                        ></path>
+
+                        <path
+                            d="M18.3 15.7c.3 1.9 1.4 3 3.3 3.3-1.9.3-3 1.4-3.3 3.3-.3-1.9-1.4-3-3.3-3.3 1.9-.3 3-1.4 3.3-3.3Z"
+                        ></path>
+
+                    </svg>
+
+                </button>
+
+                <button
+                    class="iconbtn"
+                    type="button"
+                    data-action="openSettings"
+                    aria-label="Abrir ajustes"
+                    style="
+                        width:${size}px;
+                        height:${size}px;
+                        min-width:${size}px;
+                        min-height:${size}px;
+                        display:flex;
+                        align-items:center;
+                        justify-content:center;
+                        padding:0;
+                        color:#f7f8fc;
+                    "
+                >
+
+                    <svg
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                        style="
+                            width:${iconSize}px;
+                            height:${iconSize}px;
+                            display:block;
+                            fill:none;
+                            stroke:currentColor;
+                            stroke-width:1.9;
+                            stroke-linecap:round;
+                            stroke-linejoin:round;
+                        "
+                    >
+
+                        <circle
+                            cx="12"
+                            cy="12"
+                            r="3"
+                        ></circle>
+
+                        <path
+                            d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9A1.7 1.7 0 0 0 21 10h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"
+                        ></path>
+
+                    </svg>
+
+                </button>
+
+            </div>
+
+        `;
+
+    },
+
     header() {
 
         return `
@@ -194,19 +311,7 @@ const AtlasUI = {
 
                 </div>
 
-                <button
-                    class="iconbtn"
-                    type="button"
-                    data-action="openSettings"
-                    aria-label="Abrir ajustes"
-                    style="
-                        width:46px;
-                        height:46px;
-                        font-size:23px;
-                    "
-                >
-                    ⚙︎
-                </button>
+                ${this.headerActions(46)}
 
             </header>
 
@@ -650,19 +755,7 @@ const AtlasUI = {
 
                     </div>
 
-                    <button
-                        class="iconbtn"
-                        type="button"
-                        data-action="openSettings"
-                        aria-label="Abrir ajustes"
-                        style="
-                            width:40px;
-                            height:40px;
-                            font-size:20px;
-                        "
-                    >
-                        ⚙︎
-                    </button>
+                    ${this.headerActions(40)}
 
                 </header>
 
@@ -2975,6 +3068,7 @@ const AtlasUI = {
                         style="
                             font-size:30px;
                             margin-bottom:12px;
+                            color:#d9b45f;
                         "
                     >
                         ✦
