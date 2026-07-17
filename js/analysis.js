@@ -6188,14 +6188,20 @@ const AtlasAnalysisUI = {
 
             .atlas-analysis-chart-frame {
                 display: grid;
+                width:
+                    calc(
+                        100% + 24px
+                    );
                 min-width: 0;
                 align-items: start;
                 margin-top: 12px;
+                margin-left: -12px;
+                margin-right: -12px;
             }
 
             .atlas-analysis-chart-frame.single-scale {
                 grid-template-columns:
-                    38px
+                    42px
                     minmax(
                         0,
                         1fr
@@ -6204,12 +6210,12 @@ const AtlasAnalysisUI = {
 
             .atlas-analysis-chart-frame.dual-scale {
                 grid-template-columns:
-                    38px
+                    42px
                     minmax(
                         0,
                         1fr
                     )
-                    38px;
+                    42px;
             }
 
             .atlas-analysis-fixed-axis {
@@ -6220,11 +6226,11 @@ const AtlasAnalysisUI = {
             }
 
             .atlas-analysis-fixed-axis-left {
-                padding-right: 3px;
+                padding-right: 2px;
             }
 
             .atlas-analysis-fixed-axis-right {
-                padding-left: 3px;
+                padding-left: 2px;
             }
 
             .atlas-analysis-fixed-axis-label {
@@ -6252,7 +6258,8 @@ const AtlasAnalysisUI = {
             }
 
             .atlas-analysis-fixed-axis-label.primary {
-                right: 0;
+                left: 0;
+                right: auto;
                 color:
                     rgba(
                         167,
@@ -6260,16 +6267,17 @@ const AtlasAnalysisUI = {
                         225,
                         0.82
                     );
-                text-align: right;
+                text-align: left;
             }
 
             .atlas-analysis-fixed-axis-label.secondary {
-                left: 0;
+                right: 0;
+                left: auto;
                 color:
                     var(
                         --atlas-chart-3
                     );
-                text-align: left;
+                text-align: right;
             }
 
             .atlas-analysis-chart-scroll {
@@ -6582,9 +6590,18 @@ const AtlasAnalysisUI = {
                         1fr;
                 }
 
+                .atlas-analysis-chart-frame {
+                    width:
+                        calc(
+                            100% + 18px
+                        );
+                    margin-left: -9px;
+                    margin-right: -9px;
+                }
+
                 .atlas-analysis-chart-frame.single-scale {
                     grid-template-columns:
-                        35px
+                        39px
                         minmax(
                             0,
                             1fr
@@ -6593,12 +6610,12 @@ const AtlasAnalysisUI = {
 
                 .atlas-analysis-chart-frame.dual-scale {
                     grid-template-columns:
-                        35px
+                        39px
                         minmax(
                             0,
                             1fr
                         )
-                        35px;
+                        39px;
                 }
 
             }
