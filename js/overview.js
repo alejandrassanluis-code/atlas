@@ -1083,31 +1083,7 @@ const AtlasOverviewCards = {
                 "
             >
 
-                <header class="header atlas-home-header">
-
-                    <div class="brand">
-
-                        <div class="logo atlas-home-logo">
-                            A
-                        </div>
-
-                        <div>
-
-                            <b>
-                                ATLAS
-                            </b>
-
-                            <small>
-                                ${AtlasUI.shortDate()}
-                            </small>
-
-                        </div>
-
-                    </div>
-
-                    ${AtlasUI.headerActions(40)}
-
-                </header>
+                ${AtlasUI.header()}
 
                 <section class="hero atlas-home-hero">
 
@@ -1300,13 +1276,8 @@ const AtlasOverviewCards = {
                     );
             }
 
-            .atlas-home-header {
+            .atlas-overview-dashboard > .header {
                 margin-bottom: 10px;
-            }
-
-            .atlas-home-logo {
-                width: 40px;
-                height: 40px;
             }
 
             .atlas-home-hero {
