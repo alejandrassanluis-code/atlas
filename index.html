@@ -114,14 +114,16 @@
             min-width: 0 !important;
             min-height: 56px !important;
 
-            display: flex !important;
+            display: grid !important;
 
-            flex-direction: column !important;
+            grid-template-rows:
+                28px
+                12px;
 
             align-items: center !important;
-            justify-content: center !important;
+            justify-items: center !important;
 
-            gap: 4px !important;
+            row-gap: 4px !important;
 
             padding:
                 4px
@@ -135,9 +137,9 @@
             color: #f7f8fc !important;
         }
 
-        .tabbar button span {
-            width: 26px !important;
-            height: 26px !important;
+        .tabbar button .tabbar-icon {
+            width: 28px !important;
+            height: 28px !important;
 
             display: flex !important;
 
@@ -147,24 +149,23 @@
             margin: 0 !important;
             padding: 0 !important;
 
-            border: 0 !important;
-            border-radius: 0 !important;
-
-            background: transparent !important;
-
             color: inherit !important;
+        }
 
-            font-family:
-                -apple-system,
-                BlinkMacSystemFont,
-                "Segoe UI",
-                sans-serif;
+        .tabbar button .tabbar-icon svg {
+            width: 26px !important;
+            height: 26px !important;
 
-            font-size: 24px !important;
-            font-weight: 400 !important;
-            line-height: 1 !important;
+            display: block !important;
 
-            text-align: center !important;
+            fill: none !important;
+            stroke: currentColor !important;
+
+            stroke-width: 2 !important;
+            stroke-linecap: round !important;
+            stroke-linejoin: round !important;
+
+            overflow: visible;
         }
 
         .tabbar button small {
@@ -181,7 +182,7 @@
 
             font-size: 8px !important;
             font-weight: 500 !important;
-            line-height: 1.1;
+            line-height: 12px !important;
 
             text-align: center;
 
@@ -194,16 +195,6 @@
                 var(
                     --color-primary
                 ) !important;
-        }
-
-        .tabbar button[data-action="newMovement"] {
-            color: #f7f8fc !important;
-        }
-
-        .tabbar button[data-action="newMovement"] span {
-            font-size: 28px !important;
-            font-weight: 300 !important;
-            transform: translateY(-1px);
         }
 
 
@@ -481,19 +472,25 @@
                 padding-right: 2px !important;
             }
 
-            .tabbar button span {
-                width: 24px !important;
-                height: 24px !important;
-
-                font-size: 22px !important;
+            .tabbar button {
+                grid-template-rows:
+                    26px
+                    11px;
             }
 
-            .tabbar button[data-action="newMovement"] span {
-                font-size: 26px !important;
+            .tabbar button .tabbar-icon {
+                width: 26px !important;
+                height: 26px !important;
+            }
+
+            .tabbar button .tabbar-icon svg {
+                width: 24px !important;
+                height: 24px !important;
             }
 
             .tabbar button small {
                 font-size: 7px !important;
+                line-height: 11px !important;
             }
 
         }
@@ -518,8 +515,25 @@
             aria-label="Inicio"
         >
 
-            <span aria-hidden="true">
-                ⌂
+            <span
+                class="tabbar-icon"
+                aria-hidden="true"
+            >
+
+                <svg
+                    viewBox="0 0 24 24"
+                >
+
+                    <path
+                        d="M3 10.5 12 3l9 7.5"
+                    ></path>
+
+                    <path
+                        d="M5.5 9.5V21h13V9.5"
+                    ></path>
+
+                </svg>
+
             </span>
 
             <small>
@@ -534,8 +548,41 @@
             aria-label="Movimientos"
         >
 
-            <span aria-hidden="true">
-                ☷
+            <span
+                class="tabbar-icon"
+                aria-hidden="true"
+            >
+
+                <svg
+                    viewBox="0 0 24 24"
+                >
+
+                    <path
+                        d="M9 6h12"
+                    ></path>
+
+                    <path
+                        d="M9 12h12"
+                    ></path>
+
+                    <path
+                        d="M9 18h12"
+                    ></path>
+
+                    <path
+                        d="M3 6h2"
+                    ></path>
+
+                    <path
+                        d="M3 12h2"
+                    ></path>
+
+                    <path
+                        d="M3 18h2"
+                    ></path>
+
+                </svg>
+
             </span>
 
             <small>
@@ -550,8 +597,25 @@
             aria-label="Añadir movimiento"
         >
 
-            <span aria-hidden="true">
-                +
+            <span
+                class="tabbar-icon"
+                aria-hidden="true"
+            >
+
+                <svg
+                    viewBox="0 0 24 24"
+                >
+
+                    <path
+                        d="M12 4v16"
+                    ></path>
+
+                    <path
+                        d="M4 12h16"
+                    ></path>
+
+                </svg>
+
             </span>
 
             <small>
@@ -566,8 +630,33 @@
             aria-label="Análisis"
         >
 
-            <span aria-hidden="true">
-                ◫
+            <span
+                class="tabbar-icon"
+                aria-hidden="true"
+            >
+
+                <svg
+                    viewBox="0 0 24 24"
+                >
+
+                    <path
+                        d="M4 19V10"
+                    ></path>
+
+                    <path
+                        d="M10 19V5"
+                    ></path>
+
+                    <path
+                        d="M16 19v-7"
+                    ></path>
+
+                    <path
+                        d="M22 19V8"
+                    ></path>
+
+                </svg>
+
             </span>
 
             <small>
@@ -582,8 +671,35 @@
             aria-label="Objetivos"
         >
 
-            <span aria-hidden="true">
-                ◎
+            <span
+                class="tabbar-icon"
+                aria-hidden="true"
+            >
+
+                <svg
+                    viewBox="0 0 24 24"
+                >
+
+                    <circle
+                        cx="12"
+                        cy="12"
+                        r="9"
+                    ></circle>
+
+                    <circle
+                        cx="12"
+                        cy="12"
+                        r="5"
+                    ></circle>
+
+                    <circle
+                        cx="12"
+                        cy="12"
+                        r="1"
+                    ></circle>
+
+                </svg>
+
             </span>
 
             <small>
@@ -598,8 +714,25 @@
             aria-label="Presupuestos"
         >
 
-            <span aria-hidden="true">
-                ◔
+            <span
+                class="tabbar-icon"
+                aria-hidden="true"
+            >
+
+                <svg
+                    viewBox="0 0 24 24"
+                >
+
+                    <path
+                        d="M12 3a9 9 0 1 0 9 9h-9z"
+                    ></path>
+
+                    <path
+                        d="M14 3.2A9 9 0 0 1 20.8 10H14z"
+                    ></path>
+
+                </svg>
+
             </span>
 
             <small>
