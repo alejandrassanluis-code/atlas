@@ -93,15 +93,7 @@
 
             grid-template-columns:
                 repeat(
-                    2,
-                    minmax(
-                        0,
-                        1fr
-                    )
-                )
-                64px
-                repeat(
-                    3,
+                    6,
                     minmax(
                         0,
                         1fr
@@ -110,7 +102,7 @@
 
             padding:
                 5px
-                8px
+                5px
                 env(
                     safe-area-inset-bottom
                 ) !important;
@@ -118,19 +110,30 @@
             align-items: center !important;
         }
 
-        .tabbar button:not(.fab) {
+        .tabbar button {
             min-width: 0 !important;
 
             min-height: 54px !important;
+
+            display: flex !important;
+
+            flex-direction: column !important;
+
+            align-items: center !important;
+            justify-content: center !important;
+
+            gap: 2px !important;
 
             padding:
                 5px
                 1px !important;
 
-            gap: 2px !important;
+            border-radius: 14px !important;
+
+            background: transparent !important;
         }
 
-        .tabbar button:not(.fab) span {
+        .tabbar button span {
             display: block;
 
             margin:
@@ -144,51 +147,53 @@
                 "Segoe UI",
                 sans-serif;
 
-            font-size: 24px;
+            font-size: 22px;
             line-height: 1;
         }
 
-        .tabbar button:not(.fab) small {
+        .tabbar button small {
             display: block;
 
             max-width: 100%;
 
             overflow: hidden;
 
-            font-size: 9px !important;
+            font-size: 8px !important;
             line-height: 1.1;
 
             white-space: nowrap;
             text-overflow: ellipsis;
         }
 
-        .tabbar .fab {
-            width: 56px !important;
-            height: 56px !important;
+        .tabbar button[data-action="newMovement"] {
+            color:
+                var(
+                    --color-primary
+                ) !important;
+        }
 
-            min-width: 56px !important;
-            min-height: 56px !important;
+        .tabbar button[data-action="newMovement"] span {
+            width: 30px;
+            height: 30px;
 
-            display: flex !important;
+            display: flex;
 
-            align-items: center !important;
-            justify-content: center !important;
+            align-items: center;
+            justify-content: center;
 
-            justify-self: center;
+            margin-bottom: 1px;
 
-            padding:
-                0
-                0
-                4px !important;
+            border:
+                2px solid
+                var(
+                    --color-primary
+                );
 
-            border-radius: 19px !important;
+            border-radius: 50%;
 
-            font-size: 38px !important;
-            font-weight: 300 !important;
-            line-height: 1 !important;
-
-            transform:
-                translateY(-7px);
+            font-size: 25px;
+            font-weight: 300;
+            line-height: 1;
         }
 
 
@@ -457,6 +462,32 @@
 
         }
 
+        @media (
+            max-width: 350px
+        ) {
+
+            .tabbar {
+                padding-left: 2px !important;
+                padding-right: 2px !important;
+            }
+
+            .tabbar button span {
+                font-size: 20px;
+            }
+
+            .tabbar button small {
+                font-size: 7px !important;
+            }
+
+            .tabbar button[data-action="newMovement"] span {
+                width: 28px;
+                height: 28px;
+
+                font-size: 23px;
+            }
+
+        }
+
     </style>
 
 </head>
@@ -504,26 +535,17 @@
         </button>
 
         <button
-            class="fab"
             type="button"
             data-action="newMovement"
-            aria-label="Nuevo movimiento"
-        >
-            +
-        </button>
-
-        <button
-            type="button"
-            data-route="budgets"
-            aria-label="Presupuestos"
+            aria-label="Añadir movimiento"
         >
 
             <span aria-hidden="true">
-                ◎
+                +
             </span>
 
             <small>
-                Presup.
+                Añadir
             </small>
 
         </button>
@@ -546,16 +568,32 @@
 
         <button
             type="button"
-            data-route="ai"
-            aria-label="Atlas IA"
+            data-route="goals"
+            aria-label="Objetivos"
         >
 
             <span aria-hidden="true">
-                ✦
+                ◎
             </span>
 
             <small>
-                IA
+                Objetivos
+            </small>
+
+        </button>
+
+        <button
+            type="button"
+            data-route="budgets"
+            aria-label="Presupuestos"
+        >
+
+            <span aria-hidden="true">
+                ◔
+            </span>
+
+            <small>
+                Presup.
             </small>
 
         </button>
