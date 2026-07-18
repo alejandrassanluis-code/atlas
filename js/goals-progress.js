@@ -9,12 +9,6 @@ const AtlasGoalsProgress = {
     initialized:
         false,
 
-    pendingConfig:
-        null,
-
-    pendingNormalizeSkips:
-        0,
-
     originalNormalizeGoal:
         null,
 
@@ -31,6 +25,9 @@ const AtlasGoalsProgress = {
         null,
 
     originalRemaining:
+        null,
+
+    originalSummary:
         null,
 
     number(value) {
@@ -77,6 +74,16 @@ const AtlasGoalsProgress = {
             )
             .toLowerCase()
             .trim();
+
+    },
+
+    clone(value) {
+
+        return JSON.parse(
+            JSON.stringify(
+                value
+            )
+        );
 
     },
 
@@ -170,7 +177,7 @@ const AtlasGoalsProgress = {
 
     },
 
-    accountDescriptor(account) {
+    accountPropertyDescriptor(account) {
 
         return this.normalizeText(
             [
@@ -189,7 +196,7 @@ const AtlasGoalsProgress = {
 
                 account?.group,
 
-                account?.name
+                account?.role
 
             ]
                 .filter(Boolean)
@@ -198,14 +205,41 @@ const AtlasGoalsProgress = {
 
     },
 
+    accountNameDescriptor(account) {
+
+        return this.normalizeText(
+            account?.name
+        );
+
+    },
+
+    containsAny(
+        text,
+        words
+    ) {
+
+        return words.some(
+            word =>
+                text.includes(
+                    word
+                )
+        );
+
+    },
+
     accountRole(account) {
 
-        const descriptor =
-            this.accountDescriptor(
+        const properties =
+            this.accountPropertyDescriptor(
                 account
             );
 
-        const debtWords = [
+        const name =
+            this.accountNameDescriptor(
+                account
+            );
+
+        const debtPropertyWords = [
 
             "debt",
 
@@ -215,9 +249,9 @@ const AtlasGoalsProgress = {
 
             "credito",
 
-            "credit card",
+            "credit_card",
 
-            "tarjeta",
+            "credit-card",
 
             "loan",
 
@@ -229,16 +263,18 @@ const AtlasGoalsProgress = {
 
             "financing",
 
-            "financiacion"
+            "financiacion",
+
+            "liability",
+
+            "pasivo"
 
         ];
 
         if (
-            debtWords.some(
-                word =>
-                    descriptor.includes(
-                        word
-                    )
+            this.containsAny(
+                properties,
+                debtPropertyWords
             )
         ) {
 
@@ -246,13 +282,11 @@ const AtlasGoalsProgress = {
 
         }
 
-        const investmentWords = [
+        const investmentPropertyWords = [
 
             "investment",
 
             "inversion",
-
-            "invest",
 
             "broker",
 
@@ -260,9 +294,7 @@ const AtlasGoalsProgress = {
 
             "cartera",
 
-            "fund",
-
-            "fondo indexado",
+            "securities",
 
             "acciones",
 
@@ -272,16 +304,78 @@ const AtlasGoalsProgress = {
 
             "crypto",
 
-            "cripto"
+            "cripto",
+
+            "index fund",
+
+            "fondo indexado",
+
+            "pension"
 
         ];
 
         if (
-            investmentWords.some(
-                word =>
-                    descriptor.includes(
-                        word
-                    )
+            this.containsAny(
+                properties,
+                investmentPropertyWords
+            )
+        ) {
+
+            return "investment";
+
+        }
+
+        const debtNameWords = [
+
+            "tarjeta de credito",
+
+            "tarjeta credito",
+
+            "prestamo",
+
+            "hipoteca",
+
+            "deuda",
+
+            "financiacion"
+
+        ];
+
+        if (
+            this.containsAny(
+                name,
+                debtNameWords
+            )
+        ) {
+
+            return "debt";
+
+        }
+
+        const investmentNameWords = [
+
+            "inversion",
+
+            "broker",
+
+            "cartera",
+
+            "acciones",
+
+            "etf",
+
+            "cripto",
+
+            "fondo indexado",
+
+            "plan de pensiones"
+
+        ];
+
+        if (
+            this.containsAny(
+                name,
+                investmentNameWords
             )
         ) {
 
@@ -319,11 +413,6 @@ const AtlasGoalsProgress = {
 
     accountTypeLabel(account) {
 
-        const role =
-            this.accountRole(
-                account
-            );
-
         const labels = {
 
             account:
@@ -338,7 +427,11 @@ const AtlasGoalsProgress = {
         };
 
         return (
-            labels[role] ||
+            labels[
+                this.accountRole(
+                    account
+                )
+            ] ||
             "Cuenta"
         );
 
@@ -414,7 +507,7 @@ const AtlasGoalsProgress = {
 
         }
 
-        const value =
+        return Math.abs(
             this.firstNumber(
                 account,
                 [
@@ -427,32 +520,119 @@ const AtlasGoalsProgress = {
                     "initialBalance"
                 ],
                 0
-            );
+            )
+        );
 
-        return Math.abs(
-            value
+    },
+
+    allowedModesForType(type) {
+
+        const modes = {
+
+            saving: [
+
+                "manual",
+
+                "account"
+
+            ],
+
+            purchase: [
+
+                "manual",
+
+                "account"
+
+            ],
+
+            emergency: [
+
+                "manual",
+
+                "account"
+
+            ],
+
+            investment: [
+
+                "manual",
+
+                "investment"
+
+            ],
+
+            debt: [
+
+                "manual",
+
+                "debt"
+
+            ]
+
+        };
+
+        return (
+            modes[type] ||
+            modes.saving
+        );
+
+    },
+
+    defaultAutomaticMode(type) {
+
+        const defaults = {
+
+            saving:
+                "account",
+
+            purchase:
+                "account",
+
+            emergency:
+                "account",
+
+            investment:
+                "investment",
+
+            debt:
+                "debt"
+
+        };
+
+        return (
+            defaults[type] ||
+            "account"
+        );
+
+    },
+
+    validModeForType(
+        type,
+        mode
+    ) {
+
+        return this.allowedModesForType(
+            type
+        ).includes(
+            mode
         );
 
     },
 
     progressMode(goal) {
 
-        const allowed = [
+        const requested =
+            String(
+                goal?.progressMode ||
+                "manual"
+            );
 
-            "manual",
-
-            "account",
-
-            "investment",
-
-            "debt"
-
-        ];
-
-        return allowed.includes(
-            goal?.progressMode
+        return this.validModeForType(
+            goal?.type ||
+            "saving",
+            requested
         )
-            ? goal.progressMode
+            ? requested
             : "manual";
 
     },
@@ -499,6 +679,12 @@ const AtlasGoalsProgress = {
                 data
             );
 
+        if (!account) {
+
+            return 0;
+
+        }
+
         if (
             mode === "account" ||
             mode === "investment"
@@ -516,7 +702,7 @@ const AtlasGoalsProgress = {
             mode === "debt"
         ) {
 
-            const startingDebt =
+            const initialDebt =
                 Math.max(
                     0,
                     this.number(
@@ -532,19 +718,14 @@ const AtlasGoalsProgress = {
             return this.round(
                 Math.max(
                     0,
-                    startingDebt -
+                    initialDebt -
                     currentDebt
                 )
             );
 
         }
 
-        return Math.max(
-            0,
-            this.round(
-                goal?.currentAmount
-            )
-        );
+        return 0;
 
     },
 
@@ -594,7 +775,7 @@ const AtlasGoalsProgress = {
         ) {
 
             return (
-                `Automático · deuda de ` +
+                `Automático · reducción de ` +
                 `${accountName}`
             );
 
@@ -605,7 +786,7 @@ const AtlasGoalsProgress = {
         ) {
 
             return (
-                `Automático · inversión de ` +
+                `Automático · valor de ` +
                 `${accountName}`
             );
 
@@ -618,63 +799,265 @@ const AtlasGoalsProgress = {
 
     },
 
-    modeOptions(selected) {
+    statusInformation(status) {
 
-        const options = [
+        const statuses = {
 
-            {
-                value:
-                    "manual",
+            active: {
 
                 label:
-                    "Manual"
+                    "Activo",
+
+                className:
+                    "active"
+
             },
 
-            {
-                value:
-                    "account",
+            paused: {
 
                 label:
-                    "Saldo de una cuenta"
+                    "Pausado",
+
+                className:
+                    "paused"
+
             },
 
-            {
-                value:
-                    "investment",
+            completed: {
 
                 label:
-                    "Valor de una inversión"
+                    "Completado",
+
+                className:
+                    "completed"
+
             },
 
-            {
-                value:
-                    "debt",
+            archived: {
 
                 label:
-                    "Reducción de una deuda"
+                    "Archivado",
+
+                className:
+                    "archived"
+
+            },
+
+            cancelled: {
+
+                label:
+                    "Cancelado",
+
+                className:
+                    "cancelled"
+
             }
 
-        ];
+        };
 
-        return options
+        return (
+            statuses[status] ||
+            statuses.active
+        );
+
+    },
+
+    priorityInformation(priority) {
+
+        const priorities = {
+
+            high: {
+
+                label:
+                    "Prioridad alta",
+
+                className:
+                    "high"
+
+            },
+
+            medium: {
+
+                label:
+                    "Prioridad media",
+
+                className:
+                    "medium"
+
+            },
+
+            low: {
+
+                label:
+                    "Prioridad baja",
+
+                className:
+                    "low"
+
+            }
+
+        };
+
+        return (
+            priorities[priority] ||
+            priorities.medium
+        );
+
+    },
+
+    badges(goal) {
+
+        const status =
+            this.statusInformation(
+                goal.status
+            );
+
+        const priority =
+            this.priorityInformation(
+                goal.priority
+            );
+
+        return `
+
+            <div
+                class="atlas-goal-badges"
+            >
+
+                <span
+                    class="
+                        atlas-goal-badge
+                        atlas-goal-status-${status.className}
+                    "
+                >
+                    ${AtlasGoals.escape(
+                        status.label
+                    )}
+                </span>
+
+                <span
+                    class="
+                        atlas-goal-badge
+                        atlas-goal-priority-${priority.className}
+                    "
+                >
+                    ${AtlasGoals.escape(
+                        priority.label
+                    )}
+                </span>
+
+            </div>
+
+        `;
+
+    },
+
+    modeLabel(mode) {
+
+        const labels = {
+
+            manual:
+                "Manual",
+
+            account:
+                "Saldo de una cuenta",
+
+            investment:
+                "Valor de una inversión",
+
+            debt:
+                "Reducción de una deuda"
+
+        };
+
+        return (
+            labels[mode] ||
+            labels.manual
+        );
+
+    },
+
+    modeOptions(
+        goalType,
+        selected
+    ) {
+
+        const modes =
+            this.allowedModesForType(
+                goalType
+            );
+
+        const validSelected =
+            modes.includes(
+                selected
+            )
+                ? selected
+                : "manual";
+
+        return modes
             .map(
-                option => `
+                mode => `
 
                     <option
-                        value="${option.value}"
+                        value="${mode}"
                         ${
-                            option.value ===
-                            selected
+                            mode ===
+                            validSelected
                                 ? "selected"
                                 : ""
                         }
                     >
-                        ${option.label}
+                        ${this.modeLabel(
+                            mode
+                        )}
                     </option>
 
                 `
             )
             .join("");
+
+    },
+
+    fieldLabel(mode) {
+
+        const labels = {
+
+            account:
+                "Cuenta de saldo vinculada",
+
+            investment:
+                "Inversión vinculada",
+
+            debt:
+                "Cuenta de deuda vinculada"
+
+        };
+
+        return (
+            labels[mode] ||
+            "Cuenta vinculada"
+        );
+
+    },
+
+    emptyAccountLabel(mode) {
+
+        const labels = {
+
+            account:
+                "Selecciona una cuenta de saldo",
+
+            investment:
+                "Selecciona una inversión",
+
+            debt:
+                "Selecciona una deuda"
+
+        };
+
+        return (
+            labels[mode] ||
+            "Selecciona una cuenta"
+        );
 
     },
 
@@ -687,19 +1070,6 @@ const AtlasGoalsProgress = {
             this.accountsForMode(
                 mode
             );
-
-        const emptyLabels = {
-
-            account:
-                "Selecciona una cuenta de saldo",
-
-            investment:
-                "Selecciona una inversión",
-
-            debt:
-                "Selecciona una deuda"
-
-        };
 
         if (
             accounts.length ===
@@ -719,10 +1089,9 @@ const AtlasGoalsProgress = {
         return `
 
             <option value="">
-                ${
-                    emptyLabels[mode] ||
-                    "Selecciona una cuenta"
-                }
+                ${this.emptyAccountLabel(
+                    mode
+                )}
             </option>
 
             ${accounts
@@ -760,29 +1129,52 @@ const AtlasGoalsProgress = {
 
     },
 
-    fieldLabel(mode) {
+    debtReference(
+        goal,
+        selectedAccountId
+    ) {
 
-        const labels = {
+        const account =
+            this.accountById(
+                selectedAccountId
+            );
 
-            account:
-                "Cuenta de saldo vinculada",
+        if (!account) {
 
-            investment:
-                "Inversión vinculada",
+            return 0;
 
-            debt:
-                "Cuenta de deuda vinculada"
+        }
 
-        };
+        const sameExistingAccount =
+            goal?.progressMode ===
+                "debt" &&
+            goal?.progressAccountId ===
+                selectedAccountId &&
+            this.number(
+                goal?.startingDebt
+            ) > 0;
 
-        return (
-            labels[mode] ||
-            "Cuenta vinculada"
+        if (
+            sameExistingAccount
+        ) {
+
+            return this.number(
+                goal.startingDebt
+            );
+
+        }
+
+        return this.outstandingDebt(
+            account
         );
 
     },
 
     automaticFields(goal) {
+
+        const goalType =
+            goal.type ||
+            "saving";
 
         const mode =
             this.progressMode(
@@ -794,7 +1186,7 @@ const AtlasGoalsProgress = {
                 goal
             );
 
-        const compatibleAccount =
+        const compatible =
             this.accountsForMode(
                 mode
             ).some(
@@ -804,16 +1196,32 @@ const AtlasGoalsProgress = {
             );
 
         const selectedId =
-            compatibleAccount
+            compatible
                 ? accountId
                 : "";
+
+        const startingDebt =
+            mode === "debt"
+                ? this.debtReference(
+                    goal,
+                    selectedId
+                )
+                : 0;
 
         const current =
             this.calculatedCurrent(
                 {
+
                     ...goal,
+
+                    progressMode:
+                        mode,
+
                     progressAccountId:
-                        selectedId
+                        selectedId,
+
+                    startingDebt
+
                 }
             );
 
@@ -821,6 +1229,15 @@ const AtlasGoalsProgress = {
 
             <section
                 data-goal-progress-section
+                data-goal-existing-mode="${AtlasGoals.escape(
+                    mode
+                )}"
+                data-goal-existing-account="${AtlasGoals.escape(
+                    selectedId
+                )}"
+                data-goal-existing-debt="${AtlasGoals.escape(
+                    startingDebt
+                )}"
                 style="
                     padding:14px;
                     border:
@@ -855,6 +1272,7 @@ const AtlasGoalsProgress = {
                         data-goal-progress-mode
                     >
                         ${this.modeOptions(
+                            goalType,
                             mode
                         )}
                     </select>
@@ -894,36 +1312,56 @@ const AtlasGoalsProgress = {
 
                 </label>
 
-                <label
-                    class="atlas-settings-field"
-                    data-goal-starting-debt-field
+                <div
+                    data-goal-debt-reference
                     style="
                         display:${
                             mode === "debt"
-                                ? "flex"
+                                ? "block"
                                 : "none"
                         };
                         margin-top:12px;
+                        padding:12px;
+                        border-radius:14px;
+                        background:
+                            rgba(
+                                244,
+                                185,
+                                94,
+                                0.08
+                            );
                     "
                 >
 
-                    <span>
-                        Deuda inicial de referencia
-                    </span>
-
-                    <input
-                        name="goalStartingDebt"
-                        type="number"
-                        inputmode="decimal"
-                        min="0"
-                        step="0.01"
-                        value="${AtlasGoals.escape(
-                            goal.startingDebt ||
-                            0
-                        )}"
+                    <small
+                        style="
+                            display:block;
+                            color:
+                                var(
+                                    --color-text-muted
+                                );
+                            line-height:1.45;
+                        "
                     >
+                        La deuda pendiente actual se guardará automáticamente
+                        como referencia inicial. Cada pago aumentará el progreso.
+                    </small>
 
-                </label>
+                    <strong
+                        data-goal-debt-reference-value
+                        style="
+                            display:block;
+                            margin-top:6px;
+                            color:#f4b95e;
+                            font-size:16px;
+                        "
+                    >
+                        ${AtlasGoals.formatCurrency(
+                            startingDebt
+                        )}
+                    </strong>
+
+                </div>
 
                 <div
                     data-goal-automatic-preview
@@ -979,36 +1417,141 @@ const AtlasGoalsProgress = {
 
     },
 
-    formGoal(form) {
+    currentGoalType(form) {
 
-        const values =
-            new FormData(
+        return String(
+            form
+                ?.querySelector(
+                    '[name="goalType"]'
+                )
+                ?.value ||
+            "saving"
+        );
+
+    },
+
+    currentMode(form) {
+
+        return String(
+            form
+                ?.querySelector(
+                    "[data-goal-progress-mode]"
+                )
+                ?.value ||
+            "manual"
+        );
+
+    },
+
+    currentAccountId(form) {
+
+        return String(
+            form
+                ?.querySelector(
+                    "[data-goal-progress-account]"
+                )
+                ?.value ||
+            ""
+        );
+
+    },
+
+    automaticConfiguration(form) {
+
+        const section =
+            form?.querySelector(
+                "[data-goal-progress-section]"
+            );
+
+        const type =
+            this.currentGoalType(
                 form
             );
+
+        let mode =
+            this.currentMode(
+                form
+            );
+
+        if (
+            !this.validModeForType(
+                type,
+                mode
+            )
+        ) {
+
+            mode =
+                "manual";
+
+        }
+
+        const accountId =
+            mode === "manual"
+                ? ""
+                : this.currentAccountId(
+                    form
+                );
+
+        let startingDebt =
+            0;
+
+        if (
+            mode === "debt" &&
+            accountId
+        ) {
+
+            const existingMode =
+                section?.dataset
+                    ?.goalExistingMode ||
+                "";
+
+            const existingAccount =
+                section?.dataset
+                    ?.goalExistingAccount ||
+                "";
+
+            const existingDebt =
+                this.number(
+                    section?.dataset
+                        ?.goalExistingDebt
+                );
+
+            if (
+                existingMode ===
+                    "debt" &&
+                existingAccount ===
+                    accountId &&
+                existingDebt > 0
+            ) {
+
+                startingDebt =
+                    existingDebt;
+
+            } else {
+
+                startingDebt =
+                    this.outstandingDebt(
+                        this.accountById(
+                            accountId
+                        )
+                    );
+
+            }
+
+        }
 
         return {
 
             progressMode:
-                String(
-                    values.get(
-                        "goalProgressMode"
-                    ) ||
-                    "manual"
-                ),
+                mode,
 
             progressAccountId:
-                String(
-                    values.get(
-                        "goalProgressAccountId"
-                    ) ||
-                    ""
-                ),
+                accountId ||
+                null,
 
             startingDebt:
-                this.number(
-                    values.get(
-                        "goalStartingDebt"
-                    )
+                this.round(
+                    startingDebt
                 )
 
         };
@@ -1023,8 +1566,8 @@ const AtlasGoalsProgress = {
 
         }
 
-        const config =
-            this.formGoal(
+        const configuration =
+            this.automaticConfiguration(
                 form
             );
 
@@ -1033,27 +1576,56 @@ const AtlasGoalsProgress = {
                 "[data-goal-automatic-preview-value]"
             );
 
-        if (!previewValue) {
+        const debtReferenceValue =
+            form.querySelector(
+                "[data-goal-debt-reference-value]"
+            );
 
-            return;
+        if (
+            previewValue
+        ) {
+
+            previewValue.textContent =
+                AtlasGoals.formatCurrency(
+                    this.calculatedCurrent(
+                        {
+
+                            type:
+                                this.currentGoalType(
+                                    form
+                                ),
+
+                            currentAmount:
+                                this.number(
+                                    form.querySelector(
+                                        '[name="goalCurrentAmount"]'
+                                    )?.value
+                                ),
+
+                            ...configuration
+
+                        }
+                    )
+                );
 
         }
 
-        const current =
-            this.calculatedCurrent(
-                config
-            );
+        if (
+            debtReferenceValue
+        ) {
 
-        previewValue.textContent =
-            AtlasGoals.formatCurrency(
-                current
-            );
+            debtReferenceValue.textContent =
+                AtlasGoals.formatCurrency(
+                    configuration.startingDebt
+                );
+
+        }
 
     },
 
-    refreshAccountOptions(
+    refreshModes(
         form,
-        preserveSelection = false
+        preferAutomatic = false
     ) {
 
         if (!form) {
@@ -1062,9 +1634,80 @@ const AtlasGoalsProgress = {
 
         }
 
+        const type =
+            this.currentGoalType(
+                form
+            );
+
         const modeSelect =
             form.querySelector(
                 "[data-goal-progress-mode]"
+            );
+
+        if (!modeSelect) {
+
+            return;
+
+        }
+
+        const previousMode =
+            modeSelect.value;
+
+        let selectedMode =
+            this.validModeForType(
+                type,
+                previousMode
+            )
+                ? previousMode
+                : "manual";
+
+        if (
+            preferAutomatic &&
+            previousMode !==
+                "manual"
+        ) {
+
+            selectedMode =
+                this.defaultAutomaticMode(
+                    type
+                );
+
+        }
+
+        modeSelect.innerHTML =
+            this.modeOptions(
+                type,
+                selectedMode
+            );
+
+        modeSelect.value =
+            selectedMode;
+
+        this.refreshAccountOptions(
+            form,
+            true
+        );
+
+        this.updateFormVisibility(
+            form
+        );
+
+    },
+
+    refreshAccountOptions(
+        form,
+        preserveSelection = true
+    ) {
+
+        if (!form) {
+
+            return;
+
+        }
+
+        const mode =
+            this.currentMode(
+                form
             );
 
         const accountSelect =
@@ -1076,10 +1719,6 @@ const AtlasGoalsProgress = {
             form.querySelector(
                 "[data-goal-progress-account-label]"
             );
-
-        const mode =
-            modeSelect?.value ||
-            "manual";
 
         if (!accountSelect) {
 
@@ -1115,7 +1754,9 @@ const AtlasGoalsProgress = {
         accountSelect.value =
             selectedId;
 
-        if (accountLabel) {
+        if (
+            accountLabel
+        ) {
 
             accountLabel.textContent =
                 this.fieldLabel(
@@ -1138,9 +1779,9 @@ const AtlasGoalsProgress = {
 
         }
 
-        const modeSelect =
-            form.querySelector(
-                "[data-goal-progress-mode]"
+        const mode =
+            this.currentMode(
+                form
             );
 
         const accountField =
@@ -1148,9 +1789,9 @@ const AtlasGoalsProgress = {
                 "[data-goal-progress-account-field]"
             );
 
-        const startingDebtField =
+        const debtReference =
             form.querySelector(
-                "[data-goal-starting-debt-field]"
+                "[data-goal-debt-reference]"
             );
 
         const preview =
@@ -1163,11 +1804,9 @@ const AtlasGoalsProgress = {
                 '[name="goalCurrentAmount"]'
             );
 
-        const mode =
-            modeSelect?.value ||
-            "manual";
-
-        if (accountField) {
+        if (
+            accountField
+        ) {
 
             accountField.style.display =
                 mode === "manual"
@@ -1176,16 +1815,20 @@ const AtlasGoalsProgress = {
 
         }
 
-        if (startingDebtField) {
+        if (
+            debtReference
+        ) {
 
-            startingDebtField.style.display =
+            debtReference.style.display =
                 mode === "debt"
-                    ? "flex"
+                    ? "block"
                     : "none";
 
         }
 
-        if (preview) {
+        if (
+            preview
+        ) {
 
             preview.style.display =
                 mode === "manual"
@@ -1194,7 +1837,9 @@ const AtlasGoalsProgress = {
 
         }
 
-        if (currentInput) {
+        if (
+            currentInput
+        ) {
 
             currentInput.disabled =
                 mode !== "manual";
@@ -1239,6 +1884,12 @@ const AtlasGoalsProgress = {
             AtlasGoals.normalizeGoal(
                 existing || {
 
+                    name:
+                        "",
+
+                    type:
+                        "saving",
+
                     progressMode:
                         "manual",
 
@@ -1280,6 +1931,235 @@ const AtlasGoalsProgress = {
 
     },
 
+    installStyles() {
+
+        const previous =
+            document.getElementById(
+                "atlas-goals-progress-styles"
+            );
+
+        if (
+            previous
+        ) {
+
+            previous.remove();
+
+        }
+
+        const style =
+            document.createElement(
+                "style"
+            );
+
+        style.id =
+            "atlas-goals-progress-styles";
+
+        style.textContent = `
+
+            .atlas-goal-card[data-paused="true"] {
+                opacity: 0.88 !important;
+                border-color:
+                    rgba(
+                        244,
+                        185,
+                        94,
+                        0.32
+                    ) !important;
+                background:
+                    rgba(
+                        244,
+                        185,
+                        94,
+                        0.055
+                    ) !important;
+            }
+
+            .atlas-goal-badges {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 7px;
+                margin-top: 12px;
+            }
+
+            .atlas-goal-badge {
+                display: inline-flex;
+                min-height: 25px;
+                align-items: center;
+                padding:
+                    0
+                    9px;
+                border:
+                    1px solid
+                    transparent;
+                border-radius: 99px;
+                font-size: 9px;
+                font-weight: 800;
+                line-height: 1;
+            }
+
+            .atlas-goal-status-active {
+                color: #86e4ac;
+                border-color:
+                    rgba(
+                        95,
+                        214,
+                        150,
+                        0.3
+                    );
+                background:
+                    rgba(
+                        95,
+                        214,
+                        150,
+                        0.12
+                    );
+            }
+
+            .atlas-goal-status-paused {
+                color: #f4c875;
+                border-color:
+                    rgba(
+                        244,
+                        185,
+                        94,
+                        0.32
+                    );
+                background:
+                    rgba(
+                        244,
+                        185,
+                        94,
+                        0.12
+                    );
+            }
+
+            .atlas-goal-status-completed {
+                color: #79baff;
+                border-color:
+                    rgba(
+                        77,
+                        163,
+                        255,
+                        0.32
+                    );
+                background:
+                    rgba(
+                        77,
+                        163,
+                        255,
+                        0.12
+                    );
+            }
+
+            .atlas-goal-status-archived {
+                color: #b8c0d4;
+                border-color:
+                    rgba(
+                        184,
+                        192,
+                        212,
+                        0.24
+                    );
+                background:
+                    rgba(
+                        184,
+                        192,
+                        212,
+                        0.08
+                    );
+            }
+
+            .atlas-goal-status-cancelled {
+                color: #ff9aa5;
+                border-color:
+                    rgba(
+                        255,
+                        95,
+                        112,
+                        0.26
+                    );
+                background:
+                    rgba(
+                        255,
+                        95,
+                        112,
+                        0.09
+                    );
+            }
+
+            .atlas-goal-priority-high {
+                color: #ff9aa5;
+                border-color:
+                    rgba(
+                        255,
+                        95,
+                        112,
+                        0.3
+                    );
+                background:
+                    rgba(
+                        255,
+                        95,
+                        112,
+                        0.11
+                    );
+            }
+
+            .atlas-goal-priority-medium {
+                color: #f4c875;
+                border-color:
+                    rgba(
+                        244,
+                        185,
+                        94,
+                        0.3
+                    );
+                background:
+                    rgba(
+                        244,
+                        185,
+                        94,
+                        0.11
+                    );
+            }
+
+            .atlas-goal-priority-low {
+                color: #79baff;
+                border-color:
+                    rgba(
+                        77,
+                        163,
+                        255,
+                        0.3
+                    );
+                background:
+                    rgba(
+                        77,
+                        163,
+                        255,
+                        0.11
+                    );
+            }
+
+            .atlas-goal-source {
+                display: block;
+                margin-top: 10px;
+                color:
+                    var(
+                        --color-text-muted
+                    );
+                font-size: 9px;
+                line-height: 1.45;
+            }
+
+        `;
+
+        document.head.appendChild(
+            style
+        );
+
+    },
+
     installNormalization() {
 
         this.originalNormalizeGoal =
@@ -1295,76 +2175,38 @@ const AtlasGoalsProgress = {
                         goal
                     );
 
-                let mode =
-                    goal?.progressMode ??
-                    "manual";
+                const requestedMode =
+                    String(
+                        goal?.progressMode ||
+                        "manual"
+                    );
 
-                let accountId =
-                    goal?.progressAccountId ??
-                    goal?.accountId ??
-                    goal?.debtAccountId ??
-                    null;
-
-                let startingDebt =
-                    goal?.startingDebt ??
-                    0;
-
-                if (
-                    this.pendingConfig
-                ) {
-
-                    if (
-                        this.pendingNormalizeSkips >
-                        0
-                    ) {
-
-                        this.pendingNormalizeSkips -=
-                            1;
-
-                    } else {
-
-                        mode =
-                            this.pendingConfig
-                                .progressMode;
-
-                        accountId =
-                            this.pendingConfig
-                                .progressAccountId;
-
-                        startingDebt =
-                            this.pendingConfig
-                                .startingDebt;
-
-                        this.pendingConfig =
-                            null;
-
-                    }
-
-                }
+                const mode =
+                    this.validModeForType(
+                        normalized.type,
+                        requestedMode
+                    )
+                        ? requestedMode
+                        : "manual";
 
                 return {
 
                     ...normalized,
 
                     progressMode:
-                        [
-                            "manual",
-                            "account",
-                            "investment",
-                            "debt"
-                        ].includes(mode)
-                            ? mode
-                            : "manual",
+                        mode,
 
                     progressAccountId:
-                        accountId ||
+                        goal?.progressAccountId ||
+                        goal?.accountId ||
+                        goal?.debtAccountId ||
                         null,
 
                     startingDebt:
                         Math.max(
                             0,
                             this.round(
-                                startingDebt
+                                goal?.startingDebt
                             )
                         )
 
@@ -1387,47 +2229,152 @@ const AtlasGoalsProgress = {
             );
 
         AtlasGoals.progress =
-            goal => {
-
-                const effective =
+            goal =>
+                this.originalProgress(
                     this.effectiveGoal(
                         goal
-                    );
-
-                return this.originalProgress(
-                    effective
+                    )
                 );
-
-            };
 
         AtlasGoals.remaining =
-            goal => {
-
-                const effective =
+            goal =>
+                this.originalRemaining(
                     this.effectiveGoal(
                         goal
-                    );
-
-                return this.originalRemaining(
-                    effective
+                    )
                 );
-
-            };
 
     },
 
-    metadataLabel(goal) {
+    installSummary() {
 
-        return (
-            `Prioridad: ` +
-            `${AtlasGoals.priorityLabel(
-                goal.priority
-            )}` +
-            ` · Estado: ` +
-            `${AtlasGoals.statusLabel(
-                goal.status
-            )}`
-        );
+        this.originalSummary =
+            AtlasGoals.summary.bind(
+                AtlasGoals
+            );
+
+        AtlasGoals.summary =
+            data => {
+
+                const active =
+                    AtlasGoals.goals(
+                        data
+                    )
+                        .filter(
+                            goal =>
+                                goal.status ===
+                                "active"
+                        )
+                        .sort(
+                            (
+                                first,
+                                second
+                            ) => {
+
+                                const priorities = {
+
+                                    high:
+                                        1,
+
+                                    medium:
+                                        2,
+
+                                    low:
+                                        3
+
+                                };
+
+                                const priorityDifference =
+                                    (
+                                        priorities[
+                                            first.priority
+                                        ] ||
+                                        2
+                                    ) -
+                                    (
+                                        priorities[
+                                            second.priority
+                                        ] ||
+                                        2
+                                    );
+
+                                if (
+                                    priorityDifference !==
+                                    0
+                                ) {
+
+                                    return priorityDifference;
+
+                                }
+
+                                return String(
+                                    first.deadline ||
+                                    "9999-12-31"
+                                ).localeCompare(
+                                    String(
+                                        second.deadline ||
+                                        "9999-12-31"
+                                    )
+                                );
+
+                            }
+                        );
+
+                const totalRemaining =
+                    active.reduce(
+                        (
+                            total,
+                            goal
+                        ) =>
+                            total +
+                            AtlasGoals.remaining(
+                                goal
+                            ),
+                        0
+                    );
+
+                const monthlyRequired =
+                    active.reduce(
+                        (
+                            total,
+                            goal
+                        ) => {
+
+                            const amount =
+                                AtlasGoals.monthlyRequired(
+                                    goal
+                                );
+
+                            return (
+                                total +
+                                (
+                                    amount ===
+                                    null
+                                        ? 0
+                                        : amount
+                                )
+                            );
+
+                        },
+                        0
+                    );
+
+                return {
+
+                    activeCount:
+                        active.length,
+
+                    totalRemaining,
+
+                    monthlyRequired,
+
+                    priorityGoal:
+                        active[0] ||
+                        null
+
+                };
+
+            };
 
     },
 
@@ -1446,58 +2393,32 @@ const AtlasGoalsProgress = {
                         goal
                     );
 
-                const card =
+                const original =
                     this.originalGoalCard(
                         effective
                     );
 
-                const source =
-                    this.sourceLabel(
-                        goal
-                    );
+                const information = `
 
-                const metadata =
-                    this.metadataLabel(
-                        goal
-                    );
+                    ${this.badges(goal)}
 
-                return card.replace(
+                    <small
+                        class="atlas-goal-source"
+                    >
+                        ${AtlasGoals.escape(
+                            this.sourceLabel(
+                                goal
+                            )
+                        )}
+                    </small>
+
+                `;
+
+                return original.replace(
                     '<div\n                    class="atlas-goal-progress"',
                     `
 
-                        <small
-                            style="
-                                display:block;
-                                margin-top:12px;
-                                color:
-                                    var(
-                                        --color-text-muted
-                                    );
-                                font-size:9px;
-                                line-height:1.4;
-                            "
-                        >
-                            ${AtlasGoals.escape(
-                                source
-                            )}
-                        </small>
-
-                        <small
-                            style="
-                                display:block;
-                                margin-top:5px;
-                                color:
-                                    var(
-                                        --color-text-muted
-                                    );
-                                font-size:9px;
-                                line-height:1.4;
-                            "
-                        >
-                            ${AtlasGoals.escape(
-                                metadata
-                            )}
-                        </small>
+                        ${information}
 
                         <div
                             class="atlas-goal-progress"`
@@ -1535,38 +2456,17 @@ const AtlasGoalsProgress = {
         AtlasGoals.saveForm =
             form => {
 
-                const values =
-                    new FormData(
+                const configuration =
+                    this.automaticConfiguration(
                         form
                     );
 
-                const progressMode =
-                    String(
-                        values.get(
-                            "goalProgressMode"
-                        ) ||
-                        "manual"
-                    );
-
-                const progressAccountId =
-                    String(
-                        values.get(
-                            "goalProgressAccountId"
-                        ) ||
-                        ""
-                    );
-
-                const startingDebt =
-                    this.number(
-                        values.get(
-                            "goalStartingDebt"
-                        )
-                    );
-
                 if (
-                    progressMode !==
+                    configuration
+                        .progressMode !==
                         "manual" &&
-                    !progressAccountId
+                    !configuration
+                        .progressAccountId
                 ) {
 
                     AtlasUI.toast(
@@ -1578,26 +2478,30 @@ const AtlasGoalsProgress = {
                 }
 
                 const linkedAccount =
-                    progressAccountId
+                    configuration
+                        .progressAccountId
                         ? this.accountById(
-                            progressAccountId
+                            configuration
+                                .progressAccountId
                         )
                         : null;
 
                 if (
-                    progressMode !==
+                    configuration
+                        .progressMode !==
                         "manual" &&
                     (
                         !linkedAccount ||
                         this.accountRole(
                             linkedAccount
                         ) !==
-                            progressMode
+                            configuration
+                                .progressMode
                     )
                 ) {
 
                     AtlasUI.toast(
-                        "La cuenta seleccionada no corresponde al tipo de progreso."
+                        "La cuenta seleccionada no corresponde al cálculo elegido."
                     );
 
                     return;
@@ -1605,48 +2509,172 @@ const AtlasGoalsProgress = {
                 }
 
                 if (
-                    progressMode ===
+                    configuration
+                        .progressMode ===
                         "debt" &&
-                    startingDebt <= 0
+                    configuration
+                        .startingDebt <= 0
                 ) {
 
                     AtlasUI.toast(
-                        "Introduce la deuda inicial de referencia."
+                        "La cuenta seleccionada no tiene deuda pendiente."
                     );
 
                     return;
 
                 }
 
-                this.pendingConfig = {
+                const editingId =
+                    AtlasGoals
+                        .editingGoalId;
 
-                    progressMode,
+                const beforeIds =
+                    new Set(
+                        AtlasGoals.goals()
+                            .map(
+                                goal =>
+                                    goal.id
+                            )
+                    );
+
+                this.originalSaveForm(
+                    form
+                );
+
+                const savedData =
+                    AtlasStorage.load();
+
+                if (
+                    !savedData ||
+                    !Array.isArray(
+                        savedData.goals
+                    )
+                ) {
+
+                    return;
+
+                }
+
+                let targetId =
+                    editingId;
+
+                if (!targetId) {
+
+                    const created =
+                        savedData.goals
+                            .find(
+                                goal =>
+                                    !beforeIds.has(
+                                        goal.id
+                                    )
+                            );
+
+                    targetId =
+                        created?.id ||
+                        null;
+
+                }
+
+                if (!targetId) {
+
+                    return;
+
+                }
+
+                const index =
+                    savedData.goals
+                        .findIndex(
+                            goal =>
+                                goal.id ===
+                                targetId
+                        );
+
+                if (
+                    index < 0
+                ) {
+
+                    return;
+
+                }
+
+                const previous =
+                    savedData.goals[
+                        index
+                    ];
+
+                savedData.goals[
+                    index
+                ] = {
+
+                    ...previous,
+
+                    progressMode:
+                        configuration
+                            .progressMode,
 
                     progressAccountId:
-                        progressAccountId ||
-                        null,
+                        configuration
+                            .progressAccountId,
 
-                    startingDebt
+                    accountId:
+                        configuration
+                            .progressMode ===
+                            "account" ||
+                        configuration
+                            .progressMode ===
+                            "investment"
+                            ? configuration
+                                .progressAccountId
+                            : null,
+
+                    debtAccountId:
+                        configuration
+                            .progressMode ===
+                            "debt"
+                            ? configuration
+                                .progressAccountId
+                            : null,
+
+                    startingDebt:
+                        configuration
+                            .startingDebt,
+
+                    updatedAt:
+                        new Date()
+                            .toISOString()
 
                 };
 
-                this.pendingNormalizeSkips =
-                    AtlasGoals.goals()
-                        .length;
-
-                try {
-
-                    this.originalSaveForm(
-                        form
+                const stored =
+                    AtlasStorage.save(
+                        savedData
                     );
 
-                } finally {
+                if (!stored) {
 
-                    this.pendingConfig =
-                        null;
+                    AtlasUI.toast(
+                        "No se pudo guardar la configuración automática."
+                    );
 
-                    this.pendingNormalizeSkips =
-                        0;
+                    return;
+
+                }
+
+                AtlasGoals.data =
+                    AtlasStorage.load();
+
+                if (
+                    typeof AtlasApp !==
+                        "undefined"
+                ) {
+
+                    AtlasApp.data =
+                        AtlasGoals.data;
+
+                    AtlasApp.route =
+                        "goals";
+
+                    AtlasApp.render();
 
                 }
 
@@ -1660,17 +2688,37 @@ const AtlasGoalsProgress = {
             "change",
             event => {
 
-                const modeSelect =
+                const form =
                     event.target.closest(
-                        "[data-goal-progress-mode]"
+                        "[data-goal-form]"
                     );
 
-                if (modeSelect) {
+                if (!form) {
 
-                    const form =
-                        modeSelect.closest(
-                            "[data-goal-form]"
-                        );
+                    return;
+
+                }
+
+                if (
+                    event.target.matches(
+                        '[name="goalType"]'
+                    )
+                ) {
+
+                    this.refreshModes(
+                        form,
+                        true
+                    );
+
+                    return;
+
+                }
+
+                if (
+                    event.target.matches(
+                        "[data-goal-progress-mode]"
+                    )
+                ) {
 
                     this.refreshAccountOptions(
                         form,
@@ -1685,61 +2733,17 @@ const AtlasGoalsProgress = {
 
                 }
 
-                const accountSelect =
-                    event.target.closest(
+                if (
+                    event.target.matches(
                         "[data-goal-progress-account]"
-                    );
-
-                if (accountSelect) {
-
-                    this.updatePreview(
-                        accountSelect.closest(
-                            "[data-goal-form]"
-                        )
-                    );
-
-                    return;
-
-                }
-
-                const debtInput =
-                    event.target.closest(
-                        '[name="goalStartingDebt"]'
-                    );
-
-                if (debtInput) {
-
-                    this.updatePreview(
-                        debtInput.closest(
-                            "[data-goal-form]"
-                        )
-                    );
-
-                }
-
-            }
-        );
-
-        document.addEventListener(
-            "input",
-            event => {
-
-                const debtInput =
-                    event.target.closest(
-                        '[name="goalStartingDebt"]'
-                    );
-
-                if (!debtInput) {
-
-                    return;
-
-                }
-
-                this.updatePreview(
-                    debtInput.closest(
-                        "[data-goal-form]"
                     )
-                );
+                ) {
+
+                    this.updatePreview(
+                        form
+                    );
+
+                }
 
             }
         );
@@ -1761,9 +2765,13 @@ const AtlasGoalsProgress = {
         this.initialized =
             true;
 
+        this.installStyles();
+
         this.installNormalization();
 
         this.installCalculations();
+
+        this.installSummary();
 
         this.installCards();
 
