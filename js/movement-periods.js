@@ -12,6 +12,9 @@ const AtlasMovementPeriods = {
     eventsBound:
         false,
 
+    pendingExpensePeriodSync:
+        null,
+
     validMonth(value) {
 
         return /^\d{4}-\d{2}$/.test(
@@ -80,7 +83,8 @@ const AtlasMovementPeriods = {
 
         const candidates = [
 
-            occurrence?.confirmedPeriodMonth,
+            occurrence
+                ?.confirmedPeriodMonth,
 
             occurrence?.periodMonth,
 
@@ -797,6 +801,166 @@ const AtlasMovementPeriods = {
 
     },
 
+    syncLinkedReimbursements(
+        data,
+        expenseMovement
+    ) {
+
+        if (
+            !data ||
+            !expenseMovement ||
+            AtlasMovements
+                .getMovementKind(
+                    expenseMovement
+                ) !==
+                "expense"
+        ) {
+
+            return;
+
+        }
+
+        const periodMonth =
+            this.movementPeriod(
+                expenseMovement
+            );
+
+        const movements =
+            Array.isArray(
+                data.movements
+            )
+                ? data.movements
+                : [];
+
+        movements.forEach(
+            movement => {
+
+                const kind =
+                    AtlasMovements
+                        .getMovementKind(
+                            movement
+                        );
+
+                if (
+                    kind !==
+                        "reimbursement" ||
+                    movement
+                        .linkedMovementId !==
+                        expenseMovement.id
+                ) {
+
+                    return;
+
+                }
+
+                movement.periodMonth =
+                    periodMonth;
+
+                movement.economicMonth =
+                    periodMonth;
+
+                movement.imputedMonth =
+                    periodMonth;
+
+                movement.updatedAt =
+                    AtlasMovements.now();
+
+            }
+        );
+
+    },
+
+    installLinkedReimbursementSync() {
+
+        const originalApplyMovement =
+            AtlasMovements
+                .applyMovement
+                .bind(
+                    AtlasMovements
+                );
+
+        AtlasMovements.applyMovement =
+            (
+                data,
+                movement,
+                direction = 1
+            ) => {
+
+                const kind =
+                    AtlasMovements
+                        .getMovementKind(
+                            movement
+                        );
+
+                if (
+                    direction === -1 &&
+                    AtlasMovements.editingId &&
+                    movement?.id ===
+                        AtlasMovements
+                            .editingId &&
+                    kind ===
+                        "expense"
+                ) {
+
+                    this
+                        .pendingExpensePeriodSync = {
+
+                            movementId:
+                                movement.id
+
+                        };
+
+                }
+
+                originalApplyMovement(
+                    data,
+                    movement,
+                    direction
+                );
+
+                if (
+                    direction === 1 &&
+                    kind ===
+                        "expense" &&
+                    this
+                        .pendingExpensePeriodSync
+                        ?.movementId ===
+                        movement?.id
+                ) {
+
+                    this.syncLinkedReimbursements(
+                        data,
+                        movement
+                    );
+
+                    this
+                        .pendingExpensePeriodSync =
+                        null;
+
+                }
+
+            };
+
+        const originalClose =
+            AtlasMovements
+                .close
+                .bind(
+                    AtlasMovements
+                );
+
+        AtlasMovements.close =
+            () => {
+
+                this
+                    .pendingExpensePeriodSync =
+                    null;
+
+                originalClose();
+
+            };
+
+    },
+
     installOccurrenceSync() {
 
         const originalMarkConfirmed =
@@ -1141,6 +1305,7 @@ const AtlasMovementPeriods = {
         this.installValidation();
         this.installRecurringMovement();
         this.installLinkedExpense();
+        this.installLinkedReimbursementSync();
         this.installOccurrenceSync();
         this.bindEvents();
 
