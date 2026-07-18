@@ -6,15 +6,33 @@
 
 const AtlasMovementPeriods = {
 
-    initialized: false,
+    initialized:
+        false,
+
+    eventsBound:
+        false,
+
+    validMonth(value) {
+
+        return /^\d{4}-\d{2}$/.test(
+            String(value || "")
+        );
+
+    },
 
     monthFromDate(date) {
 
         const value =
-            String(date || "")
-                .slice(0, 7);
+            String(
+                date || ""
+            ).slice(
+                0,
+                7
+            );
 
-        return /^\d{4}-\d{2}$/.test(value)
+        return this.validMonth(
+            value
+        )
             ? value
             : "";
 
@@ -30,12 +48,28 @@ const AtlasMovementPeriods = {
 
     movementPeriod(movement) {
 
-        return (
-            movement?.periodMonth ||
-            movement?.economicMonth ||
-            movement?.imputedMonth ||
+        const candidates = [
+
+            movement?.periodMonth,
+
+            movement?.economicMonth,
+
+            movement?.imputedMonth,
+
             this.monthFromDate(
                 movement?.date
+            ),
+
+            this.currentMonth()
+
+        ];
+
+        return (
+            candidates.find(
+                value =>
+                    this.validMonth(
+                        value
+                    )
             ) ||
             this.currentMonth()
         );
@@ -46,22 +80,31 @@ const AtlasMovementPeriods = {
 
         const candidates = [
 
+            occurrence?.confirmedPeriodMonth,
+
             occurrence?.periodMonth,
+
             occurrence?.economicMonth,
+
             occurrence?.imputedMonth,
+
             occurrence?.monthKey,
+
             occurrence?.periodKey,
+
             this.monthFromDate(
                 occurrence?.expectedDate
-            )
+            ),
+
+            this.currentMonth()
 
         ];
 
         return (
             candidates.find(
                 value =>
-                    /^\d{4}-\d{2}$/.test(
-                        String(value || "")
+                    this.validMonth(
+                        value
                     )
             ) ||
             this.currentMonth()
@@ -72,18 +115,45 @@ const AtlasMovementPeriods = {
     formatMonth(monthKey) {
 
         if (
+            typeof AtlasUI !==
+                "undefined" &&
             typeof AtlasUI
-                ?.formatMonthKey ===
-            "function"
+                .formatMonthKey ===
+                "function"
         ) {
 
-            return AtlasUI.formatMonthKey(
-                monthKey
-            );
+            return AtlasUI
+                .formatMonthKey(
+                    monthKey
+                );
 
         }
 
-        return String(monthKey || "");
+        return String(
+            monthKey || ""
+        );
+
+    },
+
+    followsDate(movement) {
+
+        const realMonth =
+            this.monthFromDate(
+                movement?.date
+            );
+
+        const periodMonth =
+            this.movementPeriod(
+                movement
+            );
+
+        return (
+            !movement ||
+            !movement.id ||
+            !realMonth ||
+            periodMonth ===
+                realMonth
+        );
 
     },
 
@@ -93,12 +163,28 @@ const AtlasMovementPeriods = {
             movement?.date ||
             AtlasMovements.today();
 
+        const realMonth =
+            this.monthFromDate(
+                date
+            );
+
         const periodMonth =
             this.movementPeriod({
 
                 ...movement,
 
                 date
+
+            });
+
+        const followsDate =
+            this.followsDate({
+
+                ...movement,
+
+                date,
+
+                periodMonth
 
             });
 
@@ -118,6 +204,14 @@ const AtlasMovementPeriods = {
                     )}"
                     required
                     data-movement-period
+                    data-follow-date="${
+                        followsDate
+                            ? "true"
+                            : "false"
+                    }"
+                    data-real-month="${AtlasMovements.escape(
+                        realMonth
+                    )}"
                 >
 
                 <small class="movement-field-hint">
@@ -213,9 +307,38 @@ const AtlasMovementPeriods = {
 
             .movement-period-summary strong {
                 margin-top: 4px;
+                overflow-wrap: anywhere;
                 color: #f7f8fc;
                 font-size: 11px;
-                overflow-wrap: anywhere;
+            }
+
+            .movement-period-summary[
+                data-different="true"
+            ] {
+                border-color:
+                    rgba(
+                        77,
+                        163,
+                        255,
+                        0.28
+                    );
+                background:
+                    rgba(
+                        77,
+                        163,
+                        255,
+                        0.055
+                    );
+            }
+
+            .movement-period-summary[
+                data-different="true"
+            ]
+            [data-movement-economic-month] {
+                color:
+                    var(
+                        --color-primary
+                    );
             }
 
         `;
@@ -262,9 +385,13 @@ const AtlasMovementPeriods = {
             );
 
         const periodMonth =
-            String(
-                periodInput.value || ""
-            );
+            this.validMonth(
+                periodInput.value
+            )
+                ? String(
+                    periodInput.value
+                )
+                : "";
 
         const realElement =
             summary.querySelector(
@@ -301,9 +428,13 @@ const AtlasMovementPeriods = {
         summary.dataset.different =
             realMonth &&
             periodMonth &&
-            realMonth !== periodMonth
+            realMonth !==
+                periodMonth
                 ? "true"
                 : "false";
+
+        periodInput.dataset.realMonth =
+            realMonth;
 
     },
 
@@ -333,7 +464,8 @@ const AtlasMovementPeriods = {
                 class="movement-period-summary"
                 data-movement-period-summary
                 data-different="${
-                    realMonth !== periodMonth
+                    realMonth !==
+                        periodMonth
                         ? "true"
                         : "false"
                 }"
@@ -384,7 +516,8 @@ const AtlasMovementPeriods = {
     installCommonFields() {
 
         const originalCommonFields =
-            AtlasMovements.commonFields
+            AtlasMovements
+                .commonFields
                 .bind(
                     AtlasMovements
                 );
@@ -455,7 +588,8 @@ const AtlasMovementPeriods = {
     installReadForm() {
 
         const originalReadForm =
-            AtlasMovements.readForm
+            AtlasMovements
+                .readForm
                 .bind(
                     AtlasMovements
                 );
@@ -473,9 +607,11 @@ const AtlasMovementPeriods = {
                     );
 
                 const values =
-                    new FormData(form);
+                    new FormData(
+                        form
+                    );
 
-                const periodMonth =
+                const selectedPeriod =
                     String(
                         values.get(
                             "periodMonth"
@@ -483,17 +619,23 @@ const AtlasMovementPeriods = {
                         ""
                     );
 
+                const periodMonth =
+                    this.validMonth(
+                        selectedPeriod
+                    )
+                        ? selectedPeriod
+                        : this.monthFromDate(
+                            movement.date
+                        );
+
                 movement.periodMonth =
-                    periodMonth ||
-                    this.monthFromDate(
-                        movement.date
-                    );
+                    periodMonth;
 
                 movement.economicMonth =
-                    movement.periodMonth;
+                    periodMonth;
 
                 movement.imputedMonth =
-                    movement.periodMonth;
+                    periodMonth;
 
                 return movement;
 
@@ -513,7 +655,8 @@ const AtlasMovementPeriods = {
         AtlasMovements.validateMovement =
             (
                 movement,
-                data = AtlasMovements.data
+                data =
+                    AtlasMovements.data
             ) => {
 
                 const originalError =
@@ -534,7 +677,7 @@ const AtlasMovementPeriods = {
                     );
 
                 if (
-                    !/^\d{4}-\d{2}$/.test(
+                    !this.validMonth(
                         periodMonth
                     )
                 ) {
@@ -617,9 +760,11 @@ const AtlasMovementPeriods = {
                 }
 
                 const expense =
-                    AtlasMovements.findMovement(
-                        linkedExpenseSelect.value
-                    );
+                    AtlasMovements
+                        .findMovement(
+                            linkedExpenseSelect
+                                .value
+                        );
 
                 const periodInput =
                     form.elements
@@ -630,10 +775,17 @@ const AtlasMovementPeriods = {
                     periodInput
                 ) {
 
-                    periodInput.value =
+                    const periodMonth =
                         this.movementPeriod(
                             expense
                         );
+
+                    periodInput.value =
+                        periodMonth;
+
+                    periodInput.dataset
+                        .followDate =
+                        "false";
 
                 }
 
@@ -681,15 +833,23 @@ const AtlasMovementPeriods = {
 
                 }
 
-                occurrence.confirmedPeriodMonth =
+                const periodMonth =
                     this.movementPeriod(
                         movement
                     );
 
+                occurrence
+                    .confirmedPeriodMonth =
+                    periodMonth;
+
                 occurrence.periodMonth =
-                    occurrence.periodMonth ||
-                    occurrence
-                        .confirmedPeriodMonth;
+                    periodMonth;
+
+                occurrence.economicMonth =
+                    periodMonth;
+
+                occurrence.imputedMonth =
+                    periodMonth;
 
                 occurrence.updatedAt =
                     AtlasMovements.now();
@@ -729,10 +889,23 @@ const AtlasMovementPeriods = {
 
                 }
 
-                occurrence.confirmedPeriodMonth =
+                const periodMonth =
                     this.movementPeriod(
                         movement
                     );
+
+                occurrence
+                    .confirmedPeriodMonth =
+                    periodMonth;
+
+                occurrence.periodMonth =
+                    periodMonth;
+
+                occurrence.economicMonth =
+                    periodMonth;
+
+                occurrence.imputedMonth =
+                    periodMonth;
 
                 occurrence.updatedAt =
                     AtlasMovements.now();
@@ -772,7 +945,8 @@ const AtlasMovementPeriods = {
 
                 }
 
-                occurrence.confirmedPeriodMonth =
+                occurrence
+                    .confirmedPeriodMonth =
                     null;
 
                 occurrence.updatedAt =
@@ -782,40 +956,110 @@ const AtlasMovementPeriods = {
 
     },
 
-    installExistingMovementNormalization() {
+    handleDateChange(dateInput) {
 
-        const movements =
-            Array.isArray(
-                AtlasMovements.data
-                    ?.movements
-            )
-                ? AtlasMovements.data
-                    .movements
-                : [];
+        const form =
+            dateInput.closest(
+                "[data-movement-form]"
+            );
 
-        movements.forEach(
-            movement => {
+        if (!form) {
 
-                const periodMonth =
-                    this.movementPeriod(
-                        movement
-                    );
+            return;
 
-                movement.periodMonth =
-                    periodMonth;
+        }
 
-                movement.economicMonth =
-                    periodMonth;
+        const periodInput =
+            form.elements
+                ?.periodMonth;
 
-                movement.imputedMonth =
-                    periodMonth;
+        if (!periodInput) {
 
-            }
+            return;
+
+        }
+
+        const previousRealMonth =
+            String(
+                periodInput.dataset
+                    .realMonth ||
+                ""
+            );
+
+        const newRealMonth =
+            this.monthFromDate(
+                dateInput.value
+            );
+
+        const followsDate =
+            periodInput.dataset
+                .followDate !==
+                "false";
+
+        const periodWasRealMonth =
+            !periodInput.value ||
+            periodInput.value ===
+                previousRealMonth;
+
+        if (
+            followsDate ||
+            periodWasRealMonth
+        ) {
+
+            periodInput.value =
+                newRealMonth;
+
+            periodInput.dataset
+                .followDate =
+                "true";
+
+        }
+
+        periodInput.dataset
+            .realMonth =
+            newRealMonth;
+
+        this.updatePeriodSummary(
+            form
+        );
+
+    },
+
+    handlePeriodChange(periodInput) {
+
+        const form =
+            periodInput.closest(
+                "[data-movement-form]"
+            );
+
+        if (!form) {
+
+            return;
+
+        }
+
+        periodInput.dataset
+            .followDate =
+            "false";
+
+        this.updatePeriodSummary(
+            form
         );
 
     },
 
     bindEvents() {
+
+        if (
+            this.eventsBound
+        ) {
+
+            return;
+
+        }
+
+        this.eventsBound =
+            true;
 
         document.addEventListener(
             "change",
@@ -828,40 +1072,8 @@ const AtlasMovementPeriods = {
 
                 if (dateInput) {
 
-                    const form =
-                        dateInput.closest(
-                            "[data-movement-form]"
-                        );
-
-                    if (!form) {
-
-                        return;
-
-                    }
-
-                    const periodInput =
-                        form.elements
-                            ?.periodMonth;
-
-                    if (
-                        periodInput &&
-                        (
-                            !periodInput.value ||
-                            periodInput.dataset
-                                .manuallyChanged !==
-                                "true"
-                        )
-                    ) {
-
-                        periodInput.value =
-                            this.monthFromDate(
-                                dateInput.value
-                            );
-
-                    }
-
-                    this.updatePeriodSummary(
-                        form
+                    this.handleDateChange(
+                        dateInput
                     );
 
                     return;
@@ -875,14 +1087,8 @@ const AtlasMovementPeriods = {
 
                 if (periodInput) {
 
-                    periodInput.dataset
-                        .manuallyChanged =
-                        "true";
-
-                    this.updatePeriodSummary(
-                        periodInput.closest(
-                            "[data-movement-form]"
-                        )
+                    this.handlePeriodChange(
+                        periodInput
                     );
 
                 }
@@ -905,14 +1111,8 @@ const AtlasMovementPeriods = {
 
                 }
 
-                periodInput.dataset
-                    .manuallyChanged =
-                    "true";
-
-                this.updatePeriodSummary(
-                    periodInput.closest(
-                        "[data-movement-form]"
-                    )
+                this.handlePeriodChange(
+                    periodInput
                 );
 
             }
