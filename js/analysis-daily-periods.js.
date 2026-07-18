@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    analysis-daily-periods.js
-   Actividad diaria y ajustes de mes imputado
+   Actividad real y ajustes económicos del mes
 ========================================================== */
 
 const AtlasAnalysisDailyPeriods = {
@@ -14,6 +14,17 @@ const AtlasAnalysisDailyPeriods = {
         return /^\d{4}-\d{2}$/.test(
             String(value || "")
         );
+
+    },
+
+    number(value) {
+
+        const result =
+            Number(value);
+
+        return Number.isFinite(result)
+            ? result
+            : 0;
 
     },
 
@@ -131,12 +142,22 @@ const AtlasAnalysisDailyPeriods = {
 
     },
 
+    movements(data) {
+
+        return Array.isArray(
+            data?.movements
+        )
+            ? data.movements
+            : [];
+
+    },
+
     economicEffect(movement) {
 
         const amount =
-            Number(
+            this.number(
                 movement?.amount
-            ) || 0;
+            );
 
         const kind =
             this.movementKind(
@@ -167,7 +188,7 @@ const AtlasAnalysisDailyPeriods = {
 
     effectColor(value) {
 
-        return value >= 0
+        return this.number(value) >= 0
             ? "var(--color-success)"
             : "var(--color-danger)";
 
@@ -178,13 +199,7 @@ const AtlasAnalysisDailyPeriods = {
         monthKey
     ) {
 
-        return (
-            Array.isArray(
-                data?.movements
-            )
-                ? data.movements
-                : []
-        )
+        return this.movements(data)
             .filter(
                 movement =>
                     this.economicMonth(
@@ -205,13 +220,12 @@ const AtlasAnalysisDailyPeriods = {
                             movement
                         );
 
-                    return (
-                        kind === "income" ||
-                        kind === "expense" ||
-                        kind ===
-                            "reimbursement" ||
-                        kind === "investment"
-                    );
+                    return [
+                        "income",
+                        "expense",
+                        "reimbursement",
+                        "investment"
+                    ].includes(kind);
 
                 }
             )
@@ -219,67 +233,293 @@ const AtlasAnalysisDailyPeriods = {
                 (
                     first,
                     second
-                ) =>
-                    String(
-                        second.date || ""
+                ) => {
+
+                    const dateComparison =
+                        String(
+                            second.date || ""
+                        ).localeCompare(
+                            String(
+                                first.date || ""
+                            )
+                        );
+
+                    if (
+                        dateComparison !== 0
+                    ) {
+
+                        return dateComparison;
+
+                    }
+
+                    return String(
+                        second.createdAt || ""
                     ).localeCompare(
                         String(
-                            first.date || ""
+                            first.createdAt || ""
                         )
-                    )
+                    );
+
+                }
             );
 
     },
 
-    dailyData(
+    median(values) {
+
+        const list =
+            values
+                .map(
+                    value =>
+                        this.number(
+                            value
+                        )
+                )
+                .sort(
+                    (
+                        first,
+                        second
+                    ) =>
+                        first -
+                        second
+                );
+
+        if (
+            list.length === 0
+        ) {
+
+            return 0;
+
+        }
+
+        const middle =
+            Math.floor(
+                list.length /
+                2
+            );
+
+        if (
+            list.length % 2 === 0
+        ) {
+
+            return (
+                list[
+                    middle - 1
+                ] +
+                list[
+                    middle
+                ]
+            ) / 2;
+
+        }
+
+        return list[middle];
+
+    },
+
+    realActivity(
         data,
         monthKey
     ) {
 
-        const clonedData = {
+        const movements =
+            this.movements(data)
+                .filter(
+                    movement =>
+                        this.realMonth(
+                            movement
+                        ) === monthKey
+                );
 
-            ...data,
+        const activeDays =
+            new Set(
+                movements
+                    .map(
+                        movement =>
+                            String(
+                                movement.date ||
+                                ""
+                            )
+                    )
+                    .filter(Boolean)
+            ).size;
+
+        const expenseAmounts =
+            movements
+                .filter(
+                    movement =>
+                        this.movementKind(
+                            movement
+                        ) === "expense"
+                )
+                .map(
+                    movement =>
+                        this.number(
+                            movement.amount
+                        )
+                );
+
+        const totalExpenses =
+            expenseAmounts.reduce(
+                (
+                    total,
+                    amount
+                ) =>
+                    total +
+                    amount,
+                0
+            );
+
+        return {
 
             movements:
-                (
-                    Array.isArray(
-                        data?.movements
+                movements.length,
+
+            activeDays,
+
+            averageExpense:
+                expenseAmounts.length > 0
+                    ? (
+                        totalExpenses /
+                        expenseAmounts.length
                     )
-                        ? data.movements
-                        : []
-                ).filter(
-                    movement => {
+                    : 0,
 
-                        const economicMonth =
-                            this.economicMonth(
-                                movement
-                            );
-
-                        const realMonth =
-                            this.realMonth(
-                                movement
-                            );
-
-                        if (
-                            economicMonth !==
-                            monthKey
-                        ) {
-
-                            return true;
-
-                        }
-
-                        return (
-                            realMonth ===
-                            monthKey
-                        );
-
-                    }
+            medianExpense:
+                this.median(
+                    expenseAmounts
                 )
 
         };
 
-        return clonedData;
+    },
+
+    realActivityPanel(
+        data,
+        monthKey
+    ) {
+
+        const activity =
+            this.realActivity(
+                data,
+                monthKey
+            );
+
+        const rows = [
+
+            {
+                label:
+                    "Movimientos reales",
+
+                value:
+                    activity.movements
+            },
+
+            {
+                label:
+                    "Días con actividad",
+
+                value:
+                    activity.activeDays
+            },
+
+            {
+                label:
+                    "Gasto medio",
+
+                value:
+                    AtlasUI.formatCurrency(
+                        activity.averageExpense
+                    )
+            },
+
+            {
+                label:
+                    "Gasto mediano",
+
+                value:
+                    AtlasUI.formatCurrency(
+                        activity.medianExpense
+                    )
+            }
+
+        ];
+
+        return `
+
+            <details
+                class="
+                    panel
+                    atlas-analysis-panel
+                    atlas-analysis-details
+                "
+                data-analysis-panel="monthly-activity"
+                ${AtlasAnalysisUI.openAttribute(
+                    "monthly-activity"
+                )}
+            >
+
+                <summary>
+
+                    <div>
+
+                        <strong>
+                            Actividad real del mes
+                        </strong>
+
+                        <small>
+                            Operaciones según su fecha real
+                        </small>
+
+                    </div>
+
+                    <span>
+                        +
+                    </span>
+
+                </summary>
+
+                <div
+                    class="
+                        atlas-analysis-details-content
+                    "
+                >
+
+                    <div
+                        class="
+                            atlas-analysis-facts
+                        "
+                    >
+
+                        ${rows
+                            .map(
+                                row => `
+
+                                    <div>
+
+                                        <small>
+                                            ${AtlasUI.escapeHtml(
+                                                row.label
+                                            )}
+                                        </small>
+
+                                        <strong>
+                                            ${row.value}
+                                        </strong>
+
+                                    </div>
+
+                                `
+                            )
+                            .join("")}
+
+                    </div>
+
+                </div>
+
+            </details>
+
+        `;
 
     },
 
@@ -295,28 +535,28 @@ const AtlasAnalysisDailyPeriods = {
                 movement
             );
 
+        const economicMonth =
+            this.economicMonth(
+                movement
+            );
+
         return `
 
-            <div
-                class="row"
-                style="
-                    align-items:flex-start;
+            <article
+                class="
+                    atlas-analysis-economic-adjustment
                 "
             >
 
-                <div
-                    style="
-                        min-width:0;
-                    "
-                >
+                <div>
 
-                    <b>
+                    <strong>
                         ${AtlasUI.escapeHtml(
                             this.movementLabel(
                                 movement
                             )
                         )}
-                    </b>
+                    </strong>
 
                     <small>
                         Fecha real:
@@ -326,22 +566,23 @@ const AtlasAnalysisDailyPeriods = {
                     </small>
 
                     <small>
-                        Imputado a
+                        Procede de
                         ${AtlasUI.formatMonthKey(
-                            this.economicMonth(
-                                movement
-                            )
+                            realMonth
+                        )}
+                        · imputado a
+                        ${AtlasUI.formatMonthKey(
+                            economicMonth
                         )}
                     </small>
 
                     ${
-                        realMonth
+                        movement.note
                             ? `
 
                                 <small>
-                                    Procede de
-                                    ${AtlasUI.formatMonthKey(
-                                        realMonth
+                                    ${AtlasUI.escapeHtml(
+                                        movement.note
                                     )}
                                 </small>
 
@@ -353,12 +594,10 @@ const AtlasAnalysisDailyPeriods = {
 
                 <strong
                     style="
-                        flex:0 0 auto;
                         color:
                             ${this.effectColor(
                                 effect
                             )};
-                        white-space:nowrap;
                     "
                 >
                     ${
@@ -372,7 +611,7 @@ const AtlasAnalysisDailyPeriods = {
                     )}
                 </strong>
 
-            </div>
+            </article>
 
         `;
 
@@ -413,75 +652,45 @@ const AtlasAnalysisDailyPeriods = {
         return `
 
             <section
-                class="panel"
-                style="
-                    margin-top:18px;
-                    border-color:
-                        rgba(
-                            77,
-                            163,
-                            255,
-                            0.22
-                        );
-                    background:
-                        rgba(
-                            77,
-                            163,
-                            255,
-                            0.055
-                        );
+                class="
+                    panel
+                    atlas-analysis-panel
+                    atlas-analysis-economic-adjustments
                 "
             >
 
-                <div class="panelhead">
+                ${AtlasAnalysisUI.panelHeader(
+                    "Ajustes económicos del mes",
+                    "Movimientos imputados a este mes cuya fecha real pertenece a otro periodo.",
+                    `
 
-                    <div>
-
-                        <h2>
-                            Ajustes económicos del mes
-                        </h2>
-
-                        <p
-                            class="note"
+                        <strong
                             style="
-                                margin-top:5px;
-                                line-height:1.45;
+                                color:
+                                    ${this.effectColor(
+                                        total
+                                    )};
+                                white-space:
+                                    nowrap;
                             "
                         >
-                            Movimientos que pertenecen
-                            económicamente a este mes, pero cuya
-                            fecha real está en otro periodo.
-                        </p>
-
-                    </div>
-
-                    <strong
-                        style="
-                            flex:0 0 auto;
-                            color:
-                                ${this.effectColor(
+                            ${
+                                total >= 0
+                                    ? "+"
+                                    : "−"
+                            }${AtlasUI.formatCurrency(
+                                Math.abs(
                                     total
-                                )};
-                            white-space:nowrap;
-                        "
-                    >
-                        ${
-                            total >= 0
-                                ? "+"
-                                : "−"
-                        }${AtlasUI.formatCurrency(
-                            Math.abs(
-                                total
-                            )
-                        )}
-                    </strong>
+                                )
+                            )}
+                        </strong>
 
-                </div>
+                    `
+                )}
 
                 <div
-                    class="list"
-                    style="
-                        margin-top:8px;
+                    class="
+                        atlas-analysis-economic-adjustment-list
                     "
                 >
 
@@ -502,6 +711,117 @@ const AtlasAnalysisDailyPeriods = {
 
     },
 
+    installStyles() {
+
+        const previous =
+            document.getElementById(
+                "atlas-analysis-daily-period-styles"
+            );
+
+        if (previous) {
+
+            previous.remove();
+
+        }
+
+        const style =
+            document.createElement(
+                "style"
+            );
+
+        style.id =
+            "atlas-analysis-daily-period-styles";
+
+        style.textContent = `
+
+            .atlas-analysis-economic-adjustments {
+                border-color:
+                    rgba(
+                        77,
+                        163,
+                        255,
+                        0.23
+                    );
+                background:
+                    rgba(
+                        77,
+                        163,
+                        255,
+                        0.055
+                    );
+            }
+
+            .atlas-analysis-economic-adjustment-list {
+                display: grid;
+                margin-top: 12px;
+            }
+
+            .atlas-analysis-economic-adjustment {
+                display: flex;
+                align-items: flex-start;
+                justify-content:
+                    space-between;
+                gap: 14px;
+                padding:
+                    13px
+                    0;
+                border-bottom:
+                    1px solid
+                    rgba(
+                        145,
+                        164,
+                        202,
+                        0.1
+                    );
+            }
+
+            .atlas-analysis-economic-adjustment:last-child {
+                border-bottom: 0;
+            }
+
+            .atlas-analysis-economic-adjustment > div {
+                min-width: 0;
+            }
+
+            .atlas-analysis-economic-adjustment strong,
+            .atlas-analysis-economic-adjustment small {
+                display: block;
+            }
+
+            .atlas-analysis-economic-adjustment > div > strong {
+                font-size: 12px;
+                overflow-wrap: anywhere;
+            }
+
+            .atlas-analysis-economic-adjustment small {
+                margin-top: 4px;
+                color:
+                    var(
+                        --color-text-muted
+                    );
+                font-size: 9px;
+                line-height: 1.4;
+                overflow-wrap: anywhere;
+            }
+
+            .atlas-analysis-economic-adjustment
+            > strong {
+                flex:
+                    0
+                    0
+                    auto;
+                font-size: 13px;
+                white-space: nowrap;
+            }
+
+        `;
+
+        document.head.appendChild(
+            style
+        );
+
+    },
+
     install() {
 
         if (
@@ -509,7 +829,7 @@ const AtlasAnalysisDailyPeriods = {
             typeof AtlasAnalysisUI ===
                 "undefined" ||
             typeof AtlasAnalysisUI
-                .dailyActivity !==
+                .monthlyView !==
                 "function"
         ) {
 
@@ -520,50 +840,57 @@ const AtlasAnalysisDailyPeriods = {
         this.initialized =
             true;
 
-        const originalDailyActivity =
+        this.installStyles();
+
+        const originalMonthlyView =
             AtlasAnalysisUI
-                .dailyActivity
+                .monthlyView
                 .bind(
                     AtlasAnalysisUI
                 );
 
-        AtlasAnalysisUI.dailyActivity = (
+        AtlasAnalysisUI.monthlyView = (
             data,
-            monthKey,
-            ...remainingArguments
+            options = {}
         ) => {
 
-            if (
-                !data ||
-                !Array.isArray(
-                    data.movements
-                ) ||
-                !this.validMonth(
-                    monthKey
-                )
-            ) {
+            const monthKey =
+                options.analysisMonth ||
+                options.currentMonth ||
+                AtlasCalculations
+                    .monthKey();
 
-                return originalDailyActivity(
-                    data,
-                    monthKey,
-                    ...remainingArguments
-                );
+            const originalActivityPanel =
+                AtlasAnalysisUI
+                    .activityPanel;
+
+            AtlasAnalysisUI.activityPanel =
+                () =>
+                    this.realActivityPanel(
+                        data,
+                        monthKey
+                    );
+
+            let content = "";
+
+            try {
+
+                content =
+                    originalMonthlyView(
+                        data,
+                        options
+                    );
+
+            } finally {
+
+                AtlasAnalysisUI.activityPanel =
+                    originalActivityPanel;
 
             }
 
-            const dailyContent =
-                originalDailyActivity(
-                    this.dailyData(
-                        data,
-                        monthKey
-                    ),
-                    monthKey,
-                    ...remainingArguments
-                );
-
             return `
 
-                ${dailyContent}
+                ${content}
 
                 ${this.adjustmentsPanel(
                     data,
