@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    budgets.js
-   Sprint 5.1 — Categorías visibles y espacio inferior
+   Presupuestos y resultado mensual real
 ========================================================== */
 
 const AtlasBudgetsUI = {
@@ -14,6 +14,39 @@ const AtlasBudgetsUI = {
         return Number.isFinite(result)
             ? result
             : 0;
+
+    },
+
+    firstNumber(
+        source,
+        keys,
+        fallback = 0
+    ) {
+
+        for (
+            const key of keys
+        ) {
+
+            const value =
+                source?.[key];
+
+            if (
+                value !== null &&
+                value !== undefined &&
+                Number.isFinite(
+                    Number(value)
+                )
+            ) {
+
+                return Number(value);
+
+            }
+
+        }
+
+        return this.number(
+            fallback
+        );
 
     },
 
@@ -237,6 +270,271 @@ const AtlasBudgetsUI = {
 
     },
 
+    financialSummary(
+        data,
+        monthKey
+    ) {
+
+        if (
+            typeof AtlasCalculations
+                .financialSummary !==
+                "function"
+        ) {
+
+            return {};
+
+        }
+
+        try {
+
+            return (
+                AtlasCalculations
+                    .financialSummary(
+                        data,
+                        monthKey
+                    ) ||
+                {}
+            );
+
+        } catch (error) {
+
+            return {};
+
+        }
+
+    },
+
+    monthlyOutcome(
+        data,
+        monthKey,
+        budgetSummary
+    ) {
+
+        const financial =
+            this.financialSummary(
+                data,
+                monthKey
+            );
+
+        const income =
+            this.firstNumber(
+                financial,
+                [
+                    "income",
+                    "totalIncome",
+                    "monthlyIncome",
+                    "netIncome"
+                ],
+                budgetSummary
+                    .monthlyIncome
+            );
+
+        const expenses =
+            this.firstNumber(
+                financial,
+                [
+                    "expenses",
+                    "totalExpenses",
+                    "monthlyExpenses",
+                    "netExpenses"
+                ],
+                budgetSummary
+                    .totalSpent
+            );
+
+        const invested =
+            this.firstNumber(
+                financial,
+                [
+                    "invested",
+                    "investment",
+                    "investments",
+                    "monthlyInvestment",
+                    "monthlyInvested",
+                    "totalInvested"
+                ],
+                0
+            );
+
+        const calculatedSavings =
+            income -
+            expenses -
+            invested;
+
+        const savings =
+            this.firstNumber(
+                financial,
+                [
+                    "savings",
+                    "monthlySavings",
+                    "netSavings",
+                    "saving"
+                ],
+                calculatedSavings
+            );
+
+        const cashResult =
+            this.firstNumber(
+                financial,
+                [
+                    "cashResult",
+                    "monthlyCashResult",
+                    "netCashFlow",
+                    "cashFlow",
+                    "liquidityResult"
+                ],
+                calculatedSavings
+            );
+
+        const target =
+            this.number(
+                budgetSummary
+                    .savingAndInvestmentTargetAmount
+            );
+
+        const savingAndInvestment =
+            savings +
+            invested;
+
+        const targetDifference =
+            savingAndInvestment -
+            target;
+
+        const priorLiquidityUsed =
+            Math.max(
+                0,
+                -cashResult
+            );
+
+        const actualAvailability =
+            income -
+            expenses -
+            invested;
+
+        return {
+
+            income,
+
+            expenses,
+
+            invested,
+
+            savings,
+
+            cashResult,
+
+            target,
+
+            savingAndInvestment,
+
+            targetDifference,
+
+            priorLiquidityUsed,
+
+            actualAvailability
+
+        };
+
+    },
+
+    overallStatus(
+        summary,
+        outcome
+    ) {
+
+        const spendingStatus =
+            this.statusInformation(
+                summary.status
+            );
+
+        if (
+            outcome.actualAvailability <
+            -0.001
+        ) {
+
+            return {
+
+                label:
+                    summary.status ===
+                        "exceeded" ||
+                    summary.status ===
+                        "unbudgeted"
+                        ? "Presupuesto y resultado negativos"
+                        : "Resultado mensual negativo",
+
+                detail:
+                    summary.status ===
+                        "healthy"
+                        ? "Dentro del presupuesto de gastos, pero usando liquidez acumulada."
+                        : "Los gastos y aportaciones superan los ingresos del mes.",
+
+                color:
+                    "var(--color-danger)",
+
+                background:
+                    "rgba(255, 91, 112, 0.12)",
+
+                icon:
+                    "!"
+
+            };
+
+        }
+
+        if (
+            outcome.target > 0 &&
+            outcome.savingAndInvestment +
+                0.001 <
+                outcome.target
+        ) {
+
+            return {
+
+                label:
+                    "Objetivo mensual pendiente",
+
+                detail:
+                    summary.status ===
+                        "healthy"
+                        ? "Los gastos están controlados, pero todavía no se alcanza el objetivo."
+                        : "El objetivo de ahorro e inversión todavía no se alcanza.",
+
+                color:
+                    "#f7b955",
+
+                background:
+                    "rgba(247, 185, 85, 0.12)",
+
+                icon:
+                    "!"
+
+            };
+
+        }
+
+        return {
+
+            label:
+                spendingStatus.label,
+
+            detail:
+                outcome.target > 0
+                    ? "Gastos controlados y objetivo mensual alcanzado."
+                    : "El gasto permanece dentro del límite configurado.",
+
+            color:
+                spendingStatus.color,
+
+            background:
+                spendingStatus.background,
+
+            icon:
+                spendingStatus.icon
+
+        };
+
+    },
+
     monthSelector(
         monthKey,
         currentMonth
@@ -324,7 +622,7 @@ const AtlasBudgetsUI = {
                     <div>
 
                         <strong>
-                            Todavía no hay ingresos este mes
+                            Todavía no hay ingresos imputados a este mes
                         </strong>
 
                         <p
@@ -335,7 +633,8 @@ const AtlasBudgetsUI = {
                             "
                         >
                             Los presupuestos porcentuales aparecerán
-                            en 0 € hasta registrar ingresos.
+                            en 0 € hasta registrar ingresos para este
+                            periodo económico.
                         </p>
 
                     </div>
@@ -348,17 +647,24 @@ const AtlasBudgetsUI = {
 
     },
 
-    summaryHero(summary) {
+    summaryHero(
+        summary,
+        outcome
+    ) {
 
         const status =
-            this.statusInformation(
-                summary.status
+            this.overallStatus(
+                summary,
+                outcome
             );
 
         const progress =
             this.progressWidth(
                 summary.usedPercent
             );
+
+        const availability =
+            outcome.actualAvailability;
 
         return `
 
@@ -387,19 +693,24 @@ const AtlasBudgetsUI = {
                     >
 
                         <div class="eyebrow">
-                            Presupuesto mensual
+                            Disponibilidad mensual real
                         </div>
 
                         <div
                             class="value"
                             style="
                                 margin-top:7px;
+                                color:${
+                                    availability >= 0
+                                        ? "inherit"
+                                        : "var(--color-danger)"
+                                };
                                 font-size:34px;
                                 line-height:1;
                             "
                         >
                             ${this.currency(
-                                summary.remaining
+                                availability
                             )}
                         </div>
 
@@ -410,9 +721,9 @@ const AtlasBudgetsUI = {
                             "
                         >
                             ${
-                                summary.remaining >= 0
-                                    ? "Disponible para gastar"
-                                    : "Presupuesto excedido"
+                                availability >= 0
+                                    ? "Después de gastos e inversión"
+                                    : "Se está utilizando liquidez acumulada"
                             }
                         </div>
 
@@ -438,10 +749,20 @@ const AtlasBudgetsUI = {
 
                 </div>
 
+                <p
+                    class="note"
+                    style="
+                        margin-top:14px;
+                        line-height:1.45;
+                    "
+                >
+                    ${status.detail}
+                </p>
+
                 <div
                     style="
                         height:9px;
-                        margin-top:17px;
+                        margin-top:15px;
                         overflow:hidden;
                         border-radius:99px;
                         background:
@@ -459,7 +780,11 @@ const AtlasBudgetsUI = {
                             width:${progress}%;
                             height:100%;
                             border-radius:99px;
-                            background:${status.color};
+                            background:${
+                                this.statusInformation(
+                                    summary.status
+                                ).color
+                            };
                         "
                     ></div>
 
@@ -483,10 +808,10 @@ const AtlasBudgetsUI = {
                     <small class="note">
                         ${
                             summary.usedPercent === null
-                                ? "Sin límite"
+                                ? "Sin límite de gasto"
                                 : `${this.percent(
                                     summary.usedPercent
-                                )} utilizado`
+                                )} del presupuesto`
                         }
                     </small>
 
@@ -498,7 +823,92 @@ const AtlasBudgetsUI = {
 
     },
 
-    summaryCards(summary) {
+    resultNotice(outcome) {
+
+        if (
+            outcome.priorLiquidityUsed <=
+            0.001
+        ) {
+
+            return "";
+
+        }
+
+        return `
+
+            <section
+                class="panel"
+                style="
+                    margin-bottom:14px;
+                    padding:16px;
+                    border-color:
+                        rgba(
+                            255,
+                            91,
+                            112,
+                            0.24
+                        );
+                    background:
+                        rgba(
+                            255,
+                            91,
+                            112,
+                            0.07
+                        );
+                "
+            >
+
+                <div
+                    style="
+                        display:flex;
+                        align-items:flex-start;
+                        gap:12px;
+                    "
+                >
+
+                    <span
+                        style="
+                            flex:0 0 auto;
+                            font-size:21px;
+                        "
+                    >
+                        ⚠️
+                    </span>
+
+                    <div>
+
+                        <strong>
+                            Uso de liquidez acumulada
+                        </strong>
+
+                        <p
+                            class="note"
+                            style="
+                                margin-top:6px;
+                                line-height:1.45;
+                            "
+                        >
+                            El resultado de caja del mes es negativo
+                            en ${this.currency(
+                                outcome.priorLiquidityUsed
+                            )}. Esta diferencia se cubre con dinero
+                            disponible de meses anteriores.
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+        `;
+
+    },
+
+    summaryCards(
+        summary,
+        outcome
+    ) {
 
         return `
 
@@ -537,32 +947,72 @@ const AtlasBudgetsUI = {
                 >
 
                     ${this.summaryMetric(
-                        "Presupuestado",
+                        "Presupuesto de gastos",
                         summary.totalBudget,
                         "inherit"
                     )}
 
                     ${this.summaryMetric(
-                        "Gastado",
+                        "Gastos netos",
                         summary.totalSpent,
                         "var(--color-danger)"
                     )}
 
                     ${this.summaryMetric(
                         "Ingresos",
-                        summary.monthlyIncome,
+                        outcome.income,
                         "var(--color-success)"
                     )}
 
                     ${this.summaryMetric(
+                        "Inversión realizada",
+                        outcome.invested,
+                        "var(--color-primary)"
+                    )}
+
+                    ${this.summaryMetric(
+                        "Ahorro real",
+                        outcome.savings,
+                        outcome.savings >= 0
+                            ? "var(--color-success)"
+                            : "var(--color-danger)"
+                    )}
+
+                    ${this.summaryMetric(
+                        "Resultado de caja",
+                        outcome.cashResult,
+                        outcome.cashResult >= 0
+                            ? "var(--color-success)"
+                            : "var(--color-danger)"
+                    )}
+
+                    ${this.summaryMetric(
                         "Objetivo ahorro + inversión",
-                        summary
-                            .savingAndInvestmentTargetAmount,
+                        outcome.target,
                         "var(--color-primary)",
                         this.percent(
                             summary
                                 .savingAndInvestmentTargetPercent
                         )
+                    )}
+
+                    ${this.summaryMetric(
+                        "Ahorro + inversión real",
+                        outcome.savingAndInvestment,
+                        outcome.targetDifference >= 0
+                            ? "var(--color-success)"
+                            : "#f7b955",
+                        outcome.target > 0
+                            ? outcome.targetDifference >= 0
+                                ? `${this.currency(
+                                    outcome.targetDifference
+                                )} por encima`
+                                : `${this.currency(
+                                    Math.abs(
+                                        outcome.targetDifference
+                                    )
+                                )} pendientes`
+                            : ""
                     )}
 
                 </div>
@@ -643,6 +1093,7 @@ const AtlasBudgetsUI = {
                                     display:block;
                                     margin-top:4px;
                                     font-size:10px;
+                                    line-height:1.3;
                                 "
                             >
                                 ${note}
@@ -1161,6 +1612,13 @@ const AtlasBudgetsUI = {
                     budgetMonth
                 );
 
+        const outcome =
+            this.monthlyOutcome(
+                data,
+                budgetMonth,
+                summary
+            );
+
         return `
 
             <div
@@ -1185,7 +1643,8 @@ const AtlasBudgetsUI = {
                 </h1>
 
                 <p class="subtitle">
-                    Controla cuánto puedes gastar en cada categoría.
+                    Controla los gastos sin perder de vista
+                    el resultado económico real del mes.
                 </p>
 
                 ${this.monthSelector(
@@ -1198,7 +1657,12 @@ const AtlasBudgetsUI = {
                 )}
 
                 ${this.summaryHero(
-                    summary
+                    summary,
+                    outcome
+                )}
+
+                ${this.resultNotice(
+                    outcome
                 )}
 
                 ${this.categories(
@@ -1206,7 +1670,8 @@ const AtlasBudgetsUI = {
                 )}
 
                 ${this.summaryCards(
-                    summary
+                    summary,
+                    outcome
                 )}
 
             </div>
