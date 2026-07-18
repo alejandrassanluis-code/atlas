@@ -115,6 +115,191 @@ const AtlasRecurring = {
 
     },
 
+    shiftMonthKey(
+        monthKey,
+        difference = 0
+    ) {
+
+        const {
+            year,
+            month
+        } =
+            this.monthParts(
+                monthKey
+            );
+
+        const date =
+            new Date(
+                year,
+                month - 1 +
+                    this.number(
+                        difference
+                    ),
+                1
+            );
+
+        return [
+            date.getFullYear(),
+            String(
+                date.getMonth() + 1
+            ).padStart(
+                2,
+                "0"
+            )
+        ].join("-");
+
+    },
+
+    recurringPeriodMode(rule) {
+
+        const configured =
+            String(
+                rule?.periodMode ||
+                rule?.imputationMode ||
+                rule?.economicPeriodMode ||
+                ""
+            );
+
+        if (
+            [
+                "same_month",
+                "previous_month",
+                "next_month"
+            ].includes(
+                configured
+            )
+        ) {
+
+            return configured;
+
+        }
+
+        const offset =
+            this.number(
+                rule?.periodOffset ??
+                rule?.imputationOffset ??
+                rule?.economicMonthOffset
+            );
+
+        if (
+            offset < 0
+        ) {
+
+            return "previous_month";
+
+        }
+
+        if (
+            offset > 0
+        ) {
+
+            return "next_month";
+
+        }
+
+        return "same_month";
+
+    },
+
+    recurringPeriodOffset(rule) {
+
+        const mode =
+            this.recurringPeriodMode(
+                rule
+            );
+
+        if (
+            mode ===
+            "previous_month"
+        ) {
+
+            return -1;
+
+        }
+
+        if (
+            mode ===
+            "next_month"
+        ) {
+
+            return 1;
+
+        }
+
+        return 0;
+
+    },
+
+    periodMonthForRule(
+        rule,
+        monthKey
+    ) {
+
+        const fixedMonth =
+            rule?.periodMonth ||
+            rule?.economicMonth ||
+            rule?.imputedMonth;
+
+        if (
+            this.validMonthKey(
+                fixedMonth
+            )
+        ) {
+
+            return String(
+                fixedMonth
+            );
+
+        }
+
+        return this.shiftMonthKey(
+            monthKey,
+            this.recurringPeriodOffset(
+                rule
+            )
+        );
+
+    },
+
+    occurrencePeriodMonth(
+        occurrence,
+        fallbackMonthKey = null
+    ) {
+
+        const values = [
+
+            occurrence?.periodMonth,
+
+            occurrence?.economicMonth,
+
+            occurrence?.imputedMonth,
+
+            fallbackMonthKey,
+
+            occurrence?.monthKey,
+
+            String(
+                occurrence?.expectedDate ||
+                ""
+            ).slice(
+                0,
+                7
+            )
+
+        ];
+
+        return (
+            values.find(
+                value =>
+                    this.validMonthKey(
+                        value
+                    )
+            ) ||
+            this.currentMonthKey()
+        );
+
+    },
+
     daysInMonth(monthKey) {
 
         const {
@@ -1308,6 +1493,12 @@ const AtlasRecurring = {
                 monthKey
             );
 
+        const periodMonth =
+            this.periodMonthForRule(
+                rule,
+                monthKey
+            );
+
         const accounts =
             this.resolvedRuleAccounts(
                 data,
@@ -1333,6 +1524,24 @@ const AtlasRecurring = {
                 rule.id,
 
             monthKey,
+
+            periodMonth,
+
+            economicMonth:
+                periodMonth,
+
+            imputedMonth:
+                periodMonth,
+
+            periodMode:
+                this.recurringPeriodMode(
+                    rule
+                ),
+
+            periodOffset:
+                this.recurringPeriodOffset(
+                    rule
+                ),
 
             status:
                 duplicate
@@ -1427,6 +1636,9 @@ const AtlasRecurring = {
             confirmedDate:
                 null,
 
+            confirmedPeriodMonth:
+                null,
+
             movementId:
                 null,
 
@@ -1474,6 +1686,12 @@ const AtlasRecurring = {
                 monthKey
             );
 
+        const savedPeriodMonth =
+            this.occurrencePeriodMonth(
+                occurrence,
+                values.periodMonth
+            );
+
         return {
 
             ...occurrence,
@@ -1482,6 +1700,15 @@ const AtlasRecurring = {
 
             id:
                 occurrence.id,
+
+            periodMonth:
+                savedPeriodMonth,
+
+            economicMonth:
+                savedPeriodMonth,
+
+            imputedMonth:
+                savedPeriodMonth,
 
             status:
                 [
@@ -1501,6 +1728,11 @@ const AtlasRecurring = {
             confirmedDate:
                 occurrence
                     .confirmedDate ??
+                null,
+
+            confirmedPeriodMonth:
+                occurrence
+                    .confirmedPeriodMonth ??
                 null,
 
             movementId:
