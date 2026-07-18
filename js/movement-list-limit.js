@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    movement-list-limit.js
-   Atlas v1.0 — Límite y desplegable de movimientos
+   Atlas v1.0 — Ver todos y ver menos en Movimientos
 ========================================================== */
 
 const AtlasMovementListLimit = {
@@ -12,7 +12,21 @@ const AtlasMovementListLimit = {
     limit:
         8,
 
-    movementMonth(movement) {
+    expanded:
+        false,
+
+    eventsBound:
+        false,
+
+    escape(value) {
+
+        return AtlasUI.escapeHtml(
+            String(value ?? "")
+        );
+
+    },
+
+    realMonth(movement) {
 
         return String(
             movement?.date || ""
@@ -23,131 +37,78 @@ const AtlasMovementListLimit = {
 
     },
 
-    sortedMovements(
-        data,
-        monthKey
-    ) {
+    economicMonth(movement) {
 
         return (
-            Array.isArray(
-                data?.movements
+            movement?.periodMonth ||
+            movement?.economicMonth ||
+            movement?.imputedMonth ||
+            this.realMonth(
+                movement
             )
-                ? data.movements
-                : []
-        )
-            .filter(
-                movement =>
-                    this.movementMonth(
-                        movement
-                    ) ===
-                    monthKey
-            )
-            .sort(
-                (
-                    first,
-                    second
-                ) => {
-
-                    const dateComparison =
-                        String(
-                            second.date || ""
-                        ).localeCompare(
-                            String(
-                                first.date || ""
-                            )
-                        );
-
-                    if (
-                        dateComparison !== 0
-                    ) {
-
-                        return dateComparison;
-
-                    }
-
-                    return String(
-                        second.createdAt || ""
-                    ).localeCompare(
-                        String(
-                            first.createdAt || ""
-                        )
-                    );
-
-                }
-            );
+        );
 
     },
 
     movementRow(
-        movement,
-        index
+        data,
+        movement
     ) {
 
-        const hidden =
-            index >=
-            this.limit;
+        const accountDescription =
+            AtlasMovementFilters
+                .movementAccountDescription(
+                    data,
+                    movement
+                );
 
         const realMonth =
-            String(
-                movement?.date || ""
-            ).slice(
-                0,
-                7
+            this.realMonth(
+                movement
             );
 
         const economicMonth =
-            (
-                movement?.periodMonth ||
-                movement?.economicMonth ||
-                movement?.imputedMonth ||
-                realMonth
+            this.economicMonth(
+                movement
             );
 
-        const differentPeriod =
-            economicMonth &&
+        const differentMonth =
             realMonth &&
-            economicMonth !==
-                realMonth;
+            economicMonth &&
+            realMonth !==
+                economicMonth;
 
         return `
 
             <button
-                class="row"
+                class="row atlas-movement-row"
                 type="button"
-                data-movement-id="${AtlasUI.escapeHtml(
+                data-movement-id="${this.escape(
                     movement.id
                 )}"
-                data-limited-movement
-                data-hidden-movement="${
-                    hidden
-                        ? "true"
-                        : "false"
-                }"
-                style="
-                    width:100%;
-                    border:0;
-                    background:
-                        transparent;
-                    color:inherit;
-                    text-align:left;
-                    cursor:pointer;
-                    ${
-                        hidden
-                            ? "display:none;"
-                            : ""
-                    }
-                "
             >
 
-                <div>
+                <div class="atlas-movement-row-content">
 
                     <b>
-                        ${AtlasUI.escapeHtml(
-                            movement.category ||
-                            AtlasUI.movementLabel(
+
+                        <span
+                            class="atlas-movement-row-icon"
+                            aria-hidden="true"
+                        >
+                            ${AtlasMovementFilters.movementIcon(
                                 movement
-                            )
+                            )}
+                        </span>
+
+                        ${this.escape(
+                            movement.category ||
+                            AtlasMovementFilters
+                                .movementLabel(
+                                    movement
+                                )
                         )}
+
                     </b>
 
                     <small>
@@ -158,26 +119,22 @@ const AtlasMovementListLimit = {
 
                         ·
 
-                        ${AtlasUI.movementLabel(
-                            movement
-                        )}
+                        ${AtlasMovementFilters
+                            .movementLabel(
+                                movement
+                            )}
 
                     </small>
 
                     ${
-                        differentPeriod
+                        differentMonth
                             ? `
 
                                 <small
-                                    style="
-                                        color:
-                                            var(
-                                                --color-primary
-                                            );
-                                    "
+                                    class="atlas-movement-imputed-month"
                                 >
                                     Imputado a
-                                    ${AtlasUI.escapeHtml(
+                                    ${this.escape(
                                         AtlasUI.formatMonthKey(
                                             economicMonth
                                         )
@@ -189,11 +146,27 @@ const AtlasMovementListLimit = {
                     }
 
                     ${
-                        movement.note
+                        accountDescription
                             ? `
 
                                 <small>
-                                    ${AtlasUI.escapeHtml(
+                                    ${this.escape(
+                                        accountDescription
+                                    )}
+                                </small>
+
+                            `
+                            : ""
+                    }
+
+                    ${
+                        movement.note
+                            ? `
+
+                                <small
+                                    class="atlas-movement-note"
+                                >
+                                    ${this.escape(
                                         movement.note
                                     )}
                                 </small>
@@ -205,18 +178,19 @@ const AtlasMovementListLimit = {
                 </div>
 
                 <strong
+                    class="atlas-movement-row-amount"
                     style="
                         color:
-                            ${AtlasUI.movementColor(
-                                movement
-                            )};
-                        white-space:
-                            nowrap;
+                            ${AtlasMovementFilters
+                                .movementColor(
+                                    movement
+                                )};
                     "
                 >
-                    ${AtlasUI.movementAmount(
-                        movement
-                    )}
+                    ${AtlasMovementFilters
+                        .movementAmount(
+                            movement
+                        )}
                 </strong>
 
             </button>
@@ -225,7 +199,7 @@ const AtlasMovementListLimit = {
 
     },
 
-    toggleButton(total) {
+    listButton(total) {
 
         if (
             total <=
@@ -237,285 +211,246 @@ const AtlasMovementListLimit = {
         }
 
         const hidden =
-            total -
-            this.limit;
+            Math.max(
+                0,
+                total -
+                this.limit
+            );
 
         return `
 
             <button
-                class="secondary"
+                class="secondary atlas-movement-list-toggle"
                 type="button"
-                data-action="toggleMovementList"
-                data-expanded="false"
-                data-total="${total}"
-                data-limit="${this.limit}"
-                style="
-                    width:100%;
-                    min-height:46px;
-                    margin-top:14px;
-                "
+                data-action="toggleMovementListLimit"
+                data-expanded="${
+                    this.expanded
+                        ? "true"
+                        : "false"
+                }"
             >
-                Ver todos (${hidden} más)
+                ${
+                    this.expanded
+                        ? "Ver menos"
+                        : `Ver todos (${hidden} más)`
+                }
             </button>
 
         `;
 
     },
 
-    renderMovements(
+    visibleList(list) {
+
+        if (
+            this.expanded ||
+            list.length <=
+                this.limit
+        ) {
+
+            return list;
+
+        }
+
+        return list.slice(
+            0,
+            this.limit
+        );
+
+    },
+
+    registeredView(
         data,
-        options = {}
+        filters,
+        list,
+        allMonthlyMovements,
+        movementsMonth,
+        filtersActive
     ) {
 
-        const movementsMonth =
-            options.movementsMonth ||
-            AtlasCalculations
-                .monthKey();
-
-        const currentMonth =
-            options.currentMonth ||
-            AtlasCalculations
-                .monthKey();
-
-        const isCurrentMonth =
-            movementsMonth ===
-            currentMonth;
-
-        const list =
-            this.sortedMovements(
-                data,
-                movementsMonth
-            );
-
-        const visibleCount =
-            Math.min(
-                this.limit,
-                list.length
+        const visible =
+            this.visibleList(
+                list
             );
 
         return `
 
-            <div class="app">
+            ${AtlasMovementFilters.filtersPanel(
+                data,
+                filters,
+                list.length,
+                allMonthlyMovements.length,
+                movementsMonth
+            )}
 
-                ${AtlasUI.header()}
+            ${AtlasMovementFilters.summaryPanel(
+                list
+            )}
 
-                <h1 class="page-title">
-                    Movimientos
-                </h1>
+            <section class="panel atlas-movement-list-panel">
 
-                <p class="subtitle">
-                    Consulta y edita las operaciones de cada mes.
-                </p>
-
-                ${AtlasUI.monthSelector({
-
-                    monthKey:
-                        movementsMonth,
-
-                    isCurrentMonth,
-
-                    previousAction:
-                        "previousMovementsMonth",
-
-                    nextAction:
-                        "nextMovementsMonth",
-
-                    currentAction:
-                        "currentMovementsMonth",
-
-                    subtitle:
-                        list.length === 0
-                            ? "Sin movimientos"
-                            : (
-                                `Mostrando ${visibleCount} de ` +
-                                `${list.length} ` +
-                                `${
-                                    list.length === 1
-                                        ? "movimiento"
-                                        : "movimientos"
-                                }`
+                ${
+                    list.length === 0
+                        ? AtlasMovementFilters
+                            .emptyState(
+                                movementsMonth,
+                                filtersActive
                             )
+                        : `
 
-                })}
+                            <div
+                                class="atlas-movement-list-status"
+                            >
 
-                <section class="panel">
+                                <small>
 
-                    ${
-                        list.length === 0
-                            ? `
+                                    Mostrando
+                                    ${visible.length}
+                                    de
+                                    ${list.length}
 
-                                <div
-                                    style="
-                                        text-align:center;
-                                        padding:28px 14px;
-                                    "
-                                >
+                                    ${
+                                        list.length === 1
+                                            ? "movimiento"
+                                            : "movimientos"
+                                    }
 
-                                    <div
-                                        style="
-                                            font-size:30px;
-                                            margin-bottom:10px;
-                                        "
-                                    >
-                                        🗓️
-                                    </div>
+                                </small>
 
-                                    <strong>
-                                        Sin movimientos
-                                    </strong>
+                            </div>
 
-                                    <p
-                                        class="note"
-                                        style="
-                                            margin-top:8px;
-                                        "
-                                    >
-                                        No hay actividad registrada en
-                                        ${AtlasUI.formatMonthKey(
-                                            movementsMonth
-                                        )}.
-                                    </p>
+                            <div class="list">
 
-                                </div>
+                                ${visible
+                                    .map(
+                                        movement =>
+                                            this.movementRow(
+                                                data,
+                                                movement
+                                            )
+                                    )
+                                    .join("")}
 
-                            `
-                            : `
+                            </div>
 
-                                <div
-                                    class="list"
-                                    data-movement-list
-                                >
+                            ${this.listButton(
+                                list.length
+                            )}
 
-                                    ${list
-                                        .map(
-                                            (
-                                                movement,
-                                                index
-                                            ) =>
-                                                this.movementRow(
-                                                    movement,
-                                                    index
-                                                )
-                                        )
-                                        .join("")}
+                        `
+                }
 
-                                </div>
+            </section>
 
-                                ${this.toggleButton(
-                                    list.length
-                                )}
-
-                            `
-                    }
-
-                </section>
-
-                <button
-                    class="primary"
-                    type="button"
-                    data-action="newMovement"
-                >
-                    Nuevo movimiento
-                </button>
-
-            </div>
+            <button
+                class="primary"
+                type="button"
+                data-action="newMovement"
+            >
+                Nuevo movimiento
+            </button>
 
         `;
 
     },
 
-    toggleList(button) {
+    installStyles() {
 
-        const app =
-            button.closest(
-                ".app"
+        const previous =
+            document.getElementById(
+                "atlas-movement-list-limit-styles"
             );
 
-        if (!app) {
+        if (previous) {
 
-            return;
+            previous.remove();
 
         }
 
-        const rows =
-            app.querySelectorAll(
-                "[data-limited-movement]"
+        const style =
+            document.createElement(
+                "style"
             );
 
-        const expanded =
-            button.dataset
-                .expanded ===
-            "true";
+        style.id =
+            "atlas-movement-list-limit-styles";
 
-        const total =
-            Number(
-                button.dataset.total
-            ) || rows.length;
+        style.textContent = `
 
-        const limit =
-            Number(
-                button.dataset.limit
-            ) || this.limit;
-
-        rows.forEach(
-            (
-                row,
-                index
-            ) => {
-
-                if (expanded) {
-
-                    row.style.display =
-                        index < limit
-                            ? ""
-                            : "none";
-
-                } else {
-
-                    row.style.display =
-                        "";
-
-                }
-
+            .atlas-movement-list-status {
+                display: flex;
+                align-items: center;
+                justify-content:
+                    space-between;
+                min-height: 24px;
+                margin-bottom: 6px;
             }
+
+            .atlas-movement-list-status small {
+                color:
+                    var(
+                        --color-text-muted
+                    );
+                font-size: 10px;
+            }
+
+            .atlas-movement-list-toggle {
+                width: 100%;
+                min-height: 46px;
+                margin-top: 14px;
+                border:
+                    1px solid
+                    rgba(
+                        145,
+                        164,
+                        202,
+                        0.16
+                    );
+                border-radius: 14px;
+                color:
+                    var(
+                        --color-primary
+                    );
+                background:
+                    rgba(
+                        77,
+                        163,
+                        255,
+                        0.06
+                    );
+                font-size: 12px;
+                font-weight: 750;
+            }
+
+            .atlas-movement-imputed-month {
+                margin-top: 3px;
+                color:
+                    var(
+                        --color-primary
+                    ) !important;
+            }
+
+        `;
+
+        document.head.appendChild(
+            style
         );
 
-        button.dataset.expanded =
-            expanded
-                ? "false"
-                : "true";
+    },
 
-        button.textContent =
-            expanded
-                ? (
-                    `Ver todos (` +
-                    `${Math.max(
-                        0,
-                        total - limit
-                    )} más)`
-                )
-                : "Ver menos";
+    toggle() {
 
-        if (expanded) {
+        this.expanded =
+            !this.expanded;
 
-            const panel =
-                button.closest(
-                    ".panel"
-                );
+        if (
+            typeof AtlasApp !==
+                "undefined" &&
+            typeof AtlasApp.render ===
+                "function"
+        ) {
 
-            if (panel) {
-
-                panel.scrollIntoView({
-
-                    behavior:
-                        "smooth",
-
-                    block:
-                        "start"
-
-                });
-
-            }
+            AtlasApp.render();
 
         }
 
@@ -523,13 +458,24 @@ const AtlasMovementListLimit = {
 
     bindEvents() {
 
+        if (
+            this.eventsBound
+        ) {
+
+            return;
+
+        }
+
+        this.eventsBound =
+            true;
+
         document.addEventListener(
             "click",
             event => {
 
                 const button =
                     event.target.closest(
-                        '[data-action="toggleMovementList"]'
+                        '[data-action="toggleMovementListLimit"]'
                     );
 
                 if (!button) {
@@ -541,41 +487,201 @@ const AtlasMovementListLimit = {
                 event.preventDefault();
                 event.stopPropagation();
 
-                this.toggleList(
-                    button
+                this.toggle();
+
+            },
+            true
+        );
+
+        document.addEventListener(
+            "click",
+            event => {
+
+                const monthButton =
+                    event.target.closest(
+                        [
+                            '[data-action="previousMovementsMonth"]',
+                            '[data-action="nextMovementsMonth"]',
+                            '[data-action="currentMovementsMonth"]',
+                            '[data-action="clearMovementFilters"]',
+                            '[data-action="showRegisteredMovements"]',
+                            '[data-action="showPendingMovements"]'
+                        ].join(",")
+                    );
+
+                if (!monthButton) {
+
+                    return;
+
+                }
+
+                this.expanded =
+                    false;
+
+            },
+            true
+        );
+
+        document.addEventListener(
+            "submit",
+            event => {
+
+                const form =
+                    event.target.closest(
+                        "[data-movement-filters-form]"
+                    );
+
+                if (!form) {
+
+                    return;
+
+                }
+
+                this.expanded =
+                    false;
+
+            },
+            true
+        );
+
+        document.addEventListener(
+            "change",
+            event => {
+
+                const filter =
+                    event.target.closest(
+                        [
+                            "[data-movement-type-filter]",
+                            "[data-movement-account-filter]",
+                            "[data-movement-advanced-filter]"
+                        ].join(",")
+                    );
+
+                if (!filter) {
+
+                    return;
+
+                }
+
+                this.expanded =
+                    false;
+
+            },
+            true
+        );
+
+    },
+
+    patch() {
+
+        if (
+            typeof AtlasMovementFilters ===
+                "undefined"
+        ) {
+
+            return false;
+
+        }
+
+        AtlasMovementFilters.registeredView =
+            (
+                data,
+                filters,
+                list,
+                allMonthlyMovements,
+                movementsMonth,
+                filtersActive
+            ) =>
+                this.registeredView(
+                    data,
+                    filters,
+                    list,
+                    allMonthlyMovements,
+                    movementsMonth,
+                    filtersActive
                 );
 
-            }
-        );
+        return true;
 
     },
 
     install() {
 
         if (
-            this.initialized ||
-            typeof AtlasUI ===
-                "undefined"
+            this.initialized
         ) {
 
             return;
 
         }
 
-        this.initialized =
-            true;
+        const completeInstall =
+            () => {
 
-        AtlasUI.movements =
-            (
-                data,
-                options = {}
-            ) =>
-                this.renderMovements(
-                    data,
-                    options
-                );
+                if (
+                    !this.patch()
+                ) {
 
-        this.bindEvents();
+                    return false;
+
+                }
+
+                this.initialized =
+                    true;
+
+                this.installStyles();
+                this.bindEvents();
+
+                if (
+                    typeof AtlasApp !==
+                        "undefined" &&
+                    AtlasApp.route ===
+                        "movements" &&
+                    typeof AtlasApp.render ===
+                        "function"
+                ) {
+
+                    AtlasApp.render();
+
+                }
+
+                return true;
+
+            };
+
+        if (
+            completeInstall()
+        ) {
+
+            return;
+
+        }
+
+        document.addEventListener(
+            "DOMContentLoaded",
+            () => {
+
+                completeInstall();
+
+            },
+            {
+                once:
+                    true
+            }
+        );
+
+        window.addEventListener(
+            "load",
+            () => {
+
+                completeInstall();
+
+            },
+            {
+                once:
+                    true
+            }
+        );
 
     }
 
