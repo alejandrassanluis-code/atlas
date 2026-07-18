@@ -12,6 +12,9 @@ const AtlasGoalsProgress = {
     pendingConfig:
         null,
 
+    pendingNormalizeSkips:
+        0,
+
     originalNormalizeGoal:
         null,
 
@@ -62,6 +65,21 @@ const AtlasGoalsProgress = {
 
     },
 
+    normalizeText(value) {
+
+        return String(
+            value ?? ""
+        )
+            .normalize("NFD")
+            .replace(
+                /[\u0300-\u036f]/g,
+                ""
+            )
+            .toLowerCase()
+            .trim();
+
+    },
+
     accounts(
         data = AtlasGoals.data
     ) {
@@ -88,13 +106,37 @@ const AtlasGoalsProgress = {
                 (
                     first,
                     second
-                ) =>
-                    this.number(
-                        first.order
-                    ) -
-                    this.number(
-                        second.order
-                    )
+                ) => {
+
+                    const orderDifference =
+                        this.number(
+                            first.order
+                        ) -
+                        this.number(
+                            second.order
+                        );
+
+                    if (
+                        orderDifference !==
+                        0
+                    ) {
+
+                        return orderDifference;
+
+                    }
+
+                    return String(
+                        first.name ||
+                        ""
+                    ).localeCompare(
+                        String(
+                            second.name ||
+                            ""
+                        ),
+                        "es"
+                    );
+
+                }
             );
 
     },
@@ -124,6 +166,180 @@ const AtlasGoalsProgress = {
                 data
             )?.name ||
             "Cuenta no disponible"
+        );
+
+    },
+
+    accountDescriptor(account) {
+
+        return this.normalizeText(
+            [
+
+                account?.type,
+
+                account?.accountType,
+
+                account?.kind,
+
+                account?.category,
+
+                account?.subcategory,
+
+                account?.subtype,
+
+                account?.group,
+
+                account?.name
+
+            ]
+                .filter(Boolean)
+                .join(" ")
+        );
+
+    },
+
+    accountRole(account) {
+
+        const descriptor =
+            this.accountDescriptor(
+                account
+            );
+
+        const debtWords = [
+
+            "debt",
+
+            "deuda",
+
+            "credit",
+
+            "credito",
+
+            "credit card",
+
+            "tarjeta",
+
+            "loan",
+
+            "prestamo",
+
+            "mortgage",
+
+            "hipoteca",
+
+            "financing",
+
+            "financiacion"
+
+        ];
+
+        if (
+            debtWords.some(
+                word =>
+                    descriptor.includes(
+                        word
+                    )
+            )
+        ) {
+
+            return "debt";
+
+        }
+
+        const investmentWords = [
+
+            "investment",
+
+            "inversion",
+
+            "invest",
+
+            "broker",
+
+            "portfolio",
+
+            "cartera",
+
+            "fund",
+
+            "fondo indexado",
+
+            "acciones",
+
+            "stock",
+
+            "etf",
+
+            "crypto",
+
+            "cripto"
+
+        ];
+
+        if (
+            investmentWords.some(
+                word =>
+                    descriptor.includes(
+                        word
+                    )
+            )
+        ) {
+
+            return "investment";
+
+        }
+
+        return "account";
+
+    },
+
+    accountsForMode(
+        mode,
+        data = AtlasGoals.data
+    ) {
+
+        if (
+            mode === "manual"
+        ) {
+
+            return [];
+
+        }
+
+        return this.activeAccounts(
+            data
+        ).filter(
+            account =>
+                this.accountRole(
+                    account
+                ) === mode
+        );
+
+    },
+
+    accountTypeLabel(account) {
+
+        const role =
+            this.accountRole(
+                account
+            );
+
+        const labels = {
+
+            account:
+                "Saldo",
+
+            investment:
+                "Inversión",
+
+            debt:
+                "Deuda"
+
+        };
+
+        return (
+            labels[role] ||
+            "Cuenta"
         );
 
     },
@@ -181,7 +397,8 @@ const AtlasGoalsProgress = {
                     "currentBalance",
                     "balance",
                     "value",
-                    "amount"
+                    "amount",
+                    "initialBalance"
                 ],
                 0
             )
@@ -206,7 +423,8 @@ const AtlasGoalsProgress = {
                     "debt",
                     "currentBalance",
                     "balance",
-                    "amount"
+                    "amount",
+                    "initialBalance"
                 ],
                 0
             );
@@ -460,15 +678,51 @@ const AtlasGoalsProgress = {
 
     },
 
-    accountOptions(selectedId) {
+    accountOptions(
+        mode,
+        selectedId
+    ) {
 
         const accounts =
-            this.activeAccounts();
+            this.accountsForMode(
+                mode
+            );
+
+        const emptyLabels = {
+
+            account:
+                "Selecciona una cuenta de saldo",
+
+            investment:
+                "Selecciona una inversión",
+
+            debt:
+                "Selecciona una deuda"
+
+        };
+
+        if (
+            accounts.length ===
+            0
+        ) {
+
+            return `
+
+                <option value="">
+                    No hay cuentas compatibles
+                </option>
+
+            `;
+
+        }
 
         return `
 
             <option value="">
-                Selecciona una cuenta
+                ${
+                    emptyLabels[mode] ||
+                    "Selecciona una cuenta"
+                }
             </option>
 
             ${accounts
@@ -490,6 +744,12 @@ const AtlasGoalsProgress = {
                                 account.name ||
                                 "Cuenta"
                             )}
+                            ·
+                            ${AtlasGoals.escape(
+                                this.accountTypeLabel(
+                                    account
+                                )
+                            )}
                         </option>
 
                     `
@@ -497,6 +757,28 @@ const AtlasGoalsProgress = {
                 .join("")}
 
         `;
+
+    },
+
+    fieldLabel(mode) {
+
+        const labels = {
+
+            account:
+                "Cuenta de saldo vinculada",
+
+            investment:
+                "Inversión vinculada",
+
+            debt:
+                "Cuenta de deuda vinculada"
+
+        };
+
+        return (
+            labels[mode] ||
+            "Cuenta vinculada"
+        );
 
     },
 
@@ -512,9 +794,27 @@ const AtlasGoalsProgress = {
                 goal
             );
 
+        const compatibleAccount =
+            this.accountsForMode(
+                mode
+            ).some(
+                account =>
+                    account.id ===
+                    accountId
+            );
+
+        const selectedId =
+            compatibleAccount
+                ? accountId
+                : "";
+
         const current =
             this.calculatedCurrent(
-                goal
+                {
+                    ...goal,
+                    progressAccountId:
+                        selectedId
+                }
             );
 
         return `
@@ -574,8 +874,12 @@ const AtlasGoalsProgress = {
                     "
                 >
 
-                    <span>
-                        Cuenta vinculada
+                    <span
+                        data-goal-progress-account-label
+                    >
+                        ${this.fieldLabel(
+                            mode
+                        )}
                     </span>
 
                     <select
@@ -583,7 +887,8 @@ const AtlasGoalsProgress = {
                         data-goal-progress-account
                     >
                         ${this.accountOptions(
-                            accountId
+                            mode,
+                            selectedId
                         )}
                     </select>
 
@@ -654,6 +959,7 @@ const AtlasGoalsProgress = {
                     </small>
 
                     <strong
+                        data-goal-automatic-preview-value
                         style="
                             display:block;
                             margin-top:5px;
@@ -670,6 +976,157 @@ const AtlasGoalsProgress = {
             </section>
 
         `;
+
+    },
+
+    formGoal(form) {
+
+        const values =
+            new FormData(
+                form
+            );
+
+        return {
+
+            progressMode:
+                String(
+                    values.get(
+                        "goalProgressMode"
+                    ) ||
+                    "manual"
+                ),
+
+            progressAccountId:
+                String(
+                    values.get(
+                        "goalProgressAccountId"
+                    ) ||
+                    ""
+                ),
+
+            startingDebt:
+                this.number(
+                    values.get(
+                        "goalStartingDebt"
+                    )
+                )
+
+        };
+
+    },
+
+    updatePreview(form) {
+
+        if (!form) {
+
+            return;
+
+        }
+
+        const config =
+            this.formGoal(
+                form
+            );
+
+        const previewValue =
+            form.querySelector(
+                "[data-goal-automatic-preview-value]"
+            );
+
+        if (!previewValue) {
+
+            return;
+
+        }
+
+        const current =
+            this.calculatedCurrent(
+                config
+            );
+
+        previewValue.textContent =
+            AtlasGoals.formatCurrency(
+                current
+            );
+
+    },
+
+    refreshAccountOptions(
+        form,
+        preserveSelection = false
+    ) {
+
+        if (!form) {
+
+            return;
+
+        }
+
+        const modeSelect =
+            form.querySelector(
+                "[data-goal-progress-mode]"
+            );
+
+        const accountSelect =
+            form.querySelector(
+                "[data-goal-progress-account]"
+            );
+
+        const accountLabel =
+            form.querySelector(
+                "[data-goal-progress-account-label]"
+            );
+
+        const mode =
+            modeSelect?.value ||
+            "manual";
+
+        if (!accountSelect) {
+
+            return;
+
+        }
+
+        const previousId =
+            preserveSelection
+                ? accountSelect.value
+                : "";
+
+        const compatible =
+            this.accountsForMode(
+                mode
+            ).some(
+                account =>
+                    account.id ===
+                    previousId
+            );
+
+        const selectedId =
+            compatible
+                ? previousId
+                : "";
+
+        accountSelect.innerHTML =
+            this.accountOptions(
+                mode,
+                selectedId
+            );
+
+        accountSelect.value =
+            selectedId;
+
+        if (accountLabel) {
+
+            accountLabel.textContent =
+                this.fieldLabel(
+                    mode
+                );
+
+        }
+
+        this.updatePreview(
+            form
+        );
 
     },
 
@@ -748,6 +1205,10 @@ const AtlasGoalsProgress = {
                     : "0.5";
 
         }
+
+        this.updatePreview(
+            form
+        );
 
     },
 
@@ -834,31 +1295,52 @@ const AtlasGoalsProgress = {
                         goal
                     );
 
-                const pending =
-                    this.pendingConfig ||
-                    {};
-
-                const mode =
-                    pending.progressMode ??
+                let mode =
                     goal?.progressMode ??
                     "manual";
 
-                const accountId =
-                    pending.progressAccountId ??
+                let accountId =
                     goal?.progressAccountId ??
                     goal?.accountId ??
                     goal?.debtAccountId ??
                     null;
 
-                const startingDebt =
-                    Math.max(
-                        0,
-                        this.round(
-                            pending.startingDebt ??
-                            goal?.startingDebt ??
-                            0
-                        )
-                    );
+                let startingDebt =
+                    goal?.startingDebt ??
+                    0;
+
+                if (
+                    this.pendingConfig
+                ) {
+
+                    if (
+                        this.pendingNormalizeSkips >
+                        0
+                    ) {
+
+                        this.pendingNormalizeSkips -=
+                            1;
+
+                    } else {
+
+                        mode =
+                            this.pendingConfig
+                                .progressMode;
+
+                        accountId =
+                            this.pendingConfig
+                                .progressAccountId;
+
+                        startingDebt =
+                            this.pendingConfig
+                                .startingDebt;
+
+                        this.pendingConfig =
+                            null;
+
+                    }
+
+                }
 
                 return {
 
@@ -878,7 +1360,13 @@ const AtlasGoalsProgress = {
                         accountId ||
                         null,
 
-                    startingDebt
+                    startingDebt:
+                        Math.max(
+                            0,
+                            this.round(
+                                startingDebt
+                            )
+                        )
 
                 };
 
@@ -928,6 +1416,21 @@ const AtlasGoalsProgress = {
 
     },
 
+    metadataLabel(goal) {
+
+        return (
+            `Prioridad: ` +
+            `${AtlasGoals.priorityLabel(
+                goal.priority
+            )}` +
+            ` · Estado: ` +
+            `${AtlasGoals.statusLabel(
+                goal.status
+            )}`
+        );
+
+    },
+
     installCards() {
 
         this.originalGoalCard =
@@ -953,6 +1456,11 @@ const AtlasGoalsProgress = {
                         goal
                     );
 
+                const metadata =
+                    this.metadataLabel(
+                        goal
+                    );
+
                 return card.replace(
                     '<div\n                    class="atlas-goal-progress"',
                     `
@@ -971,6 +1479,23 @@ const AtlasGoalsProgress = {
                         >
                             ${AtlasGoals.escape(
                                 source
+                            )}
+                        </small>
+
+                        <small
+                            style="
+                                display:block;
+                                margin-top:5px;
+                                color:
+                                    var(
+                                        --color-text-muted
+                                    );
+                                font-size:9px;
+                                line-height:1.4;
+                            "
+                        >
+                            ${AtlasGoals.escape(
+                                metadata
                             )}
                         </small>
 
@@ -1045,7 +1570,34 @@ const AtlasGoalsProgress = {
                 ) {
 
                     AtlasUI.toast(
-                        "Selecciona una cuenta para calcular el progreso."
+                        "Selecciona una cuenta compatible."
+                    );
+
+                    return;
+
+                }
+
+                const linkedAccount =
+                    progressAccountId
+                        ? this.accountById(
+                            progressAccountId
+                        )
+                        : null;
+
+                if (
+                    progressMode !==
+                        "manual" &&
+                    (
+                        !linkedAccount ||
+                        this.accountRole(
+                            linkedAccount
+                        ) !==
+                            progressMode
+                    )
+                ) {
+
+                    AtlasUI.toast(
+                        "La cuenta seleccionada no corresponde al tipo de progreso."
                     );
 
                     return;
@@ -1078,6 +1630,10 @@ const AtlasGoalsProgress = {
 
                 };
 
+                this.pendingNormalizeSkips =
+                    AtlasGoals.goals()
+                        .length;
+
                 try {
 
                     this.originalSaveForm(
@@ -1088,6 +1644,9 @@ const AtlasGoalsProgress = {
 
                     this.pendingConfig =
                         null;
+
+                    this.pendingNormalizeSkips =
+                        0;
 
                 }
 
@@ -1106,14 +1665,78 @@ const AtlasGoalsProgress = {
                         "[data-goal-progress-mode]"
                     );
 
-                if (!modeSelect) {
+                if (modeSelect) {
+
+                    const form =
+                        modeSelect.closest(
+                            "[data-goal-form]"
+                        );
+
+                    this.refreshAccountOptions(
+                        form,
+                        false
+                    );
+
+                    this.updateFormVisibility(
+                        form
+                    );
 
                     return;
 
                 }
 
-                this.updateFormVisibility(
-                    modeSelect.closest(
+                const accountSelect =
+                    event.target.closest(
+                        "[data-goal-progress-account]"
+                    );
+
+                if (accountSelect) {
+
+                    this.updatePreview(
+                        accountSelect.closest(
+                            "[data-goal-form]"
+                        )
+                    );
+
+                    return;
+
+                }
+
+                const debtInput =
+                    event.target.closest(
+                        '[name="goalStartingDebt"]'
+                    );
+
+                if (debtInput) {
+
+                    this.updatePreview(
+                        debtInput.closest(
+                            "[data-goal-form]"
+                        )
+                    );
+
+                }
+
+            }
+        );
+
+        document.addEventListener(
+            "input",
+            event => {
+
+                const debtInput =
+                    event.target.closest(
+                        '[name="goalStartingDebt"]'
+                    );
+
+                if (!debtInput) {
+
+                    return;
+
+                }
+
+                this.updatePreview(
+                    debtInput.closest(
                         "[data-goal-form]"
                     )
                 );
