@@ -718,11 +718,16 @@ const AtlasBudgetsUI = {
                             class="trend"
                             style="
                                 margin-top:7px;
+                                color:${
+                                    availability >= 0
+                                        ? "var(--color-success)"
+                                        : "var(--color-danger)"
+                                };
                             "
                         >
                             ${
                                 availability >= 0
-                                    ? "Después de gastos e inversión"
+                                    ? "Disponible después de gastos e inversión"
                                     : "Se está utilizando liquidez acumulada"
                             }
                         </div>
@@ -877,7 +882,14 @@ const AtlasBudgetsUI = {
 
                     <div>
 
-                        <strong>
+                        <strong
+                            style="
+                                color:
+                                    var(
+                                        --color-danger
+                                    );
+                            "
+                        >
                             Uso de liquidez acumulada
                         </strong>
 
