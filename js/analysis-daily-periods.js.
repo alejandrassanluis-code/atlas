@@ -1,0 +1,581 @@
+/* ==========================================================
+   ATLAS
+   analysis-daily-periods.js
+   Actividad diaria y ajustes de mes imputado
+========================================================== */
+
+const AtlasAnalysisDailyPeriods = {
+
+    initialized:
+        false,
+
+    validMonth(value) {
+
+        return /^\d{4}-\d{2}$/.test(
+            String(value || "")
+        );
+
+    },
+
+    realMonth(movement) {
+
+        const monthKey =
+            String(
+                movement?.date || ""
+            ).slice(
+                0,
+                7
+            );
+
+        return this.validMonth(
+            monthKey
+        )
+            ? monthKey
+            : "";
+
+    },
+
+    economicMonth(movement) {
+
+        const candidates = [
+
+            movement?.periodMonth,
+
+            movement?.economicMonth,
+
+            movement?.imputedMonth,
+
+            this.realMonth(
+                movement
+            )
+
+        ];
+
+        return (
+            candidates.find(
+                value =>
+                    this.validMonth(
+                        value
+                    )
+            ) ||
+            ""
+        );
+
+    },
+
+    movementKind(movement) {
+
+        if (
+            movement?.kind ===
+                "debt_payment" ||
+            movement?.type ===
+                "debt_payment"
+        ) {
+
+            return "debt_payment";
+
+        }
+
+        if (
+            movement?.kind ===
+                "reimbursement" ||
+            movement?.type ===
+                "reimbursement"
+        ) {
+
+            return "reimbursement";
+
+        }
+
+        return (
+            movement?.kind ||
+            movement?.type ||
+            ""
+        );
+
+    },
+
+    movementLabel(movement) {
+
+        const labels = {
+
+            income:
+                "Ingreso",
+
+            expense:
+                "Gasto",
+
+            reimbursement:
+                "Reembolso",
+
+            investment:
+                "Inversión",
+
+            transfer:
+                "Traspaso",
+
+            debt_payment:
+                "Pago de deuda"
+
+        };
+
+        return (
+            movement?.category ||
+            labels[
+                this.movementKind(
+                    movement
+                )
+            ] ||
+            "Movimiento"
+        );
+
+    },
+
+    economicEffect(movement) {
+
+        const amount =
+            Number(
+                movement?.amount
+            ) || 0;
+
+        const kind =
+            this.movementKind(
+                movement
+            );
+
+        if (
+            kind === "income" ||
+            kind === "reimbursement"
+        ) {
+
+            return amount;
+
+        }
+
+        if (
+            kind === "expense" ||
+            kind === "investment"
+        ) {
+
+            return -amount;
+
+        }
+
+        return 0;
+
+    },
+
+    effectColor(value) {
+
+        return value >= 0
+            ? "var(--color-success)"
+            : "var(--color-danger)";
+
+    },
+
+    adjustmentMovements(
+        data,
+        monthKey
+    ) {
+
+        return (
+            Array.isArray(
+                data?.movements
+            )
+                ? data.movements
+                : []
+        )
+            .filter(
+                movement =>
+                    this.economicMonth(
+                        movement
+                    ) === monthKey
+            )
+            .filter(
+                movement =>
+                    this.realMonth(
+                        movement
+                    ) !== monthKey
+            )
+            .filter(
+                movement => {
+
+                    const kind =
+                        this.movementKind(
+                            movement
+                        );
+
+                    return (
+                        kind === "income" ||
+                        kind === "expense" ||
+                        kind ===
+                            "reimbursement" ||
+                        kind === "investment"
+                    );
+
+                }
+            )
+            .sort(
+                (
+                    first,
+                    second
+                ) =>
+                    String(
+                        second.date || ""
+                    ).localeCompare(
+                        String(
+                            first.date || ""
+                        )
+                    )
+            );
+
+    },
+
+    dailyData(
+        data,
+        monthKey
+    ) {
+
+        const clonedData = {
+
+            ...data,
+
+            movements:
+                (
+                    Array.isArray(
+                        data?.movements
+                    )
+                        ? data.movements
+                        : []
+                ).filter(
+                    movement => {
+
+                        const economicMonth =
+                            this.economicMonth(
+                                movement
+                            );
+
+                        const realMonth =
+                            this.realMonth(
+                                movement
+                            );
+
+                        if (
+                            economicMonth !==
+                            monthKey
+                        ) {
+
+                            return true;
+
+                        }
+
+                        return (
+                            realMonth ===
+                            monthKey
+                        );
+
+                    }
+                )
+
+        };
+
+        return clonedData;
+
+    },
+
+    adjustmentRow(movement) {
+
+        const effect =
+            this.economicEffect(
+                movement
+            );
+
+        const realMonth =
+            this.realMonth(
+                movement
+            );
+
+        return `
+
+            <div
+                class="row"
+                style="
+                    align-items:flex-start;
+                "
+            >
+
+                <div
+                    style="
+                        min-width:0;
+                    "
+                >
+
+                    <b>
+                        ${AtlasUI.escapeHtml(
+                            this.movementLabel(
+                                movement
+                            )
+                        )}
+                    </b>
+
+                    <small>
+                        Fecha real:
+                        ${AtlasUI.formatMovementDate(
+                            movement.date
+                        )}
+                    </small>
+
+                    <small>
+                        Imputado a
+                        ${AtlasUI.formatMonthKey(
+                            this.economicMonth(
+                                movement
+                            )
+                        )}
+                    </small>
+
+                    ${
+                        realMonth
+                            ? `
+
+                                <small>
+                                    Procede de
+                                    ${AtlasUI.formatMonthKey(
+                                        realMonth
+                                    )}
+                                </small>
+
+                            `
+                            : ""
+                    }
+
+                </div>
+
+                <strong
+                    style="
+                        flex:0 0 auto;
+                        color:
+                            ${this.effectColor(
+                                effect
+                            )};
+                        white-space:nowrap;
+                    "
+                >
+                    ${
+                        effect >= 0
+                            ? "+"
+                            : "−"
+                    }${AtlasUI.formatCurrency(
+                        Math.abs(
+                            effect
+                        )
+                    )}
+                </strong>
+
+            </div>
+
+        `;
+
+    },
+
+    adjustmentsPanel(
+        data,
+        monthKey
+    ) {
+
+        const adjustments =
+            this.adjustmentMovements(
+                data,
+                monthKey
+            );
+
+        if (
+            adjustments.length === 0
+        ) {
+
+            return "";
+
+        }
+
+        const total =
+            adjustments.reduce(
+                (
+                    sum,
+                    movement
+                ) =>
+                    sum +
+                    this.economicEffect(
+                        movement
+                    ),
+                0
+            );
+
+        return `
+
+            <section
+                class="panel"
+                style="
+                    margin-top:18px;
+                    border-color:
+                        rgba(
+                            77,
+                            163,
+                            255,
+                            0.22
+                        );
+                    background:
+                        rgba(
+                            77,
+                            163,
+                            255,
+                            0.055
+                        );
+                "
+            >
+
+                <div class="panelhead">
+
+                    <div>
+
+                        <h2>
+                            Ajustes económicos del mes
+                        </h2>
+
+                        <p
+                            class="note"
+                            style="
+                                margin-top:5px;
+                                line-height:1.45;
+                            "
+                        >
+                            Movimientos que pertenecen
+                            económicamente a este mes, pero cuya
+                            fecha real está en otro periodo.
+                        </p>
+
+                    </div>
+
+                    <strong
+                        style="
+                            flex:0 0 auto;
+                            color:
+                                ${this.effectColor(
+                                    total
+                                )};
+                            white-space:nowrap;
+                        "
+                    >
+                        ${
+                            total >= 0
+                                ? "+"
+                                : "−"
+                        }${AtlasUI.formatCurrency(
+                            Math.abs(
+                                total
+                            )
+                        )}
+                    </strong>
+
+                </div>
+
+                <div
+                    class="list"
+                    style="
+                        margin-top:8px;
+                    "
+                >
+
+                    ${adjustments
+                        .map(
+                            movement =>
+                                this.adjustmentRow(
+                                    movement
+                                )
+                        )
+                        .join("")}
+
+                </div>
+
+            </section>
+
+        `;
+
+    },
+
+    install() {
+
+        if (
+            this.initialized ||
+            typeof AtlasAnalysisUI ===
+                "undefined" ||
+            typeof AtlasAnalysisUI
+                .dailyActivity !==
+                "function"
+        ) {
+
+            return;
+
+        }
+
+        this.initialized =
+            true;
+
+        const originalDailyActivity =
+            AtlasAnalysisUI
+                .dailyActivity
+                .bind(
+                    AtlasAnalysisUI
+                );
+
+        AtlasAnalysisUI.dailyActivity = (
+            data,
+            monthKey,
+            ...remainingArguments
+        ) => {
+
+            if (
+                !data ||
+                !Array.isArray(
+                    data.movements
+                ) ||
+                !this.validMonth(
+                    monthKey
+                )
+            ) {
+
+                return originalDailyActivity(
+                    data,
+                    monthKey,
+                    ...remainingArguments
+                );
+
+            }
+
+            const dailyContent =
+                originalDailyActivity(
+                    this.dailyData(
+                        data,
+                        monthKey
+                    ),
+                    monthKey,
+                    ...remainingArguments
+                );
+
+            return `
+
+                ${dailyContent}
+
+                ${this.adjustmentsPanel(
+                    data,
+                    monthKey
+                )}
+
+            `;
+
+        };
+
+    }
+
+};
+
+AtlasAnalysisDailyPeriods.install();
