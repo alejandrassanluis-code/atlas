@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    goals-allocation.js
-   Distribución centralizada del ahorro entre objetivos
+   Distribución centralizada del ahorro y liquidez previa
 ========================================================== */
 
 const AtlasGoalsAllocation = {
@@ -292,15 +292,55 @@ const AtlasGoalsAllocation = {
 
     },
 
-    assignedFromSavingsForGoal(goal) {
+    isLiquidityAllocation(contribution) {
+
+        return contribution?.source ===
+            "prior_liquidity";
+
+    },
+
+    isManagedAllocation(contribution) {
+
+        return (
+            this.isSavingsAllocation(
+                contribution
+            ) ||
+            this.isLiquidityAllocation(
+                contribution
+            )
+        );
+
+    },
+
+    sourceLabel(source) {
+
+        return source ===
+            "prior_liquidity"
+                ? "Liquidez previa"
+                : "Ahorro cerrado";
+
+    },
+
+    sourceShortLabel(source) {
+
+        return source ===
+            "prior_liquidity"
+                ? "Liquidez"
+                : "Ahorro";
+
+    },
+
+    assignedForGoalBySource(
+        goal,
+        source
+    ) {
 
         return this.round(
             this.contributions(goal)
                 .filter(
                     contribution =>
-                        this.isSavingsAllocation(
-                            contribution
-                        )
+                        contribution.source ===
+                        source
                 )
                 .reduce(
                     (
@@ -317,7 +357,26 @@ const AtlasGoalsAllocation = {
 
     },
 
-    totalAssignedFromSavings(
+    assignedFromSavingsForGoal(goal) {
+
+        return this.assignedForGoalBySource(
+            goal,
+            "available_savings"
+        );
+
+    },
+
+    assignedFromLiquidityForGoal(goal) {
+
+        return this.assignedForGoalBySource(
+            goal,
+            "prior_liquidity"
+        );
+
+    },
+
+    totalAssignedBySource(
+        source,
         data = this.data()
     ) {
 
@@ -329,11 +388,191 @@ const AtlasGoalsAllocation = {
                         goal
                     ) =>
                         total +
-                        this.assignedFromSavingsForGoal(
-                            goal
+                        this.assignedForGoalBySource(
+                            goal,
+                            source
                         ),
                     0
                 )
+        );
+
+    },
+
+    totalAssignedFromSavings(
+        data = this.data()
+    ) {
+
+        return this.totalAssignedBySource(
+            "available_savings",
+            data
+        );
+
+    },
+
+    totalAssignedFromLiquidity(
+        data = this.data()
+    ) {
+
+        return this.totalAssignedBySource(
+            "prior_liquidity",
+            data
+        );
+
+    },
+
+    totalAssigned(
+        data = this.data()
+    ) {
+
+        return this.round(
+            this.totalAssignedFromSavings(
+                data
+            ) +
+            this.totalAssignedFromLiquidity(
+                data
+            )
+        );
+
+    },
+
+    liquidityConfiguration(
+        data = this.data()
+    ) {
+
+        const configuration =
+            data?.goalLiquidityPool;
+
+        return configuration &&
+            typeof configuration ===
+                "object"
+                ? configuration
+                : {};
+    },
+
+    declaredPriorLiquidity(
+        data = this.data()
+    ) {
+
+        return this.round(
+            Math.max(
+                0,
+                this.number(
+                    this.liquidityConfiguration(
+                        data
+                    ).declaredAmount
+                )
+            )
+        );
+
+    },
+
+    totalRealLiquidity(
+        data = this.data()
+    ) {
+
+        if (
+            typeof AtlasCalculations !==
+                "undefined" &&
+            typeof AtlasCalculations
+                .totalLiquidity ===
+                "function"
+        ) {
+
+            return this.round(
+                AtlasCalculations
+                    .totalLiquidity(
+                        data
+                    )
+            );
+
+        }
+
+        return this.round(
+            (
+                Array.isArray(
+                    data?.accounts
+                )
+                    ? data.accounts
+                    : []
+            )
+                .filter(
+                    account =>
+                        account.group ===
+                        "liquidity"
+                )
+                .reduce(
+                    (
+                        total,
+                        account
+                    ) =>
+                        total +
+                        this.number(
+                            account.balance
+                        ),
+                    0
+                )
+        );
+
+    },
+
+    supportedPriorLiquidity(
+        data = this.data()
+    ) {
+
+        return this.round(
+            Math.max(
+                0,
+                Math.min(
+                    this.declaredPriorLiquidity(
+                        data
+                    ),
+                    Math.max(
+                        0,
+                        this.totalRealLiquidity(
+                            data
+                        )
+                    )
+                )
+            )
+        );
+
+    },
+
+    availablePriorLiquidity(
+        data = this.data()
+    ) {
+
+        return this.round(
+            Math.max(
+                0,
+                this.supportedPriorLiquidity(
+                    data
+                ) -
+                this.totalAssignedFromLiquidity(
+                    data
+                )
+            )
+        );
+
+    },
+
+    liquidityWithoutSupport(
+        data = this.data()
+    ) {
+
+        return this.round(
+            Math.max(
+                0,
+                this.totalAssignedFromLiquidity(
+                    data
+                ) -
+                Math.max(
+                    0,
+                    this.totalRealLiquidity(
+                        data
+                    )
+                )
+            )
         );
 
     },
@@ -351,7 +590,7 @@ const AtlasGoalsAllocation = {
                     this.contributions(goal)
                         .filter(
                             contribution =>
-                                this.isSavingsAllocation(
+                                this.isManagedAllocation(
                                     contribution
                                 )
                         )
@@ -450,7 +689,7 @@ const AtlasGoalsAllocation = {
         if (
             !goal ||
             !contribution ||
-            !this.isSavingsAllocation(
+            !this.isManagedAllocation(
                 contribution
             )
         ) {
@@ -580,7 +819,26 @@ const AtlasGoalsAllocation = {
 
     },
 
-    currentAmount(goal) {
+    availableForSource(
+        source,
+        data = this.data()
+    ) {
+
+        return source ===
+            "prior_liquidity"
+                ? this.availablePriorLiquidity(
+                    data
+                )
+                : this.availableClosedSavings(
+                    data
+                );
+
+    },
+
+    currentAmount(
+        goal,
+        data = this.data()
+    ) {
 
         if (
             typeof AtlasGoalsProgress !==
@@ -594,7 +852,7 @@ const AtlasGoalsAllocation = {
                 AtlasGoalsProgress
                     .calculatedCurrent(
                         goal,
-                        this.data()
+                        data
                     )
             );
 
@@ -608,7 +866,8 @@ const AtlasGoalsAllocation = {
 
     allocationCapacity(
         goal,
-        restoredAmount = 0
+        restoredAmount = 0,
+        data = this.data()
     ) {
 
         const target =
@@ -623,7 +882,8 @@ const AtlasGoalsAllocation = {
             Math.max(
                 0,
                 this.currentAmount(
-                    goal
+                    goal,
+                    data
                 )
             );
 
@@ -706,13 +966,38 @@ const AtlasGoalsAllocation = {
                 data
             );
 
-        const assigned =
+        const assignedSavings =
             this.totalAssignedFromSavings(
                 data
             );
 
-        const available =
+        const availableSavings =
             this.availableClosedSavings(
+                data
+            );
+
+        const declaredLiquidity =
+            this.declaredPriorLiquidity(
+                data
+            );
+
+        const realLiquidity =
+            this.totalRealLiquidity(
+                data
+            );
+
+        const assignedLiquidity =
+            this.totalAssignedFromLiquidity(
+                data
+            );
+
+        const availableLiquidity =
+            this.availablePriorLiquidity(
+                data
+            );
+
+        const unsupportedLiquidity =
+            this.liquidityWithoutSupport(
                 data
             );
 
@@ -737,96 +1022,291 @@ const AtlasGoalsAllocation = {
                     <div>
 
                         <h2>
-                            Asignar ahorro
+                            Asignar fondos
                         </h2>
 
                         <p>
-                            Solo se distribuye ahorro de meses cerrados.
-                            El mes actual se muestra como provisional.
+                            Distribuye ahorro cerrado o una parte
+                            declarada de tu liquidez previa.
                         </p>
 
                     </div>
 
                     <span>
                         ${AtlasGoals.formatCurrency(
-                            available
+                            availableSavings +
+                            availableLiquidity
                         )}
                     </span>
 
                 </div>
 
                 <div
-                    class="atlas-goals-allocation-facts"
+                    class="atlas-goals-allocation-source-card"
                 >
 
-                    <div>
+                    <div
+                        class="atlas-goals-allocation-source-head"
+                    >
 
-                        <small>
-                            Mes pasado
-                        </small>
+                        <div>
 
-                        <strong
-                            style="
-                                color:${
-                                    previous >= 0
-                                        ? "var(--color-success)"
-                                        : "var(--color-danger)"
-                                };
-                            "
+                            <strong>
+                                Ahorro cerrado
+                            </strong>
+
+                            <small>
+                                Ahorro generado en meses anteriores.
+                            </small>
+
+                        </div>
+
+                        <span>
+                            ${AtlasGoals.formatCurrency(
+                                availableSavings
+                            )}
+                        </span>
+
+                    </div>
+
+                    <div
+                        class="atlas-goals-allocation-facts"
+                    >
+
+                        <div>
+
+                            <small>
+                                Mes pasado
+                            </small>
+
+                            <strong
+                                style="
+                                    color:${
+                                        previous >= 0
+                                            ? "var(--color-success)"
+                                            : "var(--color-danger)"
+                                    };
+                                "
+                            >
+                                ${AtlasGoals.formatCurrency(
+                                    previous
+                                )}
+                            </strong>
+
+                        </div>
+
+                        <div>
+
+                            <small>
+                                Ahorro cerrado
+                            </small>
+
+                            <strong>
+                                ${AtlasGoals.formatCurrency(
+                                    closed
+                                )}
+                            </strong>
+
+                        </div>
+
+                        <div>
+
+                            <small>
+                                Distribuido
+                            </small>
+
+                            <strong>
+                                ${AtlasGoals.formatCurrency(
+                                    assignedSavings
+                                )}
+                            </strong>
+
+                        </div>
+
+                        <div>
+
+                            <small>
+                                Disponible
+                            </small>
+
+                            <strong
+                                style="
+                                    color:
+                                        var(
+                                            --color-primary
+                                        );
+                                "
+                            >
+                                ${AtlasGoals.formatCurrency(
+                                    availableSavings
+                                )}
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+                    <button
+                        type="button"
+                        class="atlas-goals-allocation-open"
+                        data-goal-allocation-action="open"
+                        data-source="available_savings"
+                        ${
+                            availableSavings <= 0
+                                ? "disabled"
+                                : ""
+                        }
+                    >
+                        Distribuir ahorro
+                    </button>
+
+                </div>
+
+                <div
+                    class="
+                        atlas-goals-allocation-source-card
+                        atlas-goals-liquidity-card
+                    "
+                >
+
+                    <div
+                        class="atlas-goals-allocation-source-head"
+                    >
+
+                        <div>
+
+                            <strong>
+                                Liquidez previa
+                            </strong>
+
+                            <small>
+                                Dinero que ya tenías y decides reservar
+                                para objetivos.
+                            </small>
+
+                        </div>
+
+                        <span>
+                            ${AtlasGoals.formatCurrency(
+                                availableLiquidity
+                            )}
+                        </span>
+
+                    </div>
+
+                    <div
+                        class="atlas-goals-allocation-facts"
+                    >
+
+                        <div>
+
+                            <small>
+                                Liquidez real
+                            </small>
+
+                            <strong>
+                                ${AtlasGoals.formatCurrency(
+                                    realLiquidity
+                                )}
+                            </strong>
+
+                        </div>
+
+                        <div>
+
+                            <small>
+                                Declarada asignable
+                            </small>
+
+                            <strong>
+                                ${AtlasGoals.formatCurrency(
+                                    declaredLiquidity
+                                )}
+                            </strong>
+
+                        </div>
+
+                        <div>
+
+                            <small>
+                                Distribuida
+                            </small>
+
+                            <strong>
+                                ${AtlasGoals.formatCurrency(
+                                    assignedLiquidity
+                                )}
+                            </strong>
+
+                        </div>
+
+                        <div>
+
+                            <small>
+                                Disponible
+                            </small>
+
+                            <strong
+                                style="
+                                    color:
+                                        var(
+                                            --color-primary
+                                        );
+                                "
+                            >
+                                ${AtlasGoals.formatCurrency(
+                                    availableLiquidity
+                                )}
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+                    ${
+                        unsupportedLiquidity > 0
+                            ? `
+
+                                <div
+                                    class="atlas-goals-liquidity-warning"
+                                >
+                                    Hay
+                                    ${AtlasGoals.formatCurrency(
+                                        unsupportedLiquidity
+                                    )}
+                                    distribuidos sin respaldo suficiente
+                                    en la liquidez actual.
+                                </div>
+
+                            `
+                            : ""
+                    }
+
+                    <div
+                        class="atlas-goals-allocation-buttons"
+                    >
+
+                        <button
+                            type="button"
+                            class="atlas-goals-allocation-manage"
+                            data-goal-allocation-action="configure-liquidity"
                         >
-                            ${AtlasGoals.formatCurrency(
-                                previous
-                            )}
-                        </strong>
+                            Configurar liquidez previa
+                        </button>
 
-                    </div>
-
-                    <div>
-
-                        <small>
-                            Ahorro cerrado
-                        </small>
-
-                        <strong>
-                            ${AtlasGoals.formatCurrency(
-                                closed
-                            )}
-                        </strong>
-
-                    </div>
-
-                    <div>
-
-                        <small>
-                            Ya distribuido
-                        </small>
-
-                        <strong>
-                            ${AtlasGoals.formatCurrency(
-                                assigned
-                            )}
-                        </strong>
-
-                    </div>
-
-                    <div>
-
-                        <small>
-                            Disponible real
-                        </small>
-
-                        <strong
-                            style="
-                                color:
-                                    var(
-                                        --color-primary
-                                    );
-                            "
+                        <button
+                            type="button"
+                            class="atlas-goals-allocation-open"
+                            data-goal-allocation-action="open"
+                            data-source="prior_liquidity"
+                            ${
+                                availableLiquidity <= 0
+                                    ? "disabled"
+                                    : ""
+                            }
                         >
-                            ${AtlasGoals.formatCurrency(
-                                available
-                            )}
-                        </strong>
+                            Distribuir liquidez
+                        </button>
 
                     </div>
 
@@ -857,40 +1337,24 @@ const AtlasGoalsAllocation = {
 
                 </div>
 
-                <div
-                    class="atlas-goals-allocation-buttons"
-                >
+                ${
+                    records.length > 0
+                        ? `
 
-                    <button
-                        type="button"
-                        class="atlas-goals-allocation-open"
-                        data-goal-allocation-action="open"
-                        ${
-                            available <= 0
-                                ? "disabled"
-                                : ""
-                        }
-                    >
-                        Distribuir ahorro
-                    </button>
+                            <button
+                                type="button"
+                                class="
+                                    atlas-goals-allocation-manage
+                                    atlas-goals-allocation-manage-main
+                                "
+                                data-goal-allocation-action="manage"
+                            >
+                                Gestionar todas las distribuciones
+                            </button>
 
-                    ${
-                        records.length > 0
-                            ? `
-
-                                <button
-                                    type="button"
-                                    class="atlas-goals-allocation-manage"
-                                    data-goal-allocation-action="manage"
-                                >
-                                    Gestionar distribuciones
-                                </button>
-
-                            `
-                            : ""
-                    }
-
-                </div>
+                        `
+                        : ""
+                }
 
             </section>
 
@@ -900,7 +1364,8 @@ const AtlasGoalsAllocation = {
 
     goalRow(
         goal,
-        available
+        available,
+        source
     ) {
 
         const capacity =
@@ -909,8 +1374,9 @@ const AtlasGoalsAllocation = {
             );
 
         const assigned =
-            this.assignedFromSavingsForGoal(
-                goal
+            this.assignedForGoalBySource(
+                goal,
+                source
             );
 
         return `
@@ -945,7 +1411,10 @@ const AtlasGoalsAllocation = {
 
                         <small>
                             Aumenta el progreso del objetivo
-                            · Ya distribuido
+                            · Ya asignado desde
+                            ${this.sourceShortLabel(
+                                source
+                            ).toLowerCase()}
                             ${AtlasGoals.formatCurrency(
                                 assigned
                             )}
@@ -1042,7 +1511,10 @@ const AtlasGoalsAllocation = {
 
     },
 
-    openAllocation() {
+    openAllocation(
+        source =
+            "available_savings"
+    ) {
 
         const data =
             this.data();
@@ -1053,15 +1525,28 @@ const AtlasGoalsAllocation = {
             );
 
         const available =
-            this.availableClosedSavings(
+            this.availableForSource(
+                source,
                 data
             );
+
+        const title =
+            source ===
+                "prior_liquidity"
+                ? "Distribuir liquidez"
+                : "Distribuir ahorro";
+
+        const description =
+            source ===
+                "prior_liquidity"
+                ? "Asigna una parte de la liquidez previa que declaraste como reservable."
+                : "Asigna cantidades o porcentajes del ahorro cerrado disponible.";
 
         AtlasSettings.renderSheet(`
 
             ${AtlasSettings.headerBlock(
-                "Distribuir ahorro",
-                "Asigna cantidades o porcentajes del ahorro cerrado disponible."
+                title,
+                description
             )}
 
             <div
@@ -1069,7 +1554,9 @@ const AtlasGoalsAllocation = {
             >
 
                 <span>
-                    Ahorro cerrado disponible
+                    ${this.sourceLabel(
+                        source
+                    )} disponible
                 </span>
 
                 <strong>
@@ -1098,6 +1585,7 @@ const AtlasGoalsAllocation = {
                             class="atlas-settings-form"
                             data-goal-allocation-form
                             data-available="${available}"
+                            data-source="${source}"
                         >
 
                             <div
@@ -1109,7 +1597,8 @@ const AtlasGoalsAllocation = {
                                         goal =>
                                             this.goalRow(
                                                 goal,
-                                                available
+                                                available,
+                                                source
                                             )
                                     )
                                     .join("")}
@@ -1145,7 +1634,12 @@ const AtlasGoalsAllocation = {
                                     type="text"
                                     name="allocationNote"
                                     maxlength="160"
-                                    placeholder="Ejemplo: Reparto del ahorro de junio"
+                                    placeholder="${
+                                        source ===
+                                            "prior_liquidity"
+                                            ? "Ejemplo: Dinero que ya tenía ahorrado"
+                                            : "Ejemplo: Reparto del ahorro de junio"
+                                    }"
                                 >
 
                             </label>
@@ -1196,6 +1690,234 @@ const AtlasGoalsAllocation = {
             }
 
         `);
+
+    },
+
+    openLiquidityConfiguration() {
+
+        const data =
+            this.data();
+
+        const real =
+            Math.max(
+                0,
+                this.totalRealLiquidity(
+                    data
+                )
+            );
+
+        const declared =
+            this.declaredPriorLiquidity(
+                data
+            );
+
+        const assigned =
+            this.totalAssignedFromLiquidity(
+                data
+            );
+
+        AtlasSettings.renderSheet(`
+
+            ${AtlasSettings.headerBlock(
+                "Configurar liquidez previa",
+                "Indica qué parte del dinero que ya tenías quieres considerar reservable para objetivos."
+            )}
+
+            <div
+                class="atlas-goals-allocation-sheet-summary"
+            >
+
+                <span>
+                    Liquidez real actual
+                </span>
+
+                <strong>
+                    ${AtlasGoals.formatCurrency(
+                        real
+                    )}
+                </strong>
+
+                <small>
+                    Ya distribuida desde liquidez:
+                    ${AtlasGoals.formatCurrency(
+                        assigned
+                    )}
+                </small>
+
+            </div>
+
+            <div
+                class="atlas-goals-liquidity-explanation"
+            >
+                Esta configuración no mueve dinero ni modifica
+                los saldos de tus cuentas. Solo establece cuánto
+                de tu liquidez previa puede reservarse internamente
+                para objetivos.
+            </div>
+
+            <form
+                class="atlas-settings-form"
+                data-goal-liquidity-form
+                data-real-liquidity="${real}"
+                data-assigned-liquidity="${assigned}"
+            >
+
+                <label
+                    class="atlas-settings-field"
+                >
+
+                    <span>
+                        Liquidez previa asignable
+                    </span>
+
+                    <input
+                        type="number"
+                        inputmode="decimal"
+                        min="${assigned}"
+                        max="${real}"
+                        step="0.01"
+                        name="declaredLiquidity"
+                        value="${declared}"
+                        required
+                    >
+
+                    <small>
+                        No puede ser menor que lo ya distribuido
+                        ni mayor que tu liquidez real actual.
+                    </small>
+
+                </label>
+
+                <button
+                    type="submit"
+                    class="atlas-settings-primary"
+                >
+                    Guardar liquidez asignable
+                </button>
+
+                <button
+                    type="button"
+                    class="atlas-settings-secondary"
+                    data-settings-action="close"
+                >
+                    Cancelar
+                </button>
+
+            </form>
+
+        `);
+
+    },
+
+    saveLiquidityConfiguration(form) {
+
+        const values =
+            new FormData(
+                form
+            );
+
+        const amount =
+            this.round(
+                Math.max(
+                    0,
+                    this.number(
+                        values.get(
+                            "declaredLiquidity"
+                        )
+                    )
+                )
+            );
+
+        const real =
+            Math.max(
+                0,
+                this.number(
+                    form.dataset
+                        .realLiquidity
+                )
+            );
+
+        const assigned =
+            Math.max(
+                0,
+                this.number(
+                    form.dataset
+                        .assignedLiquidity
+                )
+            );
+
+        if (
+            amount <
+                assigned -
+                0.001
+        ) {
+
+            AtlasUI.toast(
+                "No puedes declarar menos liquidez que la ya distribuida."
+            );
+
+            return;
+
+        }
+
+        if (
+            amount >
+                real +
+                0.001
+        ) {
+
+            AtlasUI.toast(
+                "La liquidez asignable no puede superar la liquidez real."
+            );
+
+            return;
+
+        }
+
+        const updatedData =
+            this.clone(
+                this.data()
+            );
+
+        updatedData.goalLiquidityPool = {
+
+            ...(
+                updatedData
+                    .goalLiquidityPool ||
+                {}
+            ),
+
+            declaredAmount:
+                amount,
+
+            updatedAt:
+                this.now(),
+
+            createdAt:
+                updatedData
+                    .goalLiquidityPool
+                    ?.createdAt ||
+                this.now()
+
+        };
+
+        if (
+            !AtlasStorage.save(
+                updatedData
+            )
+        ) {
+
+            AtlasUI.toast(
+                "No se pudo guardar la liquidez asignable."
+            );
+
+            return;
+
+        }
+
+        this.finishUpdate(
+            "Liquidez asignable actualizada."
+        );
 
     },
 
@@ -1615,8 +2337,16 @@ const AtlasGoalsAllocation = {
         const data =
             this.data();
 
+        const source =
+            String(
+                form.dataset
+                    .source ||
+                "available_savings"
+            );
+
         const available =
-            this.availableClosedSavings(
+            this.availableForSource(
+                source,
                 data
             );
 
@@ -1659,7 +2389,10 @@ const AtlasGoalsAllocation = {
         ) {
 
             AtlasUI.toast(
-                "La distribución supera el ahorro cerrado disponible."
+                source ===
+                    "prior_liquidity"
+                    ? "La distribución supera la liquidez previa disponible."
+                    : "La distribución supera el ahorro cerrado disponible."
             );
 
             return;
@@ -1733,7 +2466,9 @@ const AtlasGoalsAllocation = {
 
             const capacity =
                 this.allocationCapacity(
-                    goal
+                    goal,
+                    0,
+                    updatedData
                 );
 
             if (
@@ -1780,8 +2515,7 @@ const AtlasGoalsAllocation = {
 
                 note,
 
-                source:
-                    "available_savings",
+                source,
 
                 allocationMethod:
                     allocation.method,
@@ -1826,7 +2560,10 @@ const AtlasGoalsAllocation = {
         }
 
         this.finishUpdate(
-            "Ahorro distribuido correctamente."
+            source ===
+                "prior_liquidity"
+                ? "Liquidez distribuida correctamente."
+                : "Ahorro distribuido correctamente."
         );
 
     },
@@ -1883,6 +2620,19 @@ const AtlasGoalsAllocation = {
             >
 
                 <div>
+
+                    <div
+                        class="atlas-goals-allocation-record-source"
+                        data-source="${AtlasGoals.escape(
+                            contribution.source
+                        )}"
+                    >
+                        ${AtlasGoals.escape(
+                            this.sourceLabel(
+                                contribution.source
+                            )
+                        )}
+                    </div>
 
                     <strong>
                         ${AtlasGoals.escape(
@@ -2007,29 +2757,40 @@ const AtlasGoalsAllocation = {
 
             ${AtlasSettings.headerBlock(
                 "Gestionar distribuciones",
-                "Edita, mueve o elimina el ahorro ya distribuido."
+                "Edita, mueve o elimina el ahorro y la liquidez distribuidos."
             )}
 
             <div
-                class="atlas-goals-allocation-sheet-summary"
+                class="atlas-goals-allocation-manage-summary"
             >
 
-                <span>
-                    Total distribuido
-                </span>
+                <div>
 
-                <strong>
-                    ${AtlasGoals.formatCurrency(
-                        this.totalAssignedFromSavings()
-                    )}
-                </strong>
+                    <small>
+                        Ahorro distribuido
+                    </small>
 
-                <small>
-                    Disponible después de distribuciones:
-                    ${AtlasGoals.formatCurrency(
-                        this.availableClosedSavings()
-                    )}
-                </small>
+                    <strong>
+                        ${AtlasGoals.formatCurrency(
+                            this.totalAssignedFromSavings()
+                        )}
+                    </strong>
+
+                </div>
+
+                <div>
+
+                    <small>
+                        Liquidez distribuida
+                    </small>
+
+                    <strong>
+                        ${AtlasGoals.formatCurrency(
+                            this.totalAssignedFromLiquidity()
+                        )}
+                    </strong>
+
+                </div>
 
             </div>
 
@@ -2078,10 +2839,13 @@ const AtlasGoalsAllocation = {
 
     goalOptions(
         selectedId,
-        restoredAmount
+        restoredAmount,
+        data = this.data()
     ) {
 
-        return this.allocatableGoals()
+        return this.allocatableGoals(
+            data
+        )
             .map(
                 goal => `
 
@@ -2106,7 +2870,8 @@ const AtlasGoalsAllocation = {
                                 goal.id ===
                                     selectedId
                                     ? restoredAmount
-                                    : 0
+                                    : 0,
+                                data
                             )
                         )}
                     </option>
@@ -2166,7 +2931,7 @@ const AtlasGoalsAllocation = {
 
             ${AtlasSettings.headerBlock(
                 "Editar distribución",
-                "Modifica el importe o mueve la asignación a otro objetivo."
+                "Modifica la fuente, el importe o el objetivo de la asignación."
             )}
 
             ${
@@ -2199,7 +2964,51 @@ const AtlasGoalsAllocation = {
                                 contributionId
                             )}"
                             data-original-amount="${amount}"
+                            data-original-source="${AtlasGoals.escape(
+                                contribution.source
+                            )}"
                         >
+
+                            <label
+                                class="atlas-settings-field"
+                            >
+
+                                <span>
+                                    Fuente
+                                </span>
+
+                                <select
+                                    name="allocationSource"
+                                    required
+                                >
+
+                                    <option
+                                        value="available_savings"
+                                        ${
+                                            contribution.source ===
+                                                "available_savings"
+                                                ? "selected"
+                                                : ""
+                                        }
+                                    >
+                                        Ahorro cerrado
+                                    </option>
+
+                                    <option
+                                        value="prior_liquidity"
+                                        ${
+                                            contribution.source ===
+                                                "prior_liquidity"
+                                                ? "selected"
+                                                : ""
+                                        }
+                                    >
+                                        Liquidez previa
+                                    </option>
+
+                                </select>
+
+                            </label>
 
                             <label
                                 class="atlas-settings-field"
@@ -2417,6 +3226,21 @@ const AtlasGoalsAllocation = {
             form.dataset
                 .contributionId;
 
+        const originalSource =
+            String(
+                form.dataset
+                    .originalSource ||
+                "available_savings"
+            );
+
+        const targetSource =
+            String(
+                values.get(
+                    "allocationSource"
+                ) ||
+                originalSource
+            );
+
         const targetGoalId =
             String(
                 values.get(
@@ -2454,6 +3278,12 @@ const AtlasGoalsAllocation = {
             ).trim();
 
         if (
+            ![
+                "available_savings",
+                "prior_liquidity"
+            ].includes(
+                targetSource
+            ) ||
             !targetGoalId ||
             amount <= 0 ||
             !date
@@ -2499,10 +3329,16 @@ const AtlasGoalsAllocation = {
 
         const availableAfterRelease =
             this.round(
-                this.availableClosedSavings(
+                this.availableForSource(
+                    targetSource,
                     data
                 ) +
-                originalAmount
+                (
+                    targetSource ===
+                        originalSource
+                        ? originalAmount
+                        : 0
+                )
             );
 
         if (
@@ -2512,7 +3348,10 @@ const AtlasGoalsAllocation = {
         ) {
 
             AtlasUI.toast(
-                "El importe supera el ahorro disponible."
+                targetSource ===
+                    "prior_liquidity"
+                    ? "El importe supera la liquidez previa disponible."
+                    : "El importe supera el ahorro cerrado disponible."
             );
 
             return;
@@ -2548,7 +3387,8 @@ const AtlasGoalsAllocation = {
         const capacity =
             this.allocationCapacity(
                 target,
-                restoredAmount
+                restoredAmount,
+                data
             );
 
         if (
@@ -2625,7 +3465,7 @@ const AtlasGoalsAllocation = {
             note,
 
             source:
-                "available_savings",
+                targetSource,
 
             allocationMethod:
                 "amount",
@@ -2689,7 +3529,7 @@ const AtlasGoalsAllocation = {
 
         const confirmed =
             window.confirm(
-                "¿Eliminar esta distribución de ahorro?"
+                "¿Eliminar esta distribución?"
             );
 
         if (!confirmed) {
@@ -2814,7 +3654,8 @@ const AtlasGoalsAllocation = {
                     );
             }
 
-            .atlas-goals-allocation-head {
+            .atlas-goals-allocation-head,
+            .atlas-goals-allocation-source-head {
                 display: flex;
                 align-items: flex-start;
                 justify-content:
@@ -2827,7 +3668,9 @@ const AtlasGoalsAllocation = {
                 font-size: 17px;
             }
 
-            .atlas-goals-allocation-head p {
+            .atlas-goals-allocation-head p,
+            .atlas-goals-allocation-source-head small {
+                display: block;
                 margin:
                     5px
                     0
@@ -2840,7 +3683,8 @@ const AtlasGoalsAllocation = {
                 line-height: 1.45;
             }
 
-            .atlas-goals-allocation-head > span {
+            .atlas-goals-allocation-head > span,
+            .atlas-goals-allocation-source-head > span {
                 flex:
                     0
                     0
@@ -2852,6 +3696,48 @@ const AtlasGoalsAllocation = {
                 font-size: 18px;
                 font-weight: 850;
                 white-space: nowrap;
+            }
+
+            .atlas-goals-allocation-source-card {
+                margin-top: 14px;
+                padding: 14px;
+                border:
+                    1px solid
+                    rgba(
+                        145,
+                        164,
+                        202,
+                        0.14
+                    );
+                border-radius: 18px;
+                background:
+                    rgba(
+                        255,
+                        255,
+                        255,
+                        0.025
+                    );
+            }
+
+            .atlas-goals-liquidity-card {
+                border-color:
+                    rgba(
+                        95,
+                        214,
+                        150,
+                        0.18
+                    );
+                background:
+                    rgba(
+                        95,
+                        214,
+                        150,
+                        0.035
+                    );
+            }
+
+            .atlas-goals-allocation-source-head strong {
+                font-size: 13px;
             }
 
             .atlas-goals-allocation-facts {
@@ -2898,7 +3784,7 @@ const AtlasGoalsAllocation = {
             }
 
             .atlas-goals-provisional {
-                margin-top: 12px;
+                margin-top: 14px;
                 padding: 12px;
                 border:
                     1px solid
@@ -2972,6 +3858,7 @@ const AtlasGoalsAllocation = {
             }
 
             .atlas-goals-allocation-open {
+                margin-top: 14px;
                 border:
                     1px solid
                     rgba(
@@ -2988,6 +3875,11 @@ const AtlasGoalsAllocation = {
                         0.2
                     );
                 color: #ffffff;
+            }
+
+            .atlas-goals-allocation-buttons
+            .atlas-goals-allocation-open {
+                margin-top: 0;
             }
 
             .atlas-goals-allocation-open:disabled {
@@ -3011,6 +3903,70 @@ const AtlasGoalsAllocation = {
                         0.035
                     );
                 color: #c8d0e3;
+            }
+
+            .atlas-goals-allocation-manage-main {
+                margin-top: 14px;
+            }
+
+            .atlas-goals-liquidity-warning,
+            .atlas-goals-allocation-edit-warning {
+                padding: 12px;
+                margin-top: 12px;
+                border:
+                    1px solid
+                    rgba(
+                        255,
+                        95,
+                        112,
+                        0.22
+                    );
+                border-radius: 14px;
+                background:
+                    rgba(
+                        255,
+                        95,
+                        112,
+                        0.065
+                    );
+                color: #ffb0b9;
+                font-size: 9px;
+                line-height: 1.5;
+            }
+
+            .atlas-goals-allocation-edit-warning {
+                margin:
+                    0
+                    0
+                    14px;
+                font-size: 10px;
+            }
+
+            .atlas-goals-liquidity-explanation {
+                padding: 13px;
+                margin-bottom: 14px;
+                border:
+                    1px solid
+                    rgba(
+                        95,
+                        214,
+                        150,
+                        0.2
+                    );
+                border-radius: 15px;
+                background:
+                    rgba(
+                        95,
+                        214,
+                        150,
+                        0.06
+                    );
+                color:
+                    var(
+                        --color-text-muted
+                    );
+                font-size: 10px;
+                line-height: 1.55;
             }
 
             .atlas-goals-allocation-sheet-summary {
@@ -3057,6 +4013,47 @@ const AtlasGoalsAllocation = {
             .atlas-goals-allocation-sheet-summary small {
                 margin-top: 7px;
                 line-height: 1.4;
+            }
+
+            .atlas-goals-allocation-manage-summary {
+                display: grid;
+                grid-template-columns:
+                    repeat(
+                        2,
+                        minmax(
+                            0,
+                            1fr
+                        )
+                    );
+                gap: 9px;
+                margin-bottom: 14px;
+            }
+
+            .atlas-goals-allocation-manage-summary > div {
+                padding: 13px;
+                border-radius: 15px;
+                background:
+                    rgba(
+                        255,
+                        255,
+                        255,
+                        0.035
+                    );
+            }
+
+            .atlas-goals-allocation-manage-summary small {
+                display: block;
+                color:
+                    var(
+                        --color-text-muted
+                    );
+                font-size: 9px;
+            }
+
+            .atlas-goals-allocation-manage-summary strong {
+                display: block;
+                margin-top: 5px;
+                font-size: 15px;
             }
 
             .atlas-goals-allocation-list {
@@ -3277,6 +4274,41 @@ const AtlasGoalsAllocation = {
                 line-height: 1.45;
             }
 
+            .atlas-goals-allocation-record-source {
+                display: inline-flex;
+                min-height: 21px;
+                align-items: center;
+                margin-bottom: 7px;
+                padding:
+                    0
+                    8px;
+                border-radius: 99px;
+                background:
+                    rgba(
+                        77,
+                        163,
+                        255,
+                        0.1
+                    );
+                color:
+                    var(
+                        --color-primary
+                    );
+                font-size: 8px;
+                font-weight: 800;
+            }
+
+            .atlas-goals-allocation-record-source[data-source="prior_liquidity"] {
+                background:
+                    rgba(
+                        95,
+                        214,
+                        150,
+                        0.1
+                    );
+                color: #86e4ac;
+            }
+
             .atlas-goals-allocation-warning {
                 display: block;
                 margin-top: 7px;
@@ -3325,35 +4357,12 @@ const AtlasGoalsAllocation = {
                     );
             }
 
-            .atlas-goals-allocation-edit-warning {
-                padding: 13px;
-                margin-bottom: 14px;
-                border:
-                    1px solid
-                    rgba(
-                        255,
-                        95,
-                        112,
-                        0.22
-                    );
-                border-radius: 15px;
-                background:
-                    rgba(
-                        255,
-                        95,
-                        112,
-                        0.065
-                    );
-                color: #ffb0b9;
-                font-size: 10px;
-                line-height: 1.5;
-            }
-
             @media (
                 max-width: 350px
             ) {
 
-                .atlas-goals-allocation-methods {
+                .atlas-goals-allocation-methods,
+                .atlas-goals-allocation-manage-summary {
                     grid-template-columns:
                         minmax(
                             0,
@@ -3452,7 +4461,22 @@ const AtlasGoalsAllocation = {
                     "open"
                 ) {
 
-                    this.openAllocation();
+                    this.openAllocation(
+                        button.dataset
+                            .source ||
+                        "available_savings"
+                    );
+
+                    return;
+
+                }
+
+                if (
+                    action ===
+                    "configure-liquidity"
+                ) {
+
+                    this.openLiquidityConfiguration();
 
                     return;
 
@@ -3530,6 +4554,23 @@ const AtlasGoalsAllocation = {
         document.addEventListener(
             "submit",
             event => {
+
+                const liquidityForm =
+                    event.target.closest(
+                        "[data-goal-liquidity-form]"
+                    );
+
+                if (liquidityForm) {
+
+                    event.preventDefault();
+
+                    this.saveLiquidityConfiguration(
+                        liquidityForm
+                    );
+
+                    return;
+
+                }
 
                 const allocationForm =
                     event.target.closest(
