@@ -482,12 +482,10 @@ const AtlasGoalsProgress = {
             ],
 
             investment: [
-                "manual",
                 "investment"
             ],
 
             debt: [
-                "manual",
                 "debt"
             ]
 
@@ -528,6 +526,28 @@ const AtlasGoalsProgress = {
 
     },
 
+    defaultModeForType(type) {
+
+        if (
+            type === "investment"
+        ) {
+
+            return "investment";
+
+        }
+
+        if (
+            type === "debt"
+        ) {
+
+            return "debt";
+
+        }
+
+        return "manual";
+
+    },
+
     validModeForType(
         type,
         mode
@@ -550,7 +570,9 @@ const AtlasGoalsProgress = {
         const mode =
             String(
                 goal?.progressMode ||
-                "manual"
+                this.defaultModeForType(
+                    type
+                )
             );
 
         return this.validModeForType(
@@ -558,7 +580,9 @@ const AtlasGoalsProgress = {
             mode
         )
             ? mode
-            : "manual";
+            : this.defaultModeForType(
+                type
+            );
 
     },
 
@@ -890,7 +914,9 @@ const AtlasGoalsProgress = {
                 selected
             )
                 ? selected
-                : "manual";
+                : this.defaultModeForType(
+                    goalType
+                );
 
         return modes
             .map(
@@ -1067,6 +1093,14 @@ const AtlasGoalsProgress = {
                 }
             );
 
+        const fixedAutomatic =
+            [
+                "investment",
+                "debt"
+            ].includes(
+                type
+            );
+
         return `
 
             <section
@@ -1103,12 +1137,40 @@ const AtlasGoalsProgress = {
                     <select
                         name="goalProgressMode"
                         data-goal-progress-mode
+                        ${
+                            fixedAutomatic
+                                ? "disabled"
+                                : ""
+                        }
                     >
                         ${this.modeOptions(
                             type,
                             mode
                         )}
                     </select>
+
+                    ${
+                        fixedAutomatic
+                            ? `
+
+                                <small
+                                    style="
+                                        margin-top:6px;
+                                        color:
+                                            var(
+                                                --color-text-muted
+                                            );
+                                        font-size:9px;
+                                        line-height:1.45;
+                                    "
+                                >
+                                    Este tipo de objetivo se calcula
+                                    automáticamente.
+                                </small>
+
+                            `
+                            : ""
+                    }
 
                 </label>
 
@@ -1253,13 +1315,36 @@ const AtlasGoalsProgress = {
 
     currentMode(form) {
 
+        const type =
+            this.currentGoalType(
+                form
+            );
+
+        if (
+            type === "investment"
+        ) {
+
+            return "investment";
+
+        }
+
+        if (
+            type === "debt"
+        ) {
+
+            return "debt";
+
+        }
+
         return String(
             form
                 ?.querySelector(
                     "[data-goal-progress-mode]"
                 )
                 ?.value ||
-            "manual"
+            this.defaultModeForType(
+                type
+            )
         );
 
     },
@@ -1297,7 +1382,9 @@ const AtlasGoalsProgress = {
         ) {
 
             mode =
-                "manual";
+                this.defaultModeForType(
+                    type
+                );
 
         }
 
@@ -1355,18 +1442,21 @@ const AtlasGoalsProgress = {
                             this.currentGoalType(
                                 form
                             ),
+
                         targetAmount:
                             this.number(
                                 form.querySelector(
                                     '[name="goalTargetAmount"]'
                                 )?.value
                             ),
+
                         currentAmount:
                             this.number(
                                 form.querySelector(
                                     '[name="goalCurrentAmount"]'
                                 )?.value
                             ),
+
                         startDate:
                             String(
                                 form.querySelector(
@@ -1374,6 +1464,7 @@ const AtlasGoalsProgress = {
                                 )?.value ||
                                 ""
                             ),
+
                         ...configuration
                     }
                 )
@@ -1414,12 +1505,8 @@ const AtlasGoalsProgress = {
                 previous
             )
                 ? previous
-                : (
-                    previous === "manual"
-                        ? "manual"
-                        : this.defaultAutomaticMode(
-                            type
-                        )
+                : this.defaultModeForType(
+                    type
                 );
 
         select.innerHTML =
@@ -1430,6 +1517,14 @@ const AtlasGoalsProgress = {
 
         select.value =
             selected;
+
+        select.disabled =
+            [
+                "investment",
+                "debt"
+            ].includes(
+                type
+            );
 
         this.refreshAccountOptions(
             form,
@@ -1530,6 +1625,11 @@ const AtlasGoalsProgress = {
                 form
             );
 
+        const type =
+            this.currentGoalType(
+                form
+            );
+
         const accountField =
             form.querySelector(
                 "[data-goal-progress-account-field]"
@@ -1549,6 +1649,23 @@ const AtlasGoalsProgress = {
             form.querySelector(
                 '[name="goalCurrentAmount"]'
             );
+
+        const progressSelect =
+            form.querySelector(
+                "[data-goal-progress-mode]"
+            );
+
+        if (progressSelect) {
+
+            progressSelect.disabled =
+                [
+                    "investment",
+                    "debt"
+                ].includes(
+                    type
+                );
+
+        }
 
         if (accountField) {
 
@@ -1582,10 +1699,24 @@ const AtlasGoalsProgress = {
             currentInput.disabled =
                 mode !== "manual";
 
-            currentInput.style.opacity =
+            currentInput.style.display =
                 mode === "manual"
-                    ? "1"
-                    : "0.5";
+                    ? ""
+                    : "none";
+
+            const currentLabel =
+                currentInput.closest(
+                    "label"
+                );
+
+            if (currentLabel) {
+
+                currentLabel.style.display =
+                    mode === "manual"
+                        ? ""
+                        : "none";
+
+            }
 
         }
 
@@ -1855,7 +1986,9 @@ const AtlasGoalsProgress = {
                 const requestedMode =
                     String(
                         goal?.progressMode ||
-                        "manual"
+                        this.defaultModeForType(
+                            normalized.type
+                        )
                     );
 
                 const mode =
@@ -1864,7 +1997,9 @@ const AtlasGoalsProgress = {
                         requestedMode
                     )
                         ? requestedMode
-                        : "manual";
+                        : this.defaultModeForType(
+                            normalized.type
+                        );
 
                 return {
 
@@ -2286,6 +2421,15 @@ const AtlasGoalsProgress = {
 
                     startingDebt:
                         0,
+
+                    currentAmount:
+                        configuration
+                            .progressMode ===
+                            "manual"
+                            ? this.number(
+                                previous.currentAmount
+                            )
+                            : 0,
 
                     updatedAt:
                         new Date()
