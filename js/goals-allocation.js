@@ -72,7 +72,7 @@ const AtlasGoalsAllocation = {
 
     },
 
-    createId() {
+    createId(prefix = "goal_allocation") {
 
         if (
             typeof AtlasCatalog !==
@@ -82,13 +82,13 @@ const AtlasGoalsAllocation = {
         ) {
 
             return AtlasCatalog.createId(
-                "goal_contribution"
+                prefix
             );
 
         }
 
         return [
-            "goal_contribution",
+            prefix,
             Date.now(),
             Math.random()
                 .toString(36)
@@ -97,8 +97,24 @@ const AtlasGoalsAllocation = {
 
     },
 
+    data() {
+
+        if (
+            typeof AtlasApp !==
+                "undefined" &&
+            AtlasApp.data
+        ) {
+
+            return AtlasApp.data;
+
+        }
+
+        return AtlasGoals.data;
+
+    },
+
     goals(
-        data = AtlasGoals.data
+        data = this.data()
     ) {
 
         return Array.isArray(
@@ -109,11 +125,81 @@ const AtlasGoalsAllocation = {
 
     },
 
-    allocatableGoals(
-        data = AtlasGoals.data
+    goalById(
+        goalId,
+        data = this.data()
     ) {
 
-        const priorities = {
+        return this.goals(data)
+            .find(
+                goal =>
+                    goal.id ===
+                    goalId
+            ) || null;
+
+    },
+
+    contributions(goal) {
+
+        return Array.isArray(
+            goal?.contributions
+        )
+            ? goal.contributions
+            : [];
+
+    },
+
+    progressMode(goal) {
+
+        return String(
+            goal?.progressMode ||
+            "manual"
+        );
+
+    },
+
+    isManualGoal(goal) {
+
+        return (
+            this.progressMode(
+                goal
+            ) ===
+            "manual"
+        );
+
+    },
+
+    isCompatibleType(goal) {
+
+        return [
+            "saving",
+            "purchase",
+            "emergency"
+        ].includes(
+            goal?.type
+        );
+
+    },
+
+    isAllocatableGoal(goal) {
+
+        return Boolean(
+            goal &&
+            goal.status ===
+                "active" &&
+            this.isManualGoal(
+                goal
+            ) &&
+            this.isCompatibleType(
+                goal
+            )
+        );
+
+    },
+
+    priorityOrder(priority) {
+
+        const values = {
 
             high:
                 1,
@@ -126,11 +212,23 @@ const AtlasGoalsAllocation = {
 
         };
 
+        return (
+            values[priority] ||
+            2
+        );
+
+    },
+
+    allocatableGoals(
+        data = this.data()
+    ) {
+
         return this.goals(data)
             .filter(
                 goal =>
-                    goal.status ===
-                    "active"
+                    this.isAllocatableGoal(
+                        goal
+                    )
             )
             .sort(
                 (
@@ -138,25 +236,20 @@ const AtlasGoalsAllocation = {
                     second
                 ) => {
 
-                    const difference =
-                        (
-                            priorities[
-                                first.priority
-                            ] ||
-                            2
+                    const priorityDifference =
+                        this.priorityOrder(
+                            first.priority
                         ) -
-                        (
-                            priorities[
-                                second.priority
-                            ] ||
-                            2
+                        this.priorityOrder(
+                            second.priority
                         );
 
                     if (
-                        difference !== 0
+                        priorityDifference !==
+                        0
                     ) {
 
-                        return difference;
+                        return priorityDifference;
 
                     }
 
@@ -172,26 +265,6 @@ const AtlasGoalsAllocation = {
 
                 }
             );
-
-    },
-
-    isAutomatic(goal) {
-
-        return (
-            goal?.progressMode &&
-            goal.progressMode !==
-                "manual"
-        );
-
-    },
-
-    contributions(goal) {
-
-        return Array.isArray(
-            goal?.contributions
-        )
-            ? goal.contributions
-            : [];
 
     },
 
@@ -212,14 +285,22 @@ const AtlasGoalsAllocation = {
 
     },
 
+    isSavingsAllocation(contribution) {
+
+        return contribution?.source ===
+            "available_savings";
+
+    },
+
     assignedFromSavingsForGoal(goal) {
 
         return this.round(
             this.contributions(goal)
                 .filter(
                     contribution =>
-                        contribution.source ===
-                        "available_savings"
+                        this.isSavingsAllocation(
+                            contribution
+                        )
                 )
                 .reduce(
                     (
@@ -237,7 +318,7 @@ const AtlasGoalsAllocation = {
     },
 
     totalAssignedFromSavings(
-        data = AtlasGoals.data
+        data = this.data()
     ) {
 
         return this.round(
@@ -257,6 +338,134 @@ const AtlasGoalsAllocation = {
 
     },
 
+    allocationRecords(
+        data = this.data()
+    ) {
+
+        const records = [];
+
+        this.goals(data)
+            .forEach(
+                goal => {
+
+                    this.contributions(goal)
+                        .filter(
+                            contribution =>
+                                this.isSavingsAllocation(
+                                    contribution
+                                )
+                        )
+                        .forEach(
+                            contribution => {
+
+                                records.push({
+
+                                    goalId:
+                                        goal.id,
+
+                                    goalName:
+                                        goal.name,
+
+                                    goalType:
+                                        goal.type,
+
+                                    goalStatus:
+                                        goal.status,
+
+                                    contribution
+
+                                });
+
+                            }
+                        );
+
+                }
+            );
+
+        return records.sort(
+            (
+                first,
+                second
+            ) => {
+
+                const dateDifference =
+                    String(
+                        second.contribution
+                            ?.date ||
+                        ""
+                    ).localeCompare(
+                        String(
+                            first.contribution
+                                ?.date ||
+                            ""
+                        )
+                    );
+
+                if (
+                    dateDifference !==
+                    0
+                ) {
+
+                    return dateDifference;
+
+                }
+
+                return String(
+                    second.contribution
+                        ?.createdAt ||
+                    ""
+                ).localeCompare(
+                    String(
+                        first.contribution
+                            ?.createdAt ||
+                        ""
+                    )
+                );
+
+            }
+        );
+
+    },
+
+    allocationRecord(
+        goalId,
+        contributionId,
+        data = this.data()
+    ) {
+
+        const goal =
+            this.goalById(
+                goalId,
+                data
+            );
+
+        const contribution =
+            this.contributions(goal)
+                .find(
+                    item =>
+                        item.id ===
+                        contributionId
+                ) || null;
+
+        if (
+            !goal ||
+            !contribution ||
+            !this.isSavingsAllocation(
+                contribution
+            )
+        ) {
+
+            return null;
+
+        }
+
+        return {
+            goal,
+            contribution
+        };
+
+    },
+
     currentMonth() {
 
         return AtlasCalculations
@@ -273,64 +482,94 @@ const AtlasGoalsAllocation = {
 
     },
 
-    previousMonthSavings(
-        data = AtlasGoals.data
+    monthSavings(
+        data,
+        monthKey
     ) {
 
         return this.round(
             AtlasCalculations
                 .financialSummary(
                     data,
-                    this.previousMonth()
+                    monthKey
                 )
                 .monthlySavings
         );
 
     },
 
-    accumulatedSavings(
-        data = AtlasGoals.data
+    previousMonthSavings(
+        data = this.data()
     ) {
 
-        const currentMonth =
-            this.currentMonth();
-
-        const months =
-            AtlasCalculations
-                .allMonthKeys(
-                    data,
-                    currentMonth
-                );
-
-        return this.round(
-            months.reduce(
-                (
-                    total,
-                    monthKey
-                ) =>
-                    total +
-                    this.number(
-                        AtlasCalculations
-                            .financialSummary(
-                                data,
-                                monthKey
-                            )
-                            .monthlySavings
-                    ),
-                0
-            )
+        return this.monthSavings(
+            data,
+            this.previousMonth()
         );
 
     },
 
-    availableSavings(
-        data = AtlasGoals.data
+    provisionalSavings(
+        data = this.data()
+    ) {
+
+        return this.monthSavings(
+            data,
+            this.currentMonth()
+        );
+
+    },
+
+    closedMonthKeys(
+        data = this.data()
+    ) {
+
+        const current =
+            this.currentMonth();
+
+        return AtlasCalculations
+            .allMonthKeys(
+                data,
+                current
+            )
+            .filter(
+                monthKey =>
+                    monthKey <
+                    current
+            );
+
+    },
+
+    closedSavings(
+        data = this.data()
+    ) {
+
+        return this.round(
+            this.closedMonthKeys(data)
+                .reduce(
+                    (
+                        total,
+                        monthKey
+                    ) =>
+                        total +
+                        this.monthSavings(
+                            data,
+                            monthKey
+                        ),
+                    0
+                )
+        );
+
+    },
+
+    availableClosedSavings(
+        data = this.data()
     ) {
 
         return this.round(
             Math.max(
                 0,
-                this.accumulatedSavings(
+                this.closedSavings(
                     data
                 ) -
                 this.totalAssignedFromSavings(
@@ -355,7 +594,7 @@ const AtlasGoalsAllocation = {
                 AtlasGoalsProgress
                     .calculatedCurrent(
                         goal,
-                        AtlasGoals.data
+                        this.data()
                     )
             );
 
@@ -367,7 +606,10 @@ const AtlasGoalsAllocation = {
 
     },
 
-    allocationCapacity(goal) {
+    allocationCapacity(
+        goal,
+        restoredAmount = 0
+    ) {
 
         const target =
             Math.max(
@@ -377,36 +619,76 @@ const AtlasGoalsAllocation = {
                 )
             );
 
-        if (
-            this.isAutomatic(goal)
-        ) {
-
-            return this.round(
-                Math.max(
-                    0,
-                    target -
-                    this.assignedFromSavingsForGoal(
-                        goal
-                    )
+        const current =
+            Math.max(
+                0,
+                this.currentAmount(
+                    goal
                 )
             );
-
-        }
 
         return this.round(
             Math.max(
                 0,
                 target -
-                this.currentAmount(
-                    goal
+                current +
+                Math.max(
+                    0,
+                    this.number(
+                        restoredAmount
+                    )
                 )
             )
         );
 
     },
 
+    formatDate(value) {
+
+        if (!value) {
+
+            return "Sin fecha";
+
+        }
+
+        const date =
+            new Date(
+                `${value}T12:00:00`
+            );
+
+        if (
+            Number.isNaN(
+                date.getTime()
+            )
+        ) {
+
+            return value;
+
+        }
+
+        return new Intl.DateTimeFormat(
+            "es-ES",
+            {
+                day:
+                    "numeric",
+
+                month:
+                    "short",
+
+                year:
+                    "numeric"
+            }
+        )
+            .format(date)
+            .replace(
+                ".",
+                ""
+            );
+
+    },
+
     summaryPanel(
-        data = AtlasGoals.data
+        data = this.data()
     ) {
 
         const previous =
@@ -414,8 +696,13 @@ const AtlasGoalsAllocation = {
                 data
             );
 
-        const accumulated =
-            this.accumulatedSavings(
+        const closed =
+            this.closedSavings(
+                data
+            );
+
+        const provisional =
+            this.provisionalSavings(
                 data
             );
 
@@ -425,7 +712,12 @@ const AtlasGoalsAllocation = {
             );
 
         const available =
-            this.availableSavings(
+            this.availableClosedSavings(
+                data
+            );
+
+        const records =
+            this.allocationRecords(
                 data
             );
 
@@ -449,8 +741,8 @@ const AtlasGoalsAllocation = {
                         </h2>
 
                         <p>
-                            Distribuye el ahorro ya conseguido
-                            entre tus objetivos activos.
+                            Solo se distribuye ahorro de meses cerrados.
+                            El mes actual se muestra como provisional.
                         </p>
 
                     </div>
@@ -492,12 +784,12 @@ const AtlasGoalsAllocation = {
                     <div>
 
                         <small>
-                            Ahorro acumulado
+                            Ahorro cerrado
                         </small>
 
                         <strong>
                             ${AtlasGoals.formatCurrency(
-                                accumulated
+                                closed
                             )}
                         </strong>
 
@@ -506,7 +798,7 @@ const AtlasGoalsAllocation = {
                     <div>
 
                         <small>
-                            Ya asignado
+                            Ya distribuido
                         </small>
 
                         <strong>
@@ -520,7 +812,7 @@ const AtlasGoalsAllocation = {
                     <div>
 
                         <small>
-                            Disponible
+                            Disponible real
                         </small>
 
                         <strong
@@ -540,18 +832,65 @@ const AtlasGoalsAllocation = {
 
                 </div>
 
-                <button
-                    type="button"
-                    class="atlas-goals-allocation-open"
-                    data-goal-allocation-action="open"
+                <div
+                    class="atlas-goals-provisional"
+                    data-negative="${
+                        provisional < 0
+                            ? "true"
+                            : "false"
+                    }"
+                >
+
+                    <span>
+                        Ahorro provisional del mes actual
+                    </span>
+
+                    <strong>
+                        ${AtlasGoals.formatCurrency(
+                            provisional
+                        )}
+                    </strong>
+
+                    <small>
+                        No está disponible para distribuir hasta cerrar el mes.
+                    </small>
+
+                </div>
+
+                <div
+                    class="atlas-goals-allocation-buttons"
+                >
+
+                    <button
+                        type="button"
+                        class="atlas-goals-allocation-open"
+                        data-goal-allocation-action="open"
+                        ${
+                            available <= 0
+                                ? "disabled"
+                                : ""
+                        }
+                    >
+                        Distribuir ahorro
+                    </button>
+
                     ${
-                        available <= 0
-                            ? "disabled"
+                        records.length > 0
+                            ? `
+
+                                <button
+                                    type="button"
+                                    class="atlas-goals-allocation-manage"
+                                    data-goal-allocation-action="manage"
+                                >
+                                    Gestionar distribuciones
+                                </button>
+
+                            `
                             : ""
                     }
-                >
-                    Distribuir ahorro
-                </button>
+
+                </div>
 
             </section>
 
@@ -559,7 +898,10 @@ const AtlasGoalsAllocation = {
 
     },
 
-    goalRow(goal) {
+    goalRow(
+        goal,
+        available
+    ) {
 
         const capacity =
             this.allocationCapacity(
@@ -575,6 +917,12 @@ const AtlasGoalsAllocation = {
 
             <article
                 class="atlas-goals-allocation-row"
+                data-goal-allocation-row
+                data-goal-id="${AtlasGoals.escape(
+                    goal.id
+                )}"
+                data-goal-capacity="${capacity}"
+                data-available="${available}"
             >
 
                 <div
@@ -596,12 +944,8 @@ const AtlasGoalsAllocation = {
                         </strong>
 
                         <small>
-                            ${
-                                this.isAutomatic(goal)
-                                    ? "Asignación interna"
-                                    : "Aumenta el progreso"
-                            }
-                            · Ya asignado
+                            Aumenta el progreso del objetivo
+                            · Ya distribuido
                             ${AtlasGoals.formatCurrency(
                                 assigned
                             )}
@@ -618,35 +962,79 @@ const AtlasGoalsAllocation = {
 
                 </div>
 
-                <label
-                    class="atlas-settings-field"
+                <div
+                    class="atlas-goals-allocation-methods"
+                >
+
+                    <label
+                        class="atlas-settings-field"
+                    >
+
+                        <span>
+                            Cantidad
+                        </span>
+
+                        <input
+                            type="number"
+                            inputmode="decimal"
+                            min="0"
+                            max="${capacity}"
+                            step="0.01"
+                            placeholder="0,00"
+                            data-goal-allocation-amount
+                            ${
+                                capacity <= 0
+                                    ? "disabled"
+                                    : ""
+                            }
+                        >
+
+                    </label>
+
+                    <label
+                        class="atlas-settings-field"
+                    >
+
+                        <span>
+                            % del disponible
+                        </span>
+
+                        <input
+                            type="number"
+                            inputmode="decimal"
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            placeholder="0"
+                            data-goal-allocation-percent
+                            ${
+                                capacity <= 0
+                                    ? "disabled"
+                                    : ""
+                            }
+                        >
+
+                    </label>
+
+                </div>
+
+                <div
+                    class="atlas-goals-allocation-preview"
                 >
 
                     <span>
-                        Cantidad para este objetivo
+                        Se asignará
                     </span>
 
-                    <input
-                        type="number"
-                        inputmode="decimal"
-                        min="0"
-                        max="${capacity}"
-                        step="0.01"
-                        value=""
-                        placeholder="0,00"
-                        data-goal-allocation-input
-                        data-goal-id="${AtlasGoals.escape(
-                            goal.id
-                        )}"
-                        data-goal-capacity="${capacity}"
-                        ${
-                            capacity <= 0
-                                ? "disabled"
-                                : ""
-                        }
+                    <strong
+                        data-goal-allocation-row-preview
                     >
+                        ${AtlasGoals.formatCurrency(
+                            0
+                        )}
+                    </strong>
 
-                </label>
+                </div>
 
             </article>
 
@@ -657,7 +1045,7 @@ const AtlasGoalsAllocation = {
     openAllocation() {
 
         const data =
-            AtlasGoals.data;
+            this.data();
 
         const goals =
             this.allocatableGoals(
@@ -665,15 +1053,15 @@ const AtlasGoalsAllocation = {
             );
 
         const available =
-            this.availableSavings(
+            this.availableClosedSavings(
                 data
             );
 
         AtlasSettings.renderSheet(`
 
             ${AtlasSettings.headerBlock(
-                "Asignar ahorro",
-                "Reparte el ahorro disponible sin modificar tu liquidez real."
+                "Distribuir ahorro",
+                "Asigna cantidades o porcentajes del ahorro cerrado disponible."
             )}
 
             <div
@@ -681,12 +1069,10 @@ const AtlasGoalsAllocation = {
             >
 
                 <span>
-                    Disponible para asignar
+                    Ahorro cerrado disponible
                 </span>
 
-                <strong
-                    data-goal-allocation-available
-                >
+                <strong>
                     ${AtlasGoals.formatCurrency(
                         available
                     )}
@@ -696,6 +1082,10 @@ const AtlasGoalsAllocation = {
                     data-goal-allocation-selected
                 >
                     Seleccionado: 0 €
+                    · Restante:
+                    ${AtlasGoals.formatCurrency(
+                        available
+                    )}
                 </small>
 
             </div>
@@ -718,7 +1108,8 @@ const AtlasGoalsAllocation = {
                                     .map(
                                         goal =>
                                             this.goalRow(
-                                                goal
+                                                goal,
+                                                available
                                             )
                                     )
                                     .join("")}
@@ -730,7 +1121,7 @@ const AtlasGoalsAllocation = {
                             >
 
                                 <span>
-                                    Fecha de asignación
+                                    Fecha de distribución
                                 </span>
 
                                 <input
@@ -754,7 +1145,7 @@ const AtlasGoalsAllocation = {
                                     type="text"
                                     name="allocationNote"
                                     maxlength="160"
-                                    placeholder="Ejemplo: Reparto del ahorro de julio"
+                                    placeholder="Ejemplo: Reparto del ahorro de junio"
                                 >
 
                             </label>
@@ -782,7 +1173,15 @@ const AtlasGoalsAllocation = {
                         <div
                             class="atlas-goals-allocation-empty"
                         >
-                            No hay objetivos activos disponibles.
+
+                            No hay objetivos compatibles.
+
+                            <small>
+                                La distribución está disponible únicamente
+                                para objetivos manuales activos de ahorro,
+                                compra futura o fondo de emergencia.
+                            </small>
+
                         </div>
 
                         <button
@@ -800,29 +1199,167 @@ const AtlasGoalsAllocation = {
 
     },
 
+    rowAllocation(row) {
+
+        const available =
+            Math.max(
+                0,
+                this.number(
+                    row?.dataset
+                        ?.available
+                )
+            );
+
+        const capacity =
+            Math.max(
+                0,
+                this.number(
+                    row?.dataset
+                        ?.goalCapacity
+                )
+            );
+
+        const amountInput =
+            row?.querySelector(
+                "[data-goal-allocation-amount]"
+            );
+
+        const percentInput =
+            row?.querySelector(
+                "[data-goal-allocation-percent]"
+            );
+
+        const amount =
+            Math.max(
+                0,
+                this.number(
+                    amountInput?.value
+                )
+            );
+
+        const percent =
+            Math.max(
+                0,
+                Math.min(
+                    100,
+                    this.number(
+                        percentInput?.value
+                    )
+                )
+            );
+
+        const method =
+            percent > 0
+                ? "percentage"
+                : "amount";
+
+        const calculated =
+            method === "percentage"
+                ? (
+                    available *
+                    percent
+                ) / 100
+                : amount;
+
+        return {
+
+            goalId:
+                row?.dataset
+                    ?.goalId ||
+                "",
+
+            method,
+
+            percent:
+                method === "percentage"
+                    ? this.round(
+                        percent
+                    )
+                    : null,
+
+            amount:
+                this.round(
+                    Math.min(
+                        capacity,
+                        Math.max(
+                            0,
+                            calculated
+                        )
+                    )
+                ),
+
+            capacity
+
+        };
+
+    },
+
+    selectedAllocations(form) {
+
+        return Array.from(
+            form.querySelectorAll(
+                "[data-goal-allocation-row]"
+            )
+        )
+            .map(
+                row =>
+                    this.rowAllocation(
+                        row
+                    )
+            )
+            .filter(
+                allocation =>
+                    allocation.amount >
+                    0
+            );
+
+    },
+
     selectedTotal(form) {
 
         return this.round(
-            Array.from(
-                form.querySelectorAll(
-                    "[data-goal-allocation-input]"
-                )
+            this.selectedAllocations(
+                form
             )
                 .reduce(
                     (
                         total,
-                        input
+                        allocation
                     ) =>
                         total +
-                        Math.max(
-                            0,
-                            this.number(
-                                input.value
-                            )
-                        ),
+                        allocation.amount,
                     0
                 )
         );
+
+    },
+
+    updateRowPreview(row) {
+
+        if (!row) {
+
+            return;
+
+        }
+
+        const allocation =
+            this.rowAllocation(
+                row
+            );
+
+        const preview =
+            row.querySelector(
+                "[data-goal-allocation-row-preview]"
+            );
+
+        if (preview) {
+
+            preview.textContent =
+                AtlasGoals.formatCurrency(
+                    allocation.amount
+                );
+
+        }
 
     },
 
@@ -850,53 +1387,265 @@ const AtlasGoalsAllocation = {
                 "[data-goal-allocation-selected]"
             );
 
+        if (!selectedElement) {
+
+            return;
+
+        }
+
+        selectedElement.textContent =
+            (
+                `Seleccionado: ` +
+                `${AtlasGoals.formatCurrency(
+                    selected
+                )}` +
+                ` · Restante: ` +
+                `${AtlasGoals.formatCurrency(
+                    Math.max(
+                        0,
+                        available -
+                        selected
+                    )
+                )}`
+            );
+
+        selectedElement.style.color =
+            selected >
+                available +
+                0.001
+                ? "var(--color-danger)"
+                : "var(--color-text-muted)";
+
+    },
+
+    updateAllocationInput(input) {
+
+        const row =
+            input.closest(
+                "[data-goal-allocation-row]"
+            );
+
+        if (!row) {
+
+            return;
+
+        }
+
+        const amountInput =
+            row.querySelector(
+                "[data-goal-allocation-amount]"
+            );
+
+        const percentInput =
+            row.querySelector(
+                "[data-goal-allocation-percent]"
+            );
+
         if (
-            selectedElement
+            input.matches(
+                "[data-goal-allocation-amount]"
+            ) &&
+            this.number(
+                input.value
+            ) > 0 &&
+            percentInput
         ) {
 
-            selectedElement.textContent =
-                (
-                    `Seleccionado: ` +
-                    `${AtlasGoals.formatCurrency(
-                        selected
-                    )}` +
-                    ` · Restante: ` +
-                    `${AtlasGoals.formatCurrency(
-                        Math.max(
-                            0,
-                            available -
-                            selected
-                        )
-                    )}`
-                );
+            percentInput.value =
+                "";
 
-            selectedElement.style.color =
-                selected > available
-                    ? "var(--color-danger)"
-                    : "var(--color-text-muted)";
+        }
+
+        if (
+            input.matches(
+                "[data-goal-allocation-percent]"
+            ) &&
+            this.number(
+                input.value
+            ) > 0 &&
+            amountInput
+        ) {
+
+            amountInput.value =
+                "";
+
+        }
+
+        if (
+            percentInput &&
+            this.number(
+                percentInput.value
+            ) > 100
+        ) {
+
+            percentInput.value =
+                100;
+
+        }
+
+        const capacity =
+            this.number(
+                row.dataset
+                    .goalCapacity
+            );
+
+        if (
+            amountInput &&
+            this.number(
+                amountInput.value
+            ) >
+                capacity
+        ) {
+
+            amountInput.value =
+                capacity;
+
+        }
+
+        this.updateRowPreview(
+            row
+        );
+
+        this.updateSelectedTotal(
+            row.closest(
+                "[data-goal-allocation-form]"
+            )
+        );
+
+    },
+
+    recalculateGoalStatus(goal) {
+
+        if (
+            [
+                "archived",
+                "cancelled"
+            ].includes(
+                goal.status
+            )
+        ) {
+
+            return;
+
+        }
+
+        const current =
+            Math.max(
+                0,
+                this.number(
+                    goal.currentAmount
+                )
+            );
+
+        const target =
+            Math.max(
+                0,
+                this.number(
+                    goal.targetAmount
+                )
+            );
+
+        if (
+            target > 0 &&
+            current >= target
+        ) {
+
+            goal.status =
+                "completed";
+
+            goal.completedAt =
+                goal.completedAt ||
+                this.now();
+
+            return;
+
+        }
+
+        if (
+            goal.status ===
+            "completed"
+        ) {
+
+            goal.status =
+                "active";
+
+            goal.completedAt =
+                null;
 
         }
 
     },
 
-    saveAllocation(form) {
+    applyContributionEffect(
+        goal,
+        effect
+    ) {
 
-        const available =
-            this.availableSavings(
-                AtlasGoals.data
+        if (
+            !this.isManualGoal(
+                goal
+            )
+        ) {
+
+            return;
+
+        }
+
+        goal.currentAmount =
+            this.round(
+                Math.max(
+                    0,
+                    this.number(
+                        goal.currentAmount
+                    ) +
+                    this.number(
+                        effect
+                    )
+                )
             );
 
-        const selected =
-            this.selectedTotal(
+        this.recalculateGoalStatus(
+            goal
+        );
+
+    },
+
+    saveAllocation(form) {
+
+        const data =
+            this.data();
+
+        const available =
+            this.availableClosedSavings(
+                data
+            );
+
+        const allocations =
+            this.selectedAllocations(
                 form
             );
 
+        const selected =
+            this.round(
+                allocations.reduce(
+                    (
+                        total,
+                        allocation
+                    ) =>
+                        total +
+                        allocation.amount,
+                    0
+                )
+            );
+
         if (
+            allocations.length ===
+            0 ||
             selected <= 0
         ) {
 
             AtlasUI.toast(
-                "Introduce al menos una cantidad."
+                "Introduce al menos una cantidad o porcentaje."
             );
 
             return;
@@ -910,28 +1659,31 @@ const AtlasGoalsAllocation = {
         ) {
 
             AtlasUI.toast(
-                "La distribución supera el ahorro disponible."
+                "La distribución supera el ahorro cerrado disponible."
             );
 
             return;
 
         }
 
+        const values =
+            new FormData(
+                form
+            );
+
         const date =
             String(
-                new FormData(form)
-                    .get(
-                        "allocationDate"
-                    ) ||
+                values.get(
+                    "allocationDate"
+                ) ||
                 ""
             );
 
         const note =
             String(
-                new FormData(form)
-                    .get(
-                        "allocationNote"
-                    ) ||
+                values.get(
+                    "allocationNote"
+                ) ||
                 ""
             ).trim();
 
@@ -947,50 +1699,32 @@ const AtlasGoalsAllocation = {
 
         const updatedData =
             this.clone(
-                AtlasGoals.data
+                data
             );
 
-        const inputs =
-            Array.from(
-                form.querySelectorAll(
-                    "[data-goal-allocation-input]"
-                )
+        const batchId =
+            this.createId(
+                "goal_allocation_batch"
             );
 
         for (
-            const input of inputs
+            const allocation of allocations
         ) {
 
-            const amount =
-                Math.max(
-                    0,
-                    this.round(
-                        input.value
-                    )
+            const goal =
+                this.goalById(
+                    allocation.goalId,
+                    updatedData
                 );
 
             if (
-                amount <= 0
+                !this.isAllocatableGoal(
+                    goal
+                )
             ) {
 
-                continue;
-
-            }
-
-            const goal =
-                this.goals(
-                    updatedData
-                ).find(
-                    item =>
-                        item.id ===
-                        input.dataset
-                            .goalId
-                );
-
-            if (!goal) {
-
                 AtlasUI.toast(
-                    "No se encontró uno de los objetivos."
+                    "Uno de los objetivos ya no admite distribuciones."
                 );
 
                 return;
@@ -1003,7 +1737,7 @@ const AtlasGoalsAllocation = {
                 );
 
             if (
-                amount >
+                allocation.amount >
                     capacity +
                     0.001
             ) {
@@ -1026,15 +1760,21 @@ const AtlasGoalsAllocation = {
 
             }
 
-            goal.contributions.push({
+            const contribution = {
 
                 id:
-                    this.createId(),
+                    this.createId(
+                        "goal_contribution"
+                    ),
+
+                allocationBatchId:
+                    batchId,
 
                 type:
                     "contribution",
 
-                amount,
+                amount:
+                    allocation.amount,
 
                 date,
 
@@ -1043,63 +1783,39 @@ const AtlasGoalsAllocation = {
                 source:
                     "available_savings",
 
+                allocationMethod:
+                    allocation.method,
+
+                allocationPercent:
+                    allocation.percent,
+
                 createdAt:
+                    this.now(),
+
+                updatedAt:
                     this.now()
 
-            });
+            };
 
-            if (
-                !this.isAutomatic(
-                    goal
-                )
-            ) {
+            goal.contributions.push(
+                contribution
+            );
 
-                goal.currentAmount =
-                    this.round(
-                        Math.max(
-                            0,
-                            this.number(
-                                goal.currentAmount
-                            ) +
-                            amount
-                        )
-                    );
-
-                if (
-                    goal.currentAmount >=
-                        this.number(
-                            goal.targetAmount
-                        ) &&
-                    ![
-                        "archived",
-                        "cancelled"
-                    ].includes(
-                        goal.status
-                    )
-                ) {
-
-                    goal.status =
-                        "completed";
-
-                    goal.completedAt =
-                        goal.completedAt ||
-                        this.now();
-
-                }
-
-            }
+            this.applyContributionEffect(
+                goal,
+                contribution.amount
+            );
 
             goal.updatedAt =
                 this.now();
 
         }
 
-        const saved =
-            AtlasStorage.save(
+        if (
+            !AtlasStorage.save(
                 updatedData
-            );
-
-        if (!saved) {
+            )
+        ) {
 
             AtlasUI.toast(
                 "No se pudo guardar la distribución."
@@ -1108,6 +1824,928 @@ const AtlasGoalsAllocation = {
             return;
 
         }
+
+        this.finishUpdate(
+            "Ahorro distribuido correctamente."
+        );
+
+    },
+
+    allocationRecordRow(record) {
+
+        const contribution =
+            record.contribution;
+
+        const effect =
+            this.contributionEffect(
+                contribution
+            );
+
+        const percentage =
+            contribution
+                .allocationMethod ===
+                "percentage" &&
+            this.number(
+                contribution
+                    .allocationPercent
+            ) > 0
+                ? (
+                    ` · ` +
+                    `${this.number(
+                        contribution
+                            .allocationPercent
+                    ).toLocaleString(
+                        "es-ES",
+                        {
+                            maximumFractionDigits:
+                                2
+                        }
+                    )}%`
+                )
+                : "";
+
+        const incompatible =
+            !this.isAllocatableGoal(
+                this.goalById(
+                    record.goalId
+                )
+            );
+
+        return `
+
+            <article
+                class="atlas-goals-allocation-record"
+                data-incompatible="${
+                    incompatible
+                        ? "true"
+                        : "false"
+                }"
+            >
+
+                <div>
+
+                    <strong>
+                        ${AtlasGoals.escape(
+                            record.goalName
+                        )}
+                    </strong>
+
+                    <small>
+                        ${AtlasGoals.escape(
+                            this.formatDate(
+                                contribution.date
+                            )
+                        )}
+                        ${percentage}
+                    </small>
+
+                    ${
+                        contribution.note
+                            ? `
+
+                                <p>
+                                    ${AtlasGoals.escape(
+                                        contribution.note
+                                    )}
+                                </p>
+
+                            `
+                            : ""
+                    }
+
+                    ${
+                        incompatible
+                            ? `
+
+                                <span
+                                    class="atlas-goals-allocation-warning"
+                                >
+                                    Este objetivo ya no admite distribuciones.
+                                    Puedes mover o eliminar esta asignación.
+                                </span>
+
+                            `
+                            : ""
+                    }
+
+                </div>
+
+                <div
+                    class="atlas-goals-allocation-record-actions"
+                >
+
+                    <strong
+                        style="
+                            color:${
+                                effect >= 0
+                                    ? "var(--color-success)"
+                                    : "var(--color-danger)"
+                            };
+                        "
+                    >
+                        ${
+                            effect >= 0
+                                ? "+"
+                                : "−"
+                        }${AtlasGoals.formatCurrency(
+                            Math.abs(
+                                effect
+                            )
+                        )}
+                    </strong>
+
+                    ${
+                        contribution.type !==
+                            "withdrawal"
+                            ? `
+
+                                <button
+                                    type="button"
+                                    data-goal-allocation-action="edit"
+                                    data-goal-id="${AtlasGoals.escape(
+                                        record.goalId
+                                    )}"
+                                    data-contribution-id="${AtlasGoals.escape(
+                                        contribution.id
+                                    )}"
+                                >
+                                    Editar
+                                </button>
+
+                            `
+                            : ""
+                    }
+
+                    <button
+                        type="button"
+                        class="danger"
+                        data-goal-allocation-action="delete"
+                        data-goal-id="${AtlasGoals.escape(
+                            record.goalId
+                        )}"
+                        data-contribution-id="${AtlasGoals.escape(
+                            contribution.id
+                        )}"
+                    >
+                        Eliminar
+                    </button>
+
+                </div>
+
+            </article>
+
+        `;
+
+    },
+
+    openManage() {
+
+        const records =
+            this.allocationRecords();
+
+        AtlasSettings.renderSheet(`
+
+            ${AtlasSettings.headerBlock(
+                "Gestionar distribuciones",
+                "Edita, mueve o elimina el ahorro ya distribuido."
+            )}
+
+            <div
+                class="atlas-goals-allocation-sheet-summary"
+            >
+
+                <span>
+                    Total distribuido
+                </span>
+
+                <strong>
+                    ${AtlasGoals.formatCurrency(
+                        this.totalAssignedFromSavings()
+                    )}
+                </strong>
+
+                <small>
+                    Disponible después de distribuciones:
+                    ${AtlasGoals.formatCurrency(
+                        this.availableClosedSavings()
+                    )}
+                </small>
+
+            </div>
+
+            ${
+                records.length > 0
+                    ? `
+
+                        <div
+                            class="atlas-goals-allocation-records"
+                        >
+
+                            ${records
+                                .map(
+                                    record =>
+                                        this.allocationRecordRow(
+                                            record
+                                        )
+                                )
+                                .join("")}
+
+                        </div>
+
+                    `
+                    : `
+
+                        <div
+                            class="atlas-goals-allocation-empty"
+                        >
+                            No hay distribuciones guardadas.
+                        </div>
+
+                    `
+            }
+
+            <button
+                type="button"
+                class="atlas-settings-secondary"
+                data-settings-action="close"
+            >
+                Cerrar
+            </button>
+
+        `);
+
+    },
+
+    goalOptions(
+        selectedId,
+        restoredAmount
+    ) {
+
+        return this.allocatableGoals()
+            .map(
+                goal => `
+
+                    <option
+                        value="${AtlasGoals.escape(
+                            goal.id
+                        )}"
+                        ${
+                            goal.id ===
+                            selectedId
+                                ? "selected"
+                                : ""
+                        }
+                    >
+                        ${AtlasGoals.escape(
+                            goal.name
+                        )}
+                        · Máx.
+                        ${AtlasGoals.formatCurrency(
+                            this.allocationCapacity(
+                                goal,
+                                goal.id ===
+                                    selectedId
+                                    ? restoredAmount
+                                    : 0
+                            )
+                        )}
+                    </option>
+
+                `
+            )
+            .join("");
+
+    },
+
+    openEdit(
+        goalId,
+        contributionId
+    ) {
+
+        const record =
+            this.allocationRecord(
+                goalId,
+                contributionId
+            );
+
+        if (!record) {
+
+            AtlasUI.toast(
+                "No se encontró la distribución."
+            );
+
+            return;
+
+        }
+
+        const contribution =
+            record.contribution;
+
+        const amount =
+            Math.max(
+                0,
+                this.number(
+                    contribution.amount
+                )
+            );
+
+        const compatibleCurrent =
+            this.isAllocatableGoal(
+                record.goal
+            );
+
+        const selectedId =
+            compatibleCurrent
+                ? record.goal.id
+                : "";
+
+        const goals =
+            this.allocatableGoals();
+
+        AtlasSettings.renderSheet(`
+
+            ${AtlasSettings.headerBlock(
+                "Editar distribución",
+                "Modifica el importe o mueve la asignación a otro objetivo."
+            )}
+
+            ${
+                !compatibleCurrent
+                    ? `
+
+                        <div
+                            class="atlas-goals-allocation-edit-warning"
+                        >
+                            La distribución está asignada a un objetivo
+                            que ya no es compatible. Selecciona otro
+                            objetivo o elimina la distribución.
+                        </div>
+
+                    `
+                    : ""
+            }
+
+            ${
+                goals.length > 0
+                    ? `
+
+                        <form
+                            class="atlas-settings-form"
+                            data-goal-allocation-edit-form
+                            data-original-goal-id="${AtlasGoals.escape(
+                                goalId
+                            )}"
+                            data-contribution-id="${AtlasGoals.escape(
+                                contributionId
+                            )}"
+                            data-original-amount="${amount}"
+                        >
+
+                            <label
+                                class="atlas-settings-field"
+                            >
+
+                                <span>
+                                    Objetivo
+                                </span>
+
+                                <select
+                                    name="targetGoalId"
+                                    required
+                                >
+
+                                    <option value="">
+                                        Selecciona un objetivo
+                                    </option>
+
+                                    ${this.goalOptions(
+                                        selectedId,
+                                        amount
+                                    )}
+
+                                </select>
+
+                            </label>
+
+                            <label
+                                class="atlas-settings-field"
+                            >
+
+                                <span>
+                                    Importe
+                                </span>
+
+                                <input
+                                    type="number"
+                                    inputmode="decimal"
+                                    min="0.01"
+                                    step="0.01"
+                                    name="allocationAmount"
+                                    value="${amount}"
+                                    required
+                                >
+
+                            </label>
+
+                            <label
+                                class="atlas-settings-field"
+                            >
+
+                                <span>
+                                    Fecha
+                                </span>
+
+                                <input
+                                    type="date"
+                                    name="allocationDate"
+                                    value="${AtlasGoals.escape(
+                                        contribution.date ||
+                                        this.today()
+                                    )}"
+                                    required
+                                >
+
+                            </label>
+
+                            <label
+                                class="atlas-settings-field"
+                            >
+
+                                <span>
+                                    Nota opcional
+                                </span>
+
+                                <input
+                                    type="text"
+                                    name="allocationNote"
+                                    maxlength="160"
+                                    value="${AtlasGoals.escape(
+                                        contribution.note ||
+                                        ""
+                                    )}"
+                                >
+
+                            </label>
+
+                            <button
+                                type="submit"
+                                class="atlas-settings-primary"
+                            >
+                                Guardar cambios
+                            </button>
+
+                            <button
+                                type="button"
+                                class="atlas-goal-danger"
+                                data-goal-allocation-action="delete"
+                                data-goal-id="${AtlasGoals.escape(
+                                    goalId
+                                )}"
+                                data-contribution-id="${AtlasGoals.escape(
+                                    contributionId
+                                )}"
+                            >
+                                Eliminar distribución
+                            </button>
+
+                            <button
+                                type="button"
+                                class="atlas-settings-secondary"
+                                data-settings-action="close"
+                            >
+                                Cancelar
+                            </button>
+
+                        </form>
+
+                    `
+                    : `
+
+                        <div
+                            class="atlas-goals-allocation-empty"
+                        >
+                            No hay objetivos compatibles a los que mover
+                            esta distribución.
+                        </div>
+
+                        <button
+                            type="button"
+                            class="atlas-goal-danger"
+                            data-goal-allocation-action="delete"
+                            data-goal-id="${AtlasGoals.escape(
+                                goalId
+                            )}"
+                            data-contribution-id="${AtlasGoals.escape(
+                                contributionId
+                            )}"
+                        >
+                            Eliminar distribución
+                        </button>
+
+                        <button
+                            type="button"
+                            class="atlas-settings-secondary"
+                            data-settings-action="close"
+                        >
+                            Cancelar
+                        </button>
+
+                    `
+            }
+
+        `);
+
+    },
+
+    removeContributionFromGoal(
+        goal,
+        contributionId
+    ) {
+
+        const index =
+            this.contributions(goal)
+                .findIndex(
+                    contribution =>
+                        contribution.id ===
+                        contributionId
+                );
+
+        if (
+            index < 0
+        ) {
+
+            return null;
+
+        }
+
+        const contribution =
+            goal.contributions[
+                index
+            ];
+
+        goal.contributions.splice(
+            index,
+            1
+        );
+
+        this.applyContributionEffect(
+            goal,
+            -this.contributionEffect(
+                contribution
+            )
+        );
+
+        goal.updatedAt =
+            this.now();
+
+        return contribution;
+
+    },
+
+    saveEdit(form) {
+
+        const values =
+            new FormData(
+                form
+            );
+
+        const originalGoalId =
+            form.dataset
+                .originalGoalId;
+
+        const contributionId =
+            form.dataset
+                .contributionId;
+
+        const targetGoalId =
+            String(
+                values.get(
+                    "targetGoalId"
+                ) ||
+                ""
+            );
+
+        const amount =
+            this.round(
+                Math.max(
+                    0,
+                    this.number(
+                        values.get(
+                            "allocationAmount"
+                        )
+                    )
+                )
+            );
+
+        const date =
+            String(
+                values.get(
+                    "allocationDate"
+                ) ||
+                ""
+            );
+
+        const note =
+            String(
+                values.get(
+                    "allocationNote"
+                ) ||
+                ""
+            ).trim();
+
+        if (
+            !targetGoalId ||
+            amount <= 0 ||
+            !date
+        ) {
+
+            AtlasUI.toast(
+                "Completa los datos de la distribución."
+            );
+
+            return;
+
+        }
+
+        const data =
+            this.data();
+
+        const originalRecord =
+            this.allocationRecord(
+                originalGoalId,
+                contributionId,
+                data
+            );
+
+        if (!originalRecord) {
+
+            AtlasUI.toast(
+                "No se encontró la distribución."
+            );
+
+            return;
+
+        }
+
+        const originalAmount =
+            Math.max(
+                0,
+                this.number(
+                    originalRecord
+                        .contribution
+                        .amount
+                )
+            );
+
+        const availableAfterRelease =
+            this.round(
+                this.availableClosedSavings(
+                    data
+                ) +
+                originalAmount
+            );
+
+        if (
+            amount >
+                availableAfterRelease +
+                0.001
+        ) {
+
+            AtlasUI.toast(
+                "El importe supera el ahorro disponible."
+            );
+
+            return;
+
+        }
+
+        const target =
+            this.goalById(
+                targetGoalId,
+                data
+            );
+
+        if (
+            !this.isAllocatableGoal(
+                target
+            )
+        ) {
+
+            AtlasUI.toast(
+                "El objetivo seleccionado no admite distribuciones."
+            );
+
+            return;
+
+        }
+
+        const restoredAmount =
+            targetGoalId ===
+                originalGoalId
+                ? originalAmount
+                : 0;
+
+        const capacity =
+            this.allocationCapacity(
+                target,
+                restoredAmount
+            );
+
+        if (
+            amount >
+                capacity +
+                0.001
+        ) {
+
+            AtlasUI.toast(
+                "El importe supera lo pendiente del objetivo."
+            );
+
+            return;
+
+        }
+
+        const updatedData =
+            this.clone(
+                data
+            );
+
+        const originalGoal =
+            this.goalById(
+                originalGoalId,
+                updatedData
+            );
+
+        const removed =
+            this.removeContributionFromGoal(
+                originalGoal,
+                contributionId
+            );
+
+        if (!removed) {
+
+            AtlasUI.toast(
+                "No se pudo actualizar la distribución."
+            );
+
+            return;
+
+        }
+
+        const targetGoal =
+            this.goalById(
+                targetGoalId,
+                updatedData
+            );
+
+        if (
+            !Array.isArray(
+                targetGoal.contributions
+            )
+        ) {
+
+            targetGoal.contributions = [];
+
+        }
+
+        const updatedContribution = {
+
+            ...removed,
+
+            id:
+                removed.id,
+
+            type:
+                "contribution",
+
+            amount,
+
+            date,
+
+            note,
+
+            source:
+                "available_savings",
+
+            allocationMethod:
+                "amount",
+
+            allocationPercent:
+                null,
+
+            updatedAt:
+                this.now()
+
+        };
+
+        targetGoal.contributions.push(
+            updatedContribution
+        );
+
+        this.applyContributionEffect(
+            targetGoal,
+            amount
+        );
+
+        targetGoal.updatedAt =
+            this.now();
+
+        if (
+            !AtlasStorage.save(
+                updatedData
+            )
+        ) {
+
+            AtlasUI.toast(
+                "No se pudo guardar la distribución."
+            );
+
+            return;
+
+        }
+
+        this.finishUpdate(
+            "Distribución actualizada."
+        );
+
+    },
+
+    deleteAllocation(
+        goalId,
+        contributionId
+    ) {
+
+        const record =
+            this.allocationRecord(
+                goalId,
+                contributionId
+            );
+
+        if (!record) {
+
+            return;
+
+        }
+
+        const confirmed =
+            window.confirm(
+                "¿Eliminar esta distribución de ahorro?"
+            );
+
+        if (!confirmed) {
+
+            return;
+
+        }
+
+        const updatedData =
+            this.clone(
+                this.data()
+            );
+
+        const goal =
+            this.goalById(
+                goalId,
+                updatedData
+            );
+
+        const removed =
+            this.removeContributionFromGoal(
+                goal,
+                contributionId
+            );
+
+        if (!removed) {
+
+            AtlasUI.toast(
+                "No se pudo eliminar la distribución."
+            );
+
+            return;
+
+        }
+
+        if (
+            !AtlasStorage.save(
+                updatedData
+            )
+        ) {
+
+            AtlasUI.toast(
+                "No se pudo eliminar la distribución."
+            );
+
+            return;
+
+        }
+
+        this.finishUpdate(
+            "Distribución eliminada."
+        );
+
+    },
+
+    finishUpdate(message) {
 
         AtlasGoals.data =
             AtlasStorage.load();
@@ -1130,7 +2768,7 @@ const AtlasGoalsAllocation = {
         }
 
         AtlasUI.toast(
-            "Ahorro distribuido correctamente."
+            message
         );
 
     },
@@ -1142,9 +2780,7 @@ const AtlasGoalsAllocation = {
                 "atlas-goals-allocation-styles"
             );
 
-        if (
-            previous
-        ) {
+        if (previous) {
 
             previous.remove();
 
@@ -1261,11 +2897,81 @@ const AtlasGoalsAllocation = {
                 overflow-wrap: anywhere;
             }
 
-            .atlas-goals-allocation-open {
+            .atlas-goals-provisional {
+                margin-top: 12px;
+                padding: 12px;
+                border:
+                    1px solid
+                    rgba(
+                        244,
+                        185,
+                        94,
+                        0.22
+                    );
+                border-radius: 15px;
+                background:
+                    rgba(
+                        244,
+                        185,
+                        94,
+                        0.075
+                    );
+            }
+
+            .atlas-goals-provisional[data-negative="true"] {
+                border-color:
+                    rgba(
+                        255,
+                        95,
+                        112,
+                        0.24
+                    );
+                background:
+                    rgba(
+                        255,
+                        95,
+                        112,
+                        0.07
+                    );
+            }
+
+            .atlas-goals-provisional span,
+            .atlas-goals-provisional small {
+                display: block;
+                color:
+                    var(
+                        --color-text-muted
+                    );
+                font-size: 9px;
+                line-height: 1.45;
+            }
+
+            .atlas-goals-provisional strong {
+                display: block;
+                margin-top: 5px;
+                font-size: 16px;
+            }
+
+            .atlas-goals-provisional small {
+                margin-top: 5px;
+            }
+
+            .atlas-goals-allocation-buttons {
+                display: grid;
+                gap: 9px;
+                margin-top: 14px;
+            }
+
+            .atlas-goals-allocation-open,
+            .atlas-goals-allocation-manage {
                 width: 100%;
                 min-height: 44px;
-                margin-top: 14px;
                 border-radius: 14px;
+                font-size: 12px;
+                font-weight: 800;
+            }
+
+            .atlas-goals-allocation-open {
                 border:
                     1px solid
                     rgba(
@@ -1282,12 +2988,29 @@ const AtlasGoalsAllocation = {
                         0.2
                     );
                 color: #ffffff;
-                font-size: 12px;
-                font-weight: 800;
             }
 
             .atlas-goals-allocation-open:disabled {
                 opacity: 0.45;
+            }
+
+            .atlas-goals-allocation-manage {
+                border:
+                    1px solid
+                    rgba(
+                        145,
+                        164,
+                        202,
+                        0.18
+                    );
+                background:
+                    rgba(
+                        255,
+                        255,
+                        255,
+                        0.035
+                    );
+                color: #c8d0e3;
             }
 
             .atlas-goals-allocation-sheet-summary {
@@ -1407,6 +3130,53 @@ const AtlasGoalsAllocation = {
                 white-space: nowrap;
             }
 
+            .atlas-goals-allocation-methods {
+                display: grid;
+                grid-template-columns:
+                    repeat(
+                        2,
+                        minmax(
+                            0,
+                            1fr
+                        )
+                    );
+                gap: 9px;
+            }
+
+            .atlas-goals-allocation-preview {
+                display: flex;
+                align-items: center;
+                justify-content:
+                    space-between;
+                gap: 10px;
+                margin-top: 10px;
+                padding: 10px;
+                border-radius: 12px;
+                background:
+                    rgba(
+                        77,
+                        163,
+                        255,
+                        0.065
+                    );
+            }
+
+            .atlas-goals-allocation-preview span {
+                color:
+                    var(
+                        --color-text-muted
+                    );
+                font-size: 9px;
+            }
+
+            .atlas-goals-allocation-preview strong {
+                color:
+                    var(
+                        --color-primary
+                    );
+                font-size: 13px;
+            }
+
             .atlas-goals-allocation-empty {
                 padding:
                     28px
@@ -1417,6 +3187,197 @@ const AtlasGoalsAllocation = {
                         --color-text-muted
                     );
                 text-align: center;
+                line-height: 1.5;
+            }
+
+            .atlas-goals-allocation-empty small {
+                display: block;
+                margin-top: 7px;
+                font-size: 9px;
+            }
+
+            .atlas-goals-allocation-records {
+                display: grid;
+                margin-bottom: 14px;
+            }
+
+            .atlas-goals-allocation-record {
+                display: flex;
+                align-items: flex-start;
+                justify-content:
+                    space-between;
+                gap: 13px;
+                padding:
+                    14px
+                    0;
+                border-bottom:
+                    1px solid
+                    rgba(
+                        145,
+                        164,
+                        202,
+                        0.1
+                    );
+            }
+
+            .atlas-goals-allocation-record[data-incompatible="true"] {
+                padding:
+                    13px
+                    11px;
+                border:
+                    1px solid
+                    rgba(
+                        255,
+                        95,
+                        112,
+                        0.2
+                    );
+                border-radius: 14px;
+                background:
+                    rgba(
+                        255,
+                        95,
+                        112,
+                        0.055
+                    );
+            }
+
+            .atlas-goals-allocation-record > div:first-child {
+                min-width: 0;
+            }
+
+            .atlas-goals-allocation-record strong,
+            .atlas-goals-allocation-record small {
+                display: block;
+            }
+
+            .atlas-goals-allocation-record > div:first-child > strong {
+                font-size: 12px;
+            }
+
+            .atlas-goals-allocation-record small {
+                margin-top: 4px;
+                color:
+                    var(
+                        --color-text-muted
+                    );
+                font-size: 9px;
+            }
+
+            .atlas-goals-allocation-record p {
+                margin:
+                    6px
+                    0
+                    0;
+                color:
+                    var(
+                        --color-text-muted
+                    );
+                font-size: 9px;
+                line-height: 1.45;
+            }
+
+            .atlas-goals-allocation-warning {
+                display: block;
+                margin-top: 7px;
+                color:
+                    var(
+                        --color-danger
+                    );
+                font-size: 9px;
+                line-height: 1.45;
+            }
+
+            .atlas-goals-allocation-record-actions {
+                flex:
+                    0
+                    0
+                    auto;
+                text-align: right;
+            }
+
+            .atlas-goals-allocation-record-actions > strong {
+                font-size: 13px;
+                white-space: nowrap;
+            }
+
+            .atlas-goals-allocation-record-actions button {
+                display: block;
+                margin:
+                    8px
+                    0
+                    0
+                    auto;
+                padding: 0;
+                border: 0;
+                background: transparent;
+                color:
+                    var(
+                        --color-primary
+                    );
+                font-size: 9px;
+            }
+
+            .atlas-goals-allocation-record-actions button.danger {
+                color:
+                    var(
+                        --color-danger
+                    );
+            }
+
+            .atlas-goals-allocation-edit-warning {
+                padding: 13px;
+                margin-bottom: 14px;
+                border:
+                    1px solid
+                    rgba(
+                        255,
+                        95,
+                        112,
+                        0.22
+                    );
+                border-radius: 15px;
+                background:
+                    rgba(
+                        255,
+                        95,
+                        112,
+                        0.065
+                    );
+                color: #ffb0b9;
+                font-size: 10px;
+                line-height: 1.5;
+            }
+
+            @media (
+                max-width: 350px
+            ) {
+
+                .atlas-goals-allocation-methods {
+                    grid-template-columns:
+                        minmax(
+                            0,
+                            1fr
+                        );
+                }
+
+                .atlas-goals-allocation-record {
+                    flex-direction: column;
+                }
+
+                .atlas-goals-allocation-record-actions {
+                    width: 100%;
+                    display: flex;
+                    align-items: center;
+                    gap: 13px;
+                    text-align: left;
+                }
+
+                .atlas-goals-allocation-record-actions button {
+                    display: inline-block;
+                    margin: 0;
+                }
+
             }
 
         `;
@@ -1482,13 +3443,59 @@ const AtlasGoalsAllocation = {
 
                 event.stopPropagation();
 
-                if (
+                const action =
                     button.dataset
-                        .goalAllocationAction ===
+                        .goalAllocationAction;
+
+                if (
+                    action ===
                     "open"
                 ) {
 
                     this.openAllocation();
+
+                    return;
+
+                }
+
+                if (
+                    action ===
+                    "manage"
+                ) {
+
+                    this.openManage();
+
+                    return;
+
+                }
+
+                if (
+                    action ===
+                    "edit"
+                ) {
+
+                    this.openEdit(
+                        button.dataset
+                            .goalId,
+                        button.dataset
+                            .contributionId
+                    );
+
+                    return;
+
+                }
+
+                if (
+                    action ===
+                    "delete"
+                ) {
+
+                    this.deleteAllocation(
+                        button.dataset
+                            .goalId,
+                        button.dataset
+                            .contributionId
+                    );
 
                 }
 
@@ -1501,7 +3508,10 @@ const AtlasGoalsAllocation = {
 
                 const input =
                     event.target.closest(
-                        "[data-goal-allocation-input]"
+                        [
+                            "[data-goal-allocation-amount]",
+                            "[data-goal-allocation-percent]"
+                        ].join(",")
                     );
 
                 if (!input) {
@@ -1510,34 +3520,8 @@ const AtlasGoalsAllocation = {
 
                 }
 
-                const capacity =
-                    this.number(
-                        input.dataset
-                            .goalCapacity
-                    );
-
-                const amount =
-                    Math.max(
-                        0,
-                        this.number(
-                            input.value
-                        )
-                    );
-
-                if (
-                    amount >
-                    capacity
-                ) {
-
-                    input.value =
-                        capacity;
-
-                }
-
-                this.updateSelectedTotal(
-                    input.closest(
-                        "[data-goal-allocation-form]"
-                    )
+                this.updateAllocationInput(
+                    input
                 );
 
             }
@@ -1547,22 +3531,37 @@ const AtlasGoalsAllocation = {
             "submit",
             event => {
 
-                const form =
+                const allocationForm =
                     event.target.closest(
                         "[data-goal-allocation-form]"
                     );
 
-                if (!form) {
+                if (allocationForm) {
+
+                    event.preventDefault();
+
+                    this.saveAllocation(
+                        allocationForm
+                    );
 
                     return;
 
                 }
 
-                event.preventDefault();
+                const editForm =
+                    event.target.closest(
+                        "[data-goal-allocation-edit-form]"
+                    );
 
-                this.saveAllocation(
-                    form
-                );
+                if (editForm) {
+
+                    event.preventDefault();
+
+                    this.saveEdit(
+                        editForm
+                    );
+
+                }
 
             }
         );
