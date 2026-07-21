@@ -18,6 +18,9 @@ const AtlasGoals = {
     initialized:
         false,
 
+    activeTab:
+        "goals",
+
     now() {
 
         return new Date()
@@ -816,6 +819,62 @@ const AtlasGoals = {
 
             <style>
 
+                .atlas-goals-tabs {
+                    display: grid;
+                    grid-template-columns:
+                        repeat(
+                            2,
+                            minmax(
+                                0,
+                                1fr
+                            )
+                        );
+                    gap: 6px;
+                    margin-bottom: 18px;
+                    padding: 5px;
+                    border:
+                        1px solid
+                        rgba(
+                            145,
+                            164,
+                            202,
+                            0.14
+                        );
+                    border-radius: 16px;
+                    background:
+                        rgba(
+                            255,
+                            255,
+                            255,
+                            0.025
+                        );
+                }
+
+                .atlas-goals-tab {
+                    min-width: 0;
+                    min-height: 42px;
+                    padding:
+                        0
+                        10px;
+                    border: 0;
+                    border-radius: 12px;
+                    background: transparent;
+                    color: #98a2bb;
+                    font-size: 12px;
+                    font-weight: 800;
+                }
+
+                .atlas-goals-tab.active {
+                    background:
+                        rgba(
+                            77,
+                            163,
+                            255,
+                            0.16
+                        );
+                    color: #ffffff;
+                }
+
                 .atlas-goals-summary {
                     display: grid;
                     grid-template-columns:
@@ -1104,6 +1163,10 @@ const AtlasGoals = {
                         );
                 }
 
+                .atlas-goals-distributions-placeholder {
+                    display: none;
+                }
+
                 @media (
                     max-width: 360px
                 ) {
@@ -1121,6 +1184,53 @@ const AtlasGoals = {
                 }
 
             </style>
+
+        `;
+
+    },
+
+    tabs() {
+
+        return `
+
+            <nav
+                class="atlas-goals-tabs"
+                aria-label="Secciones de objetivos"
+            >
+
+                <button
+                    type="button"
+                    class="
+                        atlas-goals-tab
+                        ${
+                            this.activeTab ===
+                            "goals"
+                                ? "active"
+                                : ""
+                        }
+                    "
+                    data-goals-tab="goals"
+                >
+                    Objetivos
+                </button>
+
+                <button
+                    type="button"
+                    class="
+                        atlas-goals-tab
+                        ${
+                            this.activeTab ===
+                            "distributions"
+                                ? "active"
+                                : ""
+                        }
+                    "
+                    data-goals-tab="distributions"
+                >
+                    Distribuciones
+                </button>
+
+            </nav>
 
         `;
 
@@ -1315,6 +1425,216 @@ const AtlasGoals = {
 
     },
 
+    goalsContent(
+        data
+    ) {
+
+        const summary =
+            this.summary(
+                data
+            );
+
+        const active =
+            this.activeGoals(
+                data
+            );
+
+        const completed =
+            this.completedGoals(
+                data
+            );
+
+        return `
+
+            <section
+                class="atlas-goals-summary"
+            >
+
+                <div
+                    class="atlas-goals-summary-card"
+                >
+
+                    <span>
+                        Objetivos activos
+                    </span>
+
+                    <strong>
+                        ${summary.activeCount}
+                    </strong>
+
+                </div>
+
+                <div
+                    class="atlas-goals-summary-card"
+                >
+
+                    <span>
+                        Pendiente total
+                    </span>
+
+                    <strong>
+                        ${this.formatCurrency(
+                            summary.totalRemaining
+                        )}
+                    </strong>
+
+                </div>
+
+                <div
+                    class="atlas-goals-summary-card"
+                >
+
+                    <span>
+                        Aportación mensual
+                    </span>
+
+                    <strong>
+                        ${this.formatCurrency(
+                            summary.monthlyRequired
+                        )}
+                    </strong>
+
+                </div>
+
+                <div
+                    class="atlas-goals-summary-card"
+                >
+
+                    <span>
+                        Prioridad actual
+                    </span>
+
+                    <strong
+                        style="
+                            font-size:15px;
+                        "
+                    >
+                        ${
+                            summary.priorityGoal
+                                ? this.escape(
+                                    summary
+                                        .priorityGoal
+                                        .name
+                                )
+                                : "Sin objetivo"
+                        }
+                    </strong>
+
+                </div>
+
+            </section>
+
+            <button
+                type="button"
+                class="primary atlas-goals-new-button"
+                data-goal-action="new"
+                style="
+                    width:100%;
+                    margin-bottom:18px;
+                "
+            >
+                Nuevo objetivo
+            </button>
+
+            ${
+                active.length > 0
+                    ? `
+
+                        <div
+                            class="atlas-goals-list"
+                        >
+                            ${active
+                                .map(
+                                    goal =>
+                                        this.goalCard(
+                                            goal
+                                        )
+                                )
+                                .join("")}
+                        </div>
+
+                    `
+                    : `
+
+                        <section
+                            class="panel"
+                        >
+
+                            <div
+                                class="atlas-goal-empty"
+                            >
+
+                                <div
+                                    class="atlas-goal-empty-icon"
+                                >
+                                    🎯
+                                </div>
+
+                                <strong>
+                                    Todavía no tienes objetivos
+                                </strong>
+
+                                <p>
+                                    Crea una meta para ahorrar,
+                                    invertir, reducir una deuda
+                                    o preparar un gasto futuro.
+                                </p>
+
+                            </div>
+
+                        </section>
+
+                    `
+            }
+
+            ${
+                completed.length > 0
+                    ? `
+
+                        <h2
+                            class="atlas-goal-section-title"
+                        >
+                            Completados y archivados
+                        </h2>
+
+                        <div
+                            class="atlas-goals-list"
+                        >
+                            ${completed
+                                .map(
+                                    goal =>
+                                        this.goalCard(
+                                            goal
+                                        )
+                                )
+                                .join("")}
+                        </div>
+
+                    `
+                    : ""
+            }
+
+        `;
+
+    },
+
+    distributionsContent() {
+
+        return `
+
+            <button
+                    class="primary atlas-goals-distributions-placeholder"
+                    type="button"
+                    tabindex="-1"
+                    aria-hidden="true"
+            >
+                Distribuciones
+            </button>
+
+        `;
+
+    },
+
     render(
         data
     ) {
@@ -1326,20 +1646,9 @@ const AtlasGoals = {
             this.data
         );
 
-        const summary =
-            this.summary(
-                this.data
-            );
-
-        const active =
-            this.activeGoals(
-                this.data
-            );
-
-        const completed =
-            this.completedGoals(
-                this.data
-            );
+        const isDistributions =
+            this.activeTab ===
+            "distributions";
 
         return `
 
@@ -1363,175 +1672,21 @@ const AtlasGoals = {
                 <p
                     class="subtitle"
                 >
-                    Planifica metas y sigue su progreso.
+                    ${
+                        isDistributions
+                            ? "Distribuye tus fondos entre objetivos."
+                            : "Planifica metas y sigue su progreso."
+                    }
                 </p>
 
-                <section
-                    class="atlas-goals-summary"
-                >
-
-                    <div
-                        class="atlas-goals-summary-card"
-                    >
-
-                        <span>
-                            Objetivos activos
-                        </span>
-
-                        <strong>
-                            ${summary.activeCount}
-                        </strong>
-
-                    </div>
-
-                    <div
-                        class="atlas-goals-summary-card"
-                    >
-
-                        <span>
-                            Pendiente total
-                        </span>
-
-                        <strong>
-                            ${this.formatCurrency(
-                                summary.totalRemaining
-                            )}
-                        </strong>
-
-                    </div>
-
-                    <div
-                        class="atlas-goals-summary-card"
-                    >
-
-                        <span>
-                            Aportación mensual
-                        </span>
-
-                        <strong>
-                            ${this.formatCurrency(
-                                summary.monthlyRequired
-                            )}
-                        </strong>
-
-                    </div>
-
-                    <div
-                        class="atlas-goals-summary-card"
-                    >
-
-                        <span>
-                            Prioridad actual
-                        </span>
-
-                        <strong
-                            style="
-                                font-size:15px;
-                            "
-                        >
-                            ${
-                                summary.priorityGoal
-                                    ? this.escape(
-                                        summary
-                                            .priorityGoal
-                                            .name
-                                    )
-                                    : "Sin objetivo"
-                            }
-                        </strong>
-
-                    </div>
-
-                </section>
-
-                <button
-                    class="primary"
-                    type="button"
-                    data-goal-action="new"
-                    style="
-                        width:100%;
-                        margin-bottom:18px;
-                    "
-                >
-                    Nuevo objetivo
-                </button>
+                ${this.tabs()}
 
                 ${
-                    active.length > 0
-                        ? `
-
-                            <div
-                                class="atlas-goals-list"
-                            >
-                                ${active
-                                    .map(
-                                        goal =>
-                                            this.goalCard(
-                                                goal
-                                            )
-                                    )
-                                    .join("")}
-                            </div>
-
-                        `
-                        : `
-
-                            <section
-                                class="panel"
-                            >
-
-                                <div
-                                    class="atlas-goal-empty"
-                                >
-
-                                    <div
-                                        class="atlas-goal-empty-icon"
-                                    >
-                                        🎯
-                                    </div>
-
-                                    <strong>
-                                        Todavía no tienes objetivos
-                                    </strong>
-
-                                    <p>
-                                        Crea una meta para ahorrar,
-                                        invertir, reducir una deuda
-                                        o preparar un gasto futuro.
-                                    </p>
-
-                                </div>
-
-                            </section>
-
-                        `
-                }
-
-                ${
-                    completed.length > 0
-                        ? `
-
-                            <h2
-                                class="atlas-goal-section-title"
-                            >
-                                Completados y archivados
-                            </h2>
-
-                            <div
-                                class="atlas-goals-list"
-                            >
-                                ${completed
-                                    .map(
-                                        goal =>
-                                            this.goalCard(
-                                                goal
-                                            )
-                                    )
-                                    .join("")}
-                            </div>
-
-                        `
-                        : ""
+                    isDistributions
+                        ? this.distributionsContent()
+                        : this.goalsContent(
+                            this.data
+                        )
                 }
 
             </div>
@@ -2398,6 +2553,38 @@ const AtlasGoals = {
 
     },
 
+    switchTab(tab) {
+
+        if (
+            ![
+                "goals",
+                "distributions"
+            ].includes(
+                tab
+            )
+        ) {
+
+            return;
+
+        }
+
+        this.activeTab =
+            tab;
+
+        if (
+            typeof AtlasApp !==
+                "undefined"
+        ) {
+
+            AtlasApp.route =
+                "goals";
+
+            AtlasApp.render();
+
+        }
+
+    },
+
     installRenderer() {
 
         if (
@@ -2478,6 +2665,24 @@ const AtlasGoals = {
         document.addEventListener(
             "click",
             event => {
+
+                const tab =
+                    event.target.closest(
+                        "[data-goals-tab]"
+                    );
+
+                if (tab) {
+
+                    event.preventDefault();
+
+                    this.switchTab(
+                        tab.dataset
+                            .goalsTab
+                    );
+
+                    return;
+
+                }
 
                 const button =
                     event.target.closest(
