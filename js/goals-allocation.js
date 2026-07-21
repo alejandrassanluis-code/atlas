@@ -1,16 +1,13 @@
 /* ==========================================================
    ATLAS
    goals-allocation.js
-   Distribución centralizada del ahorro y efectivo disponible
+   Distribución centralizada de ahorro y efectivo disponible
 ========================================================== */
 
 const AtlasGoalsAllocation = {
 
     initialized:
         false,
-
-    originalRender:
-        null,
 
     number(value) {
 
@@ -95,7 +92,10 @@ const AtlasGoalsAllocation = {
             Date.now(),
             Math.random()
                 .toString(36)
-                .slice(2, 8)
+                .slice(
+                    2,
+                    8
+                )
         ].join("_");
 
     },
@@ -157,7 +157,9 @@ const AtlasGoalsAllocation = {
         data = this.data()
     ) {
 
-        return this.goals(data)
+        return this.goals(
+            data
+        )
             .find(
                 goal =>
                     goal.id ===
@@ -171,7 +173,9 @@ const AtlasGoalsAllocation = {
         data = this.data()
     ) {
 
-        return this.accounts(data)
+        return this.accounts(
+            data
+        )
             .find(
                 account =>
                     account.id ===
@@ -262,7 +266,9 @@ const AtlasGoalsAllocation = {
         data = this.data()
     ) {
 
-        return this.goals(data)
+        return this.goals(
+            data
+        )
             .filter(
                 goal =>
                     this.isAllocatableGoal(
@@ -371,7 +377,7 @@ const AtlasGoalsAllocation = {
         ) ===
             "prior_liquidity"
                 ? "Efectivo disponible"
-                : "Ahorro cerrado";
+                : "Ahorro disponible";
 
     },
 
@@ -419,7 +425,9 @@ const AtlasGoalsAllocation = {
     ) {
 
         return this.round(
-            this.contributions(goal)
+            this.contributions(
+                goal
+            )
                 .filter(
                     contribution =>
                         this.contributionMatchesSource(
@@ -442,31 +450,15 @@ const AtlasGoalsAllocation = {
 
     },
 
-    assignedFromSavingsForGoal(goal) {
-
-        return this.assignedForGoalBySource(
-            goal,
-            "available_savings"
-        );
-
-    },
-
-    assignedFromCashForGoal(goal) {
-
-        return this.assignedForGoalBySource(
-            goal,
-            "prior_liquidity"
-        );
-
-    },
-
     totalAssignedBySource(
         source,
         data = this.data()
     ) {
 
         return this.round(
-            this.goals(data)
+            this.goals(
+                data
+            )
                 .reduce(
                     (
                         total,
@@ -505,16 +497,6 @@ const AtlasGoalsAllocation = {
 
     },
 
-    totalAssignedFromLiquidity(
-        data = this.data()
-    ) {
-
-        return this.totalAssignedFromCash(
-            data
-        );
-
-    },
-
     totalAssigned(
         data = this.data()
     ) {
@@ -530,76 +512,12 @@ const AtlasGoalsAllocation = {
 
     },
 
-    firstAccountNumber(
-        account,
-        keys
-    ) {
-
-        for (
-            const key of keys
-        ) {
-
-            const value =
-                account?.[key];
-
-            if (
-                value !== null &&
-                value !== undefined &&
-                value !== "" &&
-                Number.isFinite(
-                    Number(value)
-                )
-            ) {
-
-                return Number(value);
-
-            }
-
-        }
-
-        return 0;
-
-    },
-
     isLiquidityAccount(account) {
 
-        if (!account) {
-
-            return false;
-
-        }
-
-        if (
+        return Boolean(
+            account &&
             account.group ===
-                "investment" ||
-            account.group ===
-                "debt"
-        ) {
-
-            return false;
-
-        }
-
-        if (
-            account.group ===
-            "liquidity"
-        ) {
-
-            return true;
-
-        }
-
-        return [
-            "cash",
-            "bank",
-            "checking",
-            "savings",
-            "current"
-        ].includes(
-            String(
-                account.type ||
-                ""
-            )
+                "liquidity"
         );
 
     },
@@ -607,15 +525,8 @@ const AtlasGoalsAllocation = {
     initialBalanceForAccount(account) {
 
         return this.round(
-            this.firstAccountNumber(
-                account,
-                [
-                    "initialBalance",
-                    "openingBalance",
-                    "startingBalance",
-                    "balanceInitial",
-                    "initialAmount"
-                ]
+            this.number(
+                account?.initialBalance
             )
         );
 
@@ -626,7 +537,9 @@ const AtlasGoalsAllocation = {
     ) {
 
         return this.round(
-            this.accounts(data)
+            this.accounts(
+                data
+            )
                 .filter(
                     account =>
                         this.isLiquidityAccount(
@@ -689,9 +602,9 @@ const AtlasGoalsAllocation = {
 
         if (
             movement?.pending ===
-            true ||
+                true ||
             movement?.proposal ===
-            true
+                true
         ) {
 
             return false;
@@ -767,7 +680,9 @@ const AtlasGoalsAllocation = {
         data = this.data()
     ) {
 
-        return this.movements(data)
+        return this.movements(
+            data
+        )
             .filter(
                 movement =>
                     this.isConfirmedMovement(
@@ -841,80 +756,6 @@ const AtlasGoalsAllocation = {
 
     },
 
-    totalRealLiquidity(
-        data = this.data()
-    ) {
-
-        if (
-            typeof AtlasCalculations !==
-                "undefined" &&
-            typeof AtlasCalculations
-                .totalLiquidity ===
-                "function"
-        ) {
-
-            return this.round(
-                AtlasCalculations
-                    .totalLiquidity(
-                        data
-                    )
-            );
-
-        }
-
-        return this.round(
-            this.accounts(data)
-                .filter(
-                    account =>
-                        this.isLiquidityAccount(
-                            account
-                        )
-                )
-                .reduce(
-                    (
-                        total,
-                        account
-                    ) =>
-                        total +
-                        this.firstAccountNumber(
-                            account,
-                            [
-                                "balance",
-                                "currentBalance",
-                                "value",
-                                "amount",
-                                "initialBalance"
-                            ]
-                        ),
-                    0
-                )
-        );
-
-    },
-
-    supportedCashFund(
-        data = this.data()
-    ) {
-
-        return this.round(
-            Math.max(
-                0,
-                Math.min(
-                    this.totalCashFund(
-                        data
-                    ),
-                    Math.max(
-                        0,
-                        this.totalRealLiquidity(
-                            data
-                        )
-                    )
-                )
-            )
-        );
-
-    },
-
     availableCash(
         data = this.data()
     ) {
@@ -922,54 +763,13 @@ const AtlasGoalsAllocation = {
         return this.round(
             Math.max(
                 0,
-                this.supportedCashFund(
+                this.totalCashFund(
                     data
                 ) -
                 this.totalAssignedFromCash(
                     data
                 )
             )
-        );
-
-    },
-
-    availablePriorLiquidity(
-        data = this.data()
-    ) {
-
-        return this.availableCash(
-            data
-        );
-
-    },
-
-    cashWithoutSupport(
-        data = this.data()
-    ) {
-
-        return this.round(
-            Math.max(
-                0,
-                this.totalAssignedFromCash(
-                    data
-                ) -
-                Math.max(
-                    0,
-                    this.totalRealLiquidity(
-                        data
-                    )
-                )
-            )
-        );
-
-    },
-
-    liquidityWithoutSupport(
-        data = this.data()
-    ) {
-
-        return this.cashWithoutSupport(
-            data
         );
 
     },
@@ -980,11 +780,15 @@ const AtlasGoalsAllocation = {
 
         const records = [];
 
-        this.goals(data)
+        this.goals(
+            data
+        )
             .forEach(
                 goal => {
 
-                    this.contributions(goal)
+                    this.contributions(
+                        goal
+                    )
                         .filter(
                             contribution =>
                                 this.isManagedAllocation(
@@ -1076,7 +880,9 @@ const AtlasGoalsAllocation = {
             );
 
         const contribution =
-            this.contributions(goal)
+            this.contributions(
+                goal
+            )
                 .find(
                     item =>
                         item.id ===
@@ -1181,7 +987,9 @@ const AtlasGoalsAllocation = {
     ) {
 
         return this.round(
-            this.closedMonthKeys(data)
+            this.closedMonthKeys(
+                data
+            )
                 .reduce(
                     (
                         total,
@@ -1338,11 +1146,62 @@ const AtlasGoalsAllocation = {
                     "numeric"
             }
         )
-            .format(date)
+            .format(
+                date
+            )
             .replace(
                 ".",
                 ""
             );
+
+    },
+
+    metric(
+        label,
+        value,
+        options = {}
+    ) {
+
+        const className =
+            options.highlight
+                ? "highlight"
+                : "";
+
+        const extra =
+            options.extra
+                ? `
+
+                    <small>
+                        ${options.extra}
+                    </small>
+
+                `
+                : "";
+
+        return `
+
+            <div
+                class="
+                    atlas-goals-allocation-metric
+                    ${className}
+                "
+            >
+
+                <span>
+                    ${label}
+                </span>
+
+                <strong>
+                    ${AtlasGoals.formatCurrency(
+                        value
+                    )}
+                </strong>
+
+                ${extra}
+
+            </div>
+
+        `;
 
     },
 
@@ -1375,16 +1234,6 @@ const AtlasGoalsAllocation = {
                 data
             );
 
-        const initialCash =
-            this.initialCash(
-                data
-            );
-
-        const divestments =
-            this.totalDivestments(
-                data
-            );
-
         const cashFund =
             this.totalCashFund(
                 data
@@ -1400,32 +1249,34 @@ const AtlasGoalsAllocation = {
                 data
             );
 
-        const realLiquidity =
-            this.totalRealLiquidity(
-                data
-            );
-
-        const unsupportedCash =
-            this.cashWithoutSupport(
-                data
-            );
-
         const records =
             this.allocationRecords(
                 data
             );
 
+        const totalAvailable =
+            this.round(
+                availableSavings +
+                availableCash
+            );
+
+        const previousText =
+            previous >= 0
+                ? `↑ Mes pasado: ${AtlasGoals.formatCurrency(
+                    previous
+                )}`
+                : `↓ Mes pasado: ${AtlasGoals.formatCurrency(
+                    previous
+                )}`;
+
         return `
 
             <section
-                class="
-                    panel
-                    atlas-goals-allocation-panel
-                "
+                class="atlas-goals-allocation-overview"
             >
 
                 <div
-                    class="atlas-goals-allocation-head"
+                    class="atlas-goals-allocation-main-head"
                 >
 
                     <div>
@@ -1435,28 +1286,46 @@ const AtlasGoalsAllocation = {
                         </h2>
 
                         <p>
-                            Distribuye ahorro cerrado o efectivo
-                            procedente de saldos iniciales y desinversiones.
+                            Distribuye tu ahorro cerrado y efectivo
+                            disponible entre tus objetivos.
                         </p>
 
                     </div>
 
-                    <span>
-                        ${AtlasGoals.formatCurrency(
-                            availableSavings +
-                            availableCash
-                        )}
-                    </span>
+                    <div
+                        class="atlas-goals-allocation-total"
+                    >
+
+                        <strong>
+                            ${AtlasGoals.formatCurrency(
+                                totalAvailable
+                            )}
+                        </strong>
+
+                        <span>
+                            Total disponible
+                        </span>
+
+                    </div>
 
                 </div>
 
-                <div
-                    class="atlas-goals-allocation-source-card"
+                <article
+                    class="
+                        atlas-goals-allocation-source
+                        atlas-goals-allocation-savings
+                    "
                 >
 
                     <div
-                        class="atlas-goals-allocation-source-head"
+                        class="atlas-goals-allocation-source-title"
                     >
+
+                        <div
+                            class="atlas-goals-allocation-icon"
+                        >
+                            🐷
+                        </div>
 
                         <div>
 
@@ -1464,94 +1333,46 @@ const AtlasGoalsAllocation = {
                                 Ahorro disponible
                             </strong>
 
-                            <small>
+                            <span>
                                 Ahorro positivo generado en meses cerrados.
-                            </small>
+                            </span>
 
                         </div>
 
-                        <span>
+                        <b>
                             ${AtlasGoals.formatCurrency(
                                 availableSavings
                             )}
-                        </span>
+                        </b>
 
                     </div>
 
                     <div
-                        class="atlas-goals-allocation-facts"
+                        class="atlas-goals-allocation-metrics"
                     >
 
-                        <div>
+                        ${this.metric(
+                            "Ahorro cerrado",
+                            closed,
+                            {
+                                extra:
+                                    previousText
+                            }
+                        )}
 
-                            <small>
-                                Mes pasado
-                            </small>
+                        ${this.metric(
+                            "Distribuido",
+                            assignedSavings
+                        )}
 
-                            <strong
-                                style="
-                                    color:${
-                                        previous >= 0
-                                            ? "var(--color-success)"
-                                            : "var(--color-danger)"
-                                    };
-                                "
-                            >
-                                ${AtlasGoals.formatCurrency(
-                                    previous
-                                )}
-                            </strong>
-
-                        </div>
-
-                        <div>
-
-                            <small>
-                                Ahorro cerrado
-                            </small>
-
-                            <strong>
-                                ${AtlasGoals.formatCurrency(
-                                    closed
-                                )}
-                            </strong>
-
-                        </div>
-
-                        <div>
-
-                            <small>
-                                Distribuido
-                            </small>
-
-                            <strong>
-                                ${AtlasGoals.formatCurrency(
-                                    assignedSavings
-                                )}
-                            </strong>
-
-                        </div>
-
-                        <div>
-
-                            <small>
-                                Disponible
-                            </small>
-
-                            <strong
-                                style="
-                                    color:
-                                        var(
-                                            --color-primary
-                                        );
-                                "
-                            >
-                                ${AtlasGoals.formatCurrency(
-                                    availableSavings
-                                )}
-                            </strong>
-
-                        </div>
+                        ${this.metric(
+                            "Disponible",
+                            availableSavings,
+                            {
+                                highlight:
+                                    true
+                            }
+                        )}
 
                     </div>
 
@@ -1569,18 +1390,24 @@ const AtlasGoalsAllocation = {
                         Distribuir ahorro
                     </button>
 
-                </div>
+                </article>
 
-                <div
+                <article
                     class="
-                        atlas-goals-allocation-source-card
-                        atlas-goals-cash-card
+                        atlas-goals-allocation-source
+                        atlas-goals-allocation-cash
                     "
                 >
 
                     <div
-                        class="atlas-goals-allocation-source-head"
+                        class="atlas-goals-allocation-source-title"
                     >
+
+                        <div
+                            class="atlas-goals-allocation-icon"
+                        >
+                            👛
+                        </div>
 
                         <div>
 
@@ -1588,117 +1415,48 @@ const AtlasGoalsAllocation = {
                                 Efectivo disponible
                             </strong>
 
-                            <small>
-                                Saldos iniciales de liquidez
-                                más desinversiones confirmadas.
-                            </small>
+                            <span>
+                                Efectivo total disponible para asignar.
+                            </span>
 
                         </div>
 
-                        <span>
+                        <b>
                             ${AtlasGoals.formatCurrency(
                                 availableCash
                             )}
-                        </span>
+                        </b>
 
                     </div>
 
                     <div
-                        class="atlas-goals-allocation-facts"
+                        class="atlas-goals-allocation-metrics"
                     >
 
-                        <div>
+                        ${this.metric(
+                            "Base disponible",
+                            cashFund,
+                            {
+                                extra:
+                                    "Incluye saldos iniciales y desinversiones"
+                            }
+                        )}
 
-                            <small>
-                                Saldos iniciales
-                            </small>
+                        ${this.metric(
+                            "Distribuido",
+                            assignedCash
+                        )}
 
-                            <strong>
-                                ${AtlasGoals.formatCurrency(
-                                    initialCash
-                                )}
-                            </strong>
-
-                        </div>
-
-                        <div>
-
-                            <small>
-                                Desinversiones
-                            </small>
-
-                            <strong>
-                                ${AtlasGoals.formatCurrency(
-                                    divestments
-                                )}
-                            </strong>
-
-                        </div>
-
-                        <div>
-
-                            <small>
-                                Fondo total
-                            </small>
-
-                            <strong>
-                                ${AtlasGoals.formatCurrency(
-                                    cashFund
-                                )}
-                            </strong>
-
-                        </div>
-
-                        <div>
-
-                            <small>
-                                Distribuido
-                            </small>
-
-                            <strong>
-                                ${AtlasGoals.formatCurrency(
-                                    assignedCash
-                                )}
-                            </strong>
-
-                        </div>
+                        ${this.metric(
+                            "Disponible",
+                            availableCash,
+                            {
+                                highlight:
+                                    true
+                            }
+                        )}
 
                     </div>
-
-                    <div
-                        class="atlas-goals-cash-support"
-                    >
-
-                        <span>
-                            Liquidez real que lo respalda
-                        </span>
-
-                        <strong>
-                            ${AtlasGoals.formatCurrency(
-                                realLiquidity
-                            )}
-                        </strong>
-
-                    </div>
-
-                    ${
-                        unsupportedCash > 0
-                            ? `
-
-                                <div
-                                    class="atlas-goals-cash-warning"
-                                >
-                                    Hay
-                                    ${AtlasGoals.formatCurrency(
-                                        unsupportedCash
-                                    )}
-                                    distribuidos sin respaldo suficiente
-                                    en la liquidez actual.
-                                </div>
-
-                            `
-                            : ""
-                    }
 
                     <button
                         type="button"
@@ -1714,7 +1472,7 @@ const AtlasGoalsAllocation = {
                         Distribuir efectivo
                     </button>
 
-                </div>
+                </article>
 
                 <div
                     class="atlas-goals-provisional"
@@ -1725,19 +1483,23 @@ const AtlasGoalsAllocation = {
                     }"
                 >
 
-                    <span>
-                        Ahorro provisional del mes actual
-                    </span>
+                    <div>
 
-                    <strong>
+                        <strong>
+                            Ahorro provisional del mes
+                        </strong>
+
+                        <span>
+                            Estará disponible cuando se cierre el mes.
+                        </span>
+
+                    </div>
+
+                    <b>
                         ${AtlasGoals.formatCurrency(
                             provisional
                         )}
-                    </strong>
-
-                    <small>
-                        No está disponible para distribuir hasta cerrar el mes.
-                    </small>
+                    </b>
 
                 </div>
 
@@ -1747,13 +1509,16 @@ const AtlasGoalsAllocation = {
 
                             <button
                                 type="button"
-                                class="
-                                    atlas-goals-allocation-manage
-                                    atlas-goals-allocation-manage-main
-                                "
+                                class="atlas-goals-allocation-manage"
                                 data-goal-allocation-action="manage"
                             >
-                                Gestionar todas las distribuciones
+                                <span>
+                                    Gestionar distribuciones
+                                </span>
+
+                                <b>
+                                    ›
+                                </b>
                             </button>
 
                         `
@@ -1814,11 +1579,10 @@ const AtlasGoalsAllocation = {
                         </strong>
 
                         <small>
-                            Aumenta el progreso del objetivo
-                            · Ya asignado desde
+                            Ya distribuido desde
                             ${this.sourceShortLabel(
                                 source
-                            )}
+                            )}:
                             ${AtlasGoals.formatCurrency(
                                 assigned
                             )}
@@ -1950,8 +1714,8 @@ const AtlasGoalsAllocation = {
                     ? "Distribuir efectivo"
                     : "Distribuir ahorro",
                 isCash
-                    ? "Asigna efectivo procedente de saldos iniciales y desinversiones confirmadas."
-                    : "Asigna cantidades o porcentajes del ahorro cerrado disponible."
+                    ? "Asigna tu efectivo disponible entre objetivos."
+                    : "Asigna tu ahorro cerrado entre objetivos."
             )}
 
             <div
@@ -1961,7 +1725,7 @@ const AtlasGoalsAllocation = {
                 <span>
                     ${this.sourceLabel(
                         normalizedSource
-                    )} disponible
+                    )}
                 </span>
 
                 <strong>
@@ -1973,7 +1737,10 @@ const AtlasGoalsAllocation = {
                 <small
                     data-goal-allocation-selected
                 >
-                    Seleccionado: 0 €
+                    Seleccionado:
+                    ${AtlasGoals.formatCurrency(
+                        0
+                    )}
                     · Restante:
                     ${AtlasGoals.formatCurrency(
                         available
@@ -2039,11 +1806,7 @@ const AtlasGoalsAllocation = {
                                     type="text"
                                     name="allocationNote"
                                     maxlength="160"
-                                    placeholder="${
-                                        isCash
-                                            ? "Ejemplo: Saldo que ya tenía ahorrado"
-                                            : "Ejemplo: Reparto del ahorro del mes anterior"
-                                    }"
+                                    placeholder="Añade una nota"
                                 >
 
                             </label>
@@ -2186,9 +1949,7 @@ const AtlasGoalsAllocation = {
                             calculated
                         )
                     )
-                ),
-
-            capacity
+                )
 
         };
 
@@ -2447,7 +2208,8 @@ const AtlasGoalsAllocation = {
 
         if (
             target > 0 &&
-            current >= target
+            current >=
+                target
         ) {
 
             goal.status =
@@ -2567,10 +2329,7 @@ const AtlasGoalsAllocation = {
         ) {
 
             AtlasUI.toast(
-                source ===
-                    "prior_liquidity"
-                    ? "La distribución supera el efectivo disponible."
-                    : "La distribución supera el ahorro cerrado disponible."
+                "La distribución supera el importe disponible."
             );
 
             return;
@@ -2669,7 +2428,8 @@ const AtlasGoalsAllocation = {
                 )
             ) {
 
-                goal.contributions = [];
+                goal.contributions =
+                    [];
 
             }
 
@@ -2738,10 +2498,7 @@ const AtlasGoalsAllocation = {
         }
 
         this.finishUpdate(
-            source ===
-                "prior_liquidity"
-                ? "Efectivo distribuido correctamente."
-                : "Ahorro distribuido correctamente."
+            "Distribución guardada."
         );
 
     },
@@ -2756,50 +2513,15 @@ const AtlasGoalsAllocation = {
                 contribution
             );
 
-        const percentage =
-            contribution
-                .allocationMethod ===
-                "percentage" &&
-            this.number(
-                contribution
-                    .allocationPercent
-            ) > 0
-                ? (
-                    ` · ` +
-                    `${this.number(
-                        contribution
-                            .allocationPercent
-                    ).toLocaleString(
-                        "es-ES",
-                        {
-                            maximumFractionDigits:
-                                2
-                        }
-                    )}%`
-                )
-                : "";
-
-        const incompatible =
-            !this.isAllocatableGoal(
-                this.goalById(
-                    record.goalId
-                )
-            );
-
         return `
 
             <article
                 class="atlas-goals-allocation-record"
-                data-incompatible="${
-                    incompatible
-                        ? "true"
-                        : "false"
-                }"
             >
 
                 <div>
 
-                    <div
+                    <span
                         class="atlas-goals-allocation-record-source"
                         data-source="${AtlasGoals.escape(
                             this.normalizedSource(
@@ -2812,7 +2534,7 @@ const AtlasGoalsAllocation = {
                                 contribution.source
                             )
                         )}
-                    </div>
+                    </span>
 
                     <strong>
                         ${AtlasGoals.escape(
@@ -2826,7 +2548,6 @@ const AtlasGoalsAllocation = {
                                 contribution.date
                             )
                         )}
-                        ${percentage}
                     </small>
 
                     ${
@@ -2843,36 +2564,13 @@ const AtlasGoalsAllocation = {
                             : ""
                     }
 
-                    ${
-                        incompatible
-                            ? `
-
-                                <span
-                                    class="atlas-goals-allocation-warning"
-                                >
-                                    Este objetivo ya no admite distribuciones.
-                                    Puedes mover o eliminar esta asignación.
-                                </span>
-
-                            `
-                            : ""
-                    }
-
                 </div>
 
                 <div
                     class="atlas-goals-allocation-record-actions"
                 >
 
-                    <strong
-                        style="
-                            color:${
-                                effect >= 0
-                                    ? "var(--color-success)"
-                                    : "var(--color-danger)"
-                            };
-                        "
-                    >
+                    <strong>
                         ${
                             effect >= 0
                                 ? "+"
@@ -2884,27 +2582,18 @@ const AtlasGoalsAllocation = {
                         )}
                     </strong>
 
-                    ${
-                        contribution.type !==
-                            "withdrawal"
-                            ? `
-
-                                <button
-                                    type="button"
-                                    data-goal-allocation-action="edit"
-                                    data-goal-id="${AtlasGoals.escape(
-                                        record.goalId
-                                    )}"
-                                    data-contribution-id="${AtlasGoals.escape(
-                                        contribution.id
-                                    )}"
-                                >
-                                    Editar
-                                </button>
-
-                            `
-                            : ""
-                    }
+                    <button
+                        type="button"
+                        data-goal-allocation-action="edit"
+                        data-goal-id="${AtlasGoals.escape(
+                            record.goalId
+                        )}"
+                        data-contribution-id="${AtlasGoals.escape(
+                            contribution.id
+                        )}"
+                    >
+                        Editar
+                    </button>
 
                     <button
                         type="button"
@@ -3094,19 +2783,6 @@ const AtlasGoalsAllocation = {
                 )
             );
 
-        const compatibleCurrent =
-            this.isAllocatableGoal(
-                record.goal
-            );
-
-        const selectedId =
-            compatibleCurrent
-                ? record.goal.id
-                : "";
-
-        const goals =
-            this.allocatableGoals();
-
         const originalSource =
             this.normalizedSource(
                 contribution.source
@@ -3119,233 +2795,171 @@ const AtlasGoalsAllocation = {
                 "Modifica la fuente, el importe o el objetivo."
             )}
 
-            ${
-                !compatibleCurrent
-                    ? `
+            <form
+                class="atlas-settings-form"
+                data-goal-allocation-edit-form
+                data-original-goal-id="${AtlasGoals.escape(
+                    goalId
+                )}"
+                data-contribution-id="${AtlasGoals.escape(
+                    contributionId
+                )}"
+                data-original-source="${AtlasGoals.escape(
+                    originalSource
+                )}"
+            >
 
-                        <div
-                            class="atlas-goals-allocation-edit-warning"
+                <label
+                    class="atlas-settings-field"
+                >
+
+                    <span>
+                        Fuente
+                    </span>
+
+                    <select
+                        name="allocationSource"
+                        required
+                    >
+
+                        <option
+                            value="available_savings"
+                            ${
+                                originalSource ===
+                                    "available_savings"
+                                    ? "selected"
+                                    : ""
+                            }
                         >
-                            La distribución está asignada a un objetivo
-                            que ya no es compatible. Selecciona otro
-                            objetivo o elimina la distribución.
-                        </div>
+                            Ahorro disponible
+                        </option>
 
-                    `
-                    : ""
-            }
-
-            ${
-                goals.length > 0
-                    ? `
-
-                        <form
-                            class="atlas-settings-form"
-                            data-goal-allocation-edit-form
-                            data-original-goal-id="${AtlasGoals.escape(
-                                goalId
-                            )}"
-                            data-contribution-id="${AtlasGoals.escape(
-                                contributionId
-                            )}"
-                            data-original-amount="${amount}"
-                            data-original-source="${AtlasGoals.escape(
-                                originalSource
-                            )}"
+                        <option
+                            value="prior_liquidity"
+                            ${
+                                originalSource ===
+                                    "prior_liquidity"
+                                    ? "selected"
+                                    : ""
+                            }
                         >
+                            Efectivo disponible
+                        </option>
 
-                            <label
-                                class="atlas-settings-field"
-                            >
+                    </select>
 
-                                <span>
-                                    Fuente
-                                </span>
+                </label>
 
-                                <select
-                                    name="allocationSource"
-                                    required
-                                >
+                <label
+                    class="atlas-settings-field"
+                >
 
-                                    <option
-                                        value="available_savings"
-                                        ${
-                                            originalSource ===
-                                                "available_savings"
-                                                ? "selected"
-                                                : ""
-                                        }
-                                    >
-                                        Ahorro cerrado
-                                    </option>
+                    <span>
+                        Objetivo
+                    </span>
 
-                                    <option
-                                        value="prior_liquidity"
-                                        ${
-                                            originalSource ===
-                                                "prior_liquidity"
-                                                ? "selected"
-                                                : ""
-                                        }
-                                    >
-                                        Efectivo disponible
-                                    </option>
+                    <select
+                        name="targetGoalId"
+                        required
+                    >
+                        ${this.goalOptions(
+                            goalId,
+                            amount
+                        )}
+                    </select>
 
-                                </select>
+                </label>
 
-                            </label>
+                <label
+                    class="atlas-settings-field"
+                >
 
-                            <label
-                                class="atlas-settings-field"
-                            >
+                    <span>
+                        Importe
+                    </span>
 
-                                <span>
-                                    Objetivo
-                                </span>
+                    <input
+                        type="number"
+                        inputmode="decimal"
+                        min="0.01"
+                        step="0.01"
+                        name="allocationAmount"
+                        value="${amount}"
+                        required
+                    >
 
-                                <select
-                                    name="targetGoalId"
-                                    required
-                                >
+                </label>
 
-                                    <option value="">
-                                        Selecciona un objetivo
-                                    </option>
+                <label
+                    class="atlas-settings-field"
+                >
 
-                                    ${this.goalOptions(
-                                        selectedId,
-                                        amount
-                                    )}
+                    <span>
+                        Fecha
+                    </span>
 
-                                </select>
+                    <input
+                        type="date"
+                        name="allocationDate"
+                        value="${AtlasGoals.escape(
+                            contribution.date ||
+                            this.today()
+                        )}"
+                        required
+                    >
 
-                            </label>
+                </label>
 
-                            <label
-                                class="atlas-settings-field"
-                            >
+                <label
+                    class="atlas-settings-field"
+                >
 
-                                <span>
-                                    Importe
-                                </span>
+                    <span>
+                        Nota opcional
+                    </span>
 
-                                <input
-                                    type="number"
-                                    inputmode="decimal"
-                                    min="0.01"
-                                    step="0.01"
-                                    name="allocationAmount"
-                                    value="${amount}"
-                                    required
-                                >
+                    <input
+                        type="text"
+                        name="allocationNote"
+                        maxlength="160"
+                        value="${AtlasGoals.escape(
+                            contribution.note ||
+                            ""
+                        )}"
+                    >
 
-                            </label>
+                </label>
 
-                            <label
-                                class="atlas-settings-field"
-                            >
+                <button
+                    type="submit"
+                    class="atlas-settings-primary"
+                >
+                    Guardar cambios
+                </button>
 
-                                <span>
-                                    Fecha
-                                </span>
+                <button
+                    type="button"
+                    class="atlas-goal-danger"
+                    data-goal-allocation-action="delete"
+                    data-goal-id="${AtlasGoals.escape(
+                        goalId
+                    )}"
+                    data-contribution-id="${AtlasGoals.escape(
+                        contributionId
+                    )}"
+                >
+                    Eliminar distribución
+                </button>
 
-                                <input
-                                    type="date"
-                                    name="allocationDate"
-                                    value="${AtlasGoals.escape(
-                                        contribution.date ||
-                                        this.today()
-                                    )}"
-                                    required
-                                >
+                <button
+                    type="button"
+                    class="atlas-settings-secondary"
+                    data-settings-action="close"
+                >
+                    Cancelar
+                </button>
 
-                            </label>
-
-                            <label
-                                class="atlas-settings-field"
-                            >
-
-                                <span>
-                                    Nota opcional
-                                </span>
-
-                                <input
-                                    type="text"
-                                    name="allocationNote"
-                                    maxlength="160"
-                                    value="${AtlasGoals.escape(
-                                        contribution.note ||
-                                        ""
-                                    )}"
-                                >
-
-                            </label>
-
-                            <button
-                                type="submit"
-                                class="atlas-settings-primary"
-                            >
-                                Guardar cambios
-                            </button>
-
-                            <button
-                                type="button"
-                                class="atlas-goal-danger"
-                                data-goal-allocation-action="delete"
-                                data-goal-id="${AtlasGoals.escape(
-                                    goalId
-                                )}"
-                                data-contribution-id="${AtlasGoals.escape(
-                                    contributionId
-                                )}"
-                            >
-                                Eliminar distribución
-                            </button>
-
-                            <button
-                                type="button"
-                                class="atlas-settings-secondary"
-                                data-settings-action="close"
-                            >
-                                Cancelar
-                            </button>
-
-                        </form>
-
-                    `
-                    : `
-
-                        <div
-                            class="atlas-goals-allocation-empty"
-                        >
-                            No hay objetivos compatibles a los que mover
-                            esta distribución.
-                        </div>
-
-                        <button
-                            type="button"
-                            class="atlas-goal-danger"
-                            data-goal-allocation-action="delete"
-                            data-goal-id="${AtlasGoals.escape(
-                                goalId
-                            )}"
-                            data-contribution-id="${AtlasGoals.escape(
-                                contributionId
-                            )}"
-                        >
-                            Eliminar distribución
-                        </button>
-
-                        <button
-                            type="button"
-                            class="atlas-settings-secondary"
-                            data-settings-action="close"
-                        >
-                            Cancelar
-                        </button>
-
-                    `
-            }
+            </form>
 
         `);
 
@@ -3357,7 +2971,9 @@ const AtlasGoalsAllocation = {
     ) {
 
         const index =
-            this.contributions(goal)
+            this.contributions(
+                goal
+            )
                 .findIndex(
                     contribution =>
                         contribution.id ===
@@ -3414,8 +3030,7 @@ const AtlasGoalsAllocation = {
         const originalSource =
             this.normalizedSource(
                 form.dataset
-                    .originalSource ||
-                "available_savings"
+                    .originalSource
             );
 
         const targetSource =
@@ -3529,10 +3144,7 @@ const AtlasGoalsAllocation = {
         ) {
 
             AtlasUI.toast(
-                targetSource ===
-                    "prior_liquidity"
-                    ? "El importe supera el efectivo disponible."
-                    : "El importe supera el ahorro cerrado disponible."
+                "El importe supera el disponible."
             );
 
             return;
@@ -3625,19 +3237,14 @@ const AtlasGoalsAllocation = {
             )
         ) {
 
-            targetGoal.contributions = [];
+            targetGoal.contributions =
+                [];
 
         }
 
         const updatedContribution = {
 
             ...removed,
-
-            id:
-                removed.id,
-
-            type:
-                "contribution",
 
             amount,
 
@@ -3817,370 +3424,283 @@ const AtlasGoalsAllocation = {
 
         style.textContent = `
 
-            .atlas-goals-allocation-panel {
-                margin-bottom: 18px;
-                border-color:
-                    rgba(
-                        77,
-                        163,
-                        255,
-                        0.24
-                    );
-                background:
-                    rgba(
-                        77,
-                        163,
-                        255,
-                        0.055
-                    );
+            .atlas-goals-allocation-overview {
+                display: grid;
+                gap: 14px;
             }
 
-            .atlas-goals-allocation-head,
-            .atlas-goals-allocation-source-head {
+            .atlas-goals-allocation-main-head {
                 display: flex;
                 align-items: flex-start;
-                justify-content:
-                    space-between;
-                gap: 12px;
+                justify-content: space-between;
+                gap: 14px;
+                padding: 4px 1px 2px;
             }
 
-            .atlas-goals-allocation-head h2 {
+            .atlas-goals-allocation-main-head h2 {
                 margin: 0;
-                font-size: 17px;
+                color: #f7f8fc;
+                font-size: 22px;
             }
 
-            .atlas-goals-allocation-head p,
-            .atlas-goals-allocation-source-head small {
-                display: block;
-                margin:
-                    5px
-                    0
-                    0;
-                color:
-                    var(
-                        --color-text-muted
-                    );
-                font-size: 10px;
+            .atlas-goals-allocation-main-head p {
+                max-width: 240px;
+                margin: 7px 0 0;
+                color: #98a2bb;
+                font-size: 12px;
                 line-height: 1.45;
             }
 
-            .atlas-goals-allocation-head > span,
-            .atlas-goals-allocation-source-head > span {
-                flex:
-                    0
-                    0
-                    auto;
-                color:
-                    var(
-                        --color-primary
+            .atlas-goals-allocation-total {
+                flex: 0 0 auto;
+                text-align: right;
+            }
+
+            .atlas-goals-allocation-total strong,
+            .atlas-goals-allocation-total span {
+                display: block;
+            }
+
+            .atlas-goals-allocation-total strong {
+                color: #4da3ff;
+                font-size: 23px;
+                line-height: 1;
+            }
+
+            .atlas-goals-allocation-total span {
+                margin-top: 6px;
+                color: #98a2bb;
+                font-size: 9px;
+            }
+
+            .atlas-goals-allocation-source {
+                padding: 15px;
+                border: 1px solid rgba(77, 163, 255, 0.34);
+                border-radius: 21px;
+                background:
+                    linear-gradient(
+                        145deg,
+                        rgba(77, 163, 255, 0.07),
+                        rgba(25, 36, 58, 0.96)
                     );
-                font-size: 18px;
-                font-weight: 850;
+            }
+
+            .atlas-goals-allocation-cash {
+                border-color: rgba(82, 207, 139, 0.34);
+                background:
+                    linear-gradient(
+                        145deg,
+                        rgba(82, 207, 139, 0.07),
+                        rgba(25, 36, 58, 0.96)
+                    );
+            }
+
+            .atlas-goals-allocation-source-title {
+                display: grid;
+                grid-template-columns:
+                    42px
+                    minmax(0, 1fr)
+                    auto;
+                align-items: center;
+                gap: 11px;
+            }
+
+            .atlas-goals-allocation-icon {
+                width: 42px;
+                height: 42px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 14px;
+                background: rgba(77, 163, 255, 0.12);
+                font-size: 20px;
+            }
+
+            .atlas-goals-allocation-cash
+            .atlas-goals-allocation-icon {
+                background: rgba(82, 207, 139, 0.12);
+            }
+
+            .atlas-goals-allocation-source-title strong,
+            .atlas-goals-allocation-source-title span {
+                display: block;
+            }
+
+            .atlas-goals-allocation-source-title strong {
+                color: #f7f8fc;
+                font-size: 15px;
+            }
+
+            .atlas-goals-allocation-source-title span {
+                margin-top: 4px;
+                color: #98a2bb;
+                font-size: 10px;
+                line-height: 1.4;
+            }
+
+            .atlas-goals-allocation-source-title > b {
+                color: #4da3ff;
+                font-size: 21px;
                 white-space: nowrap;
             }
 
-            .atlas-goals-allocation-source-card {
-                margin-top: 14px;
-                padding: 14px;
-                border:
-                    1px solid
-                    rgba(
-                        145,
-                        164,
-                        202,
-                        0.14
-                    );
-                border-radius: 18px;
-                background:
-                    rgba(
-                        255,
-                        255,
-                        255,
-                        0.025
-                    );
+            .atlas-goals-allocation-cash
+            .atlas-goals-allocation-source-title > b {
+                color: #67db9d;
             }
 
-            .atlas-goals-cash-card {
-                border-color:
-                    rgba(
-                        95,
-                        214,
-                        150,
-                        0.18
-                    );
-                background:
-                    rgba(
-                        95,
-                        214,
-                        150,
-                        0.035
-                    );
-            }
-
-            .atlas-goals-allocation-source-head strong {
-                font-size: 13px;
-            }
-
-            .atlas-goals-allocation-facts {
+            .atlas-goals-allocation-metrics {
                 display: grid;
                 grid-template-columns:
-                    repeat(
-                        2,
-                        minmax(
-                            0,
-                            1fr
-                        )
-                    );
-                gap: 9px;
+                    repeat(3, minmax(0, 1fr));
+                gap: 1px;
                 margin-top: 14px;
+                overflow: hidden;
+                border: 1px solid rgba(145, 164, 202, 0.12);
+                border-radius: 16px;
+                background: rgba(145, 164, 202, 0.1);
             }
 
-            .atlas-goals-allocation-facts > div {
+            .atlas-goals-allocation-metric {
                 min-width: 0;
-                padding: 11px;
-                border-radius: 14px;
-                background:
-                    rgba(
-                        255,
-                        255,
-                        255,
-                        0.035
-                    );
+                padding: 12px 8px;
+                background: #1d2940;
+                text-align: center;
             }
 
-            .atlas-goals-allocation-facts small {
+            .atlas-goals-allocation-metric span,
+            .atlas-goals-allocation-metric strong,
+            .atlas-goals-allocation-metric small {
                 display: block;
-                color:
-                    var(
-                        --color-text-muted
-                    );
+            }
+
+            .atlas-goals-allocation-metric span {
+                color: #98a2bb;
                 font-size: 9px;
             }
 
-            .atlas-goals-allocation-facts strong {
-                display: block;
-                margin-top: 5px;
-                font-size: 14px;
+            .atlas-goals-allocation-metric strong {
+                margin-top: 6px;
                 overflow-wrap: anywhere;
+                color: #f7f8fc;
+                font-size: 14px;
             }
 
-            .atlas-goals-cash-support {
-                display: flex;
-                align-items: center;
-                justify-content:
-                    space-between;
-                gap: 12px;
-                margin-top: 10px;
-                padding: 11px;
-                border-radius: 14px;
-                background:
-                    rgba(
-                        95,
-                        214,
-                        150,
-                        0.065
-                    );
+            .atlas-goals-allocation-metric small {
+                margin-top: 6px;
+                color: #98a2bb;
+                font-size: 7px;
+                line-height: 1.35;
             }
 
-            .atlas-goals-cash-support span {
-                color:
-                    var(
-                        --color-text-muted
-                    );
-                font-size: 9px;
+            .atlas-goals-allocation-metric.highlight strong {
+                color: #4da3ff;
             }
 
-            .atlas-goals-cash-support strong {
-                color: #86e4ac;
-                font-size: 13px;
-            }
-
-            .atlas-goals-cash-warning,
-            .atlas-goals-allocation-edit-warning {
-                padding: 12px;
-                margin-top: 12px;
-                border:
-                    1px solid
-                    rgba(
-                        255,
-                        95,
-                        112,
-                        0.22
-                    );
-                border-radius: 14px;
-                background:
-                    rgba(
-                        255,
-                        95,
-                        112,
-                        0.065
-                    );
-                color: #ffb0b9;
-                font-size: 9px;
-                line-height: 1.5;
-            }
-
-            .atlas-goals-allocation-edit-warning {
-                margin:
-                    0
-                    0
-                    14px;
-                font-size: 10px;
-            }
-
-            .atlas-goals-provisional {
-                margin-top: 14px;
-                padding: 12px;
-                border:
-                    1px solid
-                    rgba(
-                        244,
-                        185,
-                        94,
-                        0.22
-                    );
-                border-radius: 15px;
-                background:
-                    rgba(
-                        244,
-                        185,
-                        94,
-                        0.075
-                    );
-            }
-
-            .atlas-goals-provisional[data-negative="true"] {
-                border-color:
-                    rgba(
-                        255,
-                        95,
-                        112,
-                        0.24
-                    );
-                background:
-                    rgba(
-                        255,
-                        95,
-                        112,
-                        0.07
-                    );
-            }
-
-            .atlas-goals-provisional span,
-            .atlas-goals-provisional small {
-                display: block;
-                color:
-                    var(
-                        --color-text-muted
-                    );
-                font-size: 9px;
-                line-height: 1.45;
-            }
-
-            .atlas-goals-provisional strong {
-                display: block;
-                margin-top: 5px;
-                font-size: 16px;
-            }
-
-            .atlas-goals-provisional small {
-                margin-top: 5px;
-            }
-
-            .atlas-goals-allocation-open,
-            .atlas-goals-allocation-manage {
-                width: 100%;
-                min-height: 44px;
-                border-radius: 14px;
-                font-size: 12px;
-                font-weight: 800;
+            .atlas-goals-allocation-cash
+            .atlas-goals-allocation-metric.highlight strong {
+                color: #67db9d;
             }
 
             .atlas-goals-allocation-open {
-                margin-top: 14px;
-                border:
-                    1px solid
-                    rgba(
-                        77,
-                        163,
-                        255,
-                        0.32
-                    );
-                background:
-                    rgba(
-                        77,
-                        163,
-                        255,
-                        0.2
-                    );
+                width: 100%;
+                min-height: 46px;
+                margin-top: 13px;
+                border: 1px solid rgba(77, 163, 255, 0.55);
+                border-radius: 15px;
+                background: rgba(77, 163, 255, 0.18);
                 color: #ffffff;
+                font-size: 13px;
+                font-weight: 800;
+            }
+
+            .atlas-goals-allocation-cash
+            .atlas-goals-allocation-open {
+                border-color: rgba(82, 207, 139, 0.48);
+                background: rgba(82, 207, 139, 0.13);
             }
 
             .atlas-goals-allocation-open:disabled {
-                opacity: 0.45;
+                opacity: 0.42;
+            }
+
+            .atlas-goals-provisional {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                padding: 13px 15px;
+                border: 1px solid rgba(145, 164, 202, 0.16);
+                border-radius: 17px;
+                background: #19243a;
+            }
+
+            .atlas-goals-provisional strong,
+            .atlas-goals-provisional span {
+                display: block;
+            }
+
+            .atlas-goals-provisional strong {
+                color: #cbd3e6;
+                font-size: 12px;
+            }
+
+            .atlas-goals-provisional span {
+                margin-top: 4px;
+                color: #98a2bb;
+                font-size: 9px;
+            }
+
+            .atlas-goals-provisional > b {
+                color: #4da3ff;
+                font-size: 15px;
+                white-space: nowrap;
+            }
+
+            .atlas-goals-provisional[data-negative="true"] > b {
+                color: var(--color-danger);
             }
 
             .atlas-goals-allocation-manage {
-                border:
-                    1px solid
-                    rgba(
-                        145,
-                        164,
-                        202,
-                        0.18
-                    );
-                background:
-                    rgba(
-                        255,
-                        255,
-                        255,
-                        0.035
-                    );
-                color: #c8d0e3;
+                width: 100%;
+                min-height: 50px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 0 16px;
+                border: 1px solid rgba(77, 163, 255, 0.26);
+                border-radius: 16px;
+                background: rgba(77, 163, 255, 0.06);
+                color: #f7f8fc;
+                font-size: 12px;
+                font-weight: 750;
             }
 
-            .atlas-goals-allocation-manage-main {
-                margin-top: 14px;
+            .atlas-goals-allocation-manage b {
+                color: #79baff;
+                font-size: 24px;
+                font-weight: 400;
             }
 
             .atlas-goals-allocation-sheet-summary {
                 padding: 15px;
                 margin-bottom: 14px;
-                border:
-                    1px solid
-                    rgba(
-                        77,
-                        163,
-                        255,
-                        0.22
-                    );
+                border: 1px solid rgba(77, 163, 255, 0.22);
                 border-radius: 17px;
-                background:
-                    rgba(
-                        77,
-                        163,
-                        255,
-                        0.075
-                    );
+                background: rgba(77, 163, 255, 0.075);
             }
 
             .atlas-goals-allocation-sheet-summary span,
             .atlas-goals-allocation-sheet-summary small {
                 display: block;
-                color:
-                    var(
-                        --color-text-muted
-                    );
+                color: var(--color-text-muted);
                 font-size: 10px;
             }
 
             .atlas-goals-allocation-sheet-summary strong {
                 display: block;
                 margin-top: 6px;
-                color:
-                    var(
-                        --color-primary
-                    );
+                color: var(--color-primary);
                 font-size: 22px;
             }
 
@@ -4189,83 +3709,25 @@ const AtlasGoalsAllocation = {
                 line-height: 1.4;
             }
 
-            .atlas-goals-allocation-manage-summary {
-                display: grid;
-                grid-template-columns:
-                    repeat(
-                        2,
-                        minmax(
-                            0,
-                            1fr
-                        )
-                    );
-                gap: 9px;
-                margin-bottom: 14px;
-            }
-
-            .atlas-goals-allocation-manage-summary > div {
-                padding: 13px;
-                border-radius: 15px;
-                background:
-                    rgba(
-                        255,
-                        255,
-                        255,
-                        0.035
-                    );
-            }
-
-            .atlas-goals-allocation-manage-summary small {
-                display: block;
-                color:
-                    var(
-                        --color-text-muted
-                    );
-                font-size: 9px;
-            }
-
-            .atlas-goals-allocation-manage-summary strong {
-                display: block;
-                margin-top: 5px;
-                font-size: 15px;
-            }
-
-            .atlas-goals-allocation-list {
+            .atlas-goals-allocation-list,
+            .atlas-goals-allocation-records {
                 display: grid;
                 gap: 11px;
             }
 
             .atlas-goals-allocation-row {
                 padding: 14px;
-                border:
-                    1px solid
-                    rgba(
-                        145,
-                        164,
-                        202,
-                        0.15
-                    );
+                border: 1px solid rgba(145, 164, 202, 0.15);
                 border-radius: 17px;
-                background:
-                    rgba(
-                        255,
-                        255,
-                        255,
-                        0.025
-                    );
+                background: rgba(255, 255, 255, 0.025);
             }
 
             .atlas-goals-allocation-row-head {
                 display: flex;
                 align-items: flex-start;
-                justify-content:
-                    space-between;
+                justify-content: space-between;
                 gap: 10px;
                 margin-bottom: 12px;
-            }
-
-            .atlas-goals-allocation-row-head > div {
-                min-width: 0;
             }
 
             .atlas-goals-allocation-row-head strong,
@@ -4275,88 +3737,143 @@ const AtlasGoalsAllocation = {
 
             .atlas-goals-allocation-row-head strong {
                 font-size: 12px;
-                overflow-wrap: anywhere;
             }
 
             .atlas-goals-allocation-row-head small {
                 margin-top: 5px;
-                color:
-                    var(
-                        --color-text-muted
-                    );
+                color: var(--color-text-muted);
                 font-size: 9px;
-                line-height: 1.4;
             }
 
             .atlas-goals-allocation-row-head > span {
-                flex:
-                    0
-                    0
-                    auto;
-                color:
-                    var(
-                        --color-primary
-                    );
+                color: var(--color-primary);
                 font-size: 9px;
                 white-space: nowrap;
             }
 
-            .atlas-goals-allocation-methods {
+            .atlas-goals-allocation-methods,
+            .atlas-goals-allocation-manage-summary {
                 display: grid;
                 grid-template-columns:
-                    repeat(
-                        2,
-                        minmax(
-                            0,
-                            1fr
-                        )
-                    );
+                    repeat(2, minmax(0, 1fr));
                 gap: 9px;
             }
 
             .atlas-goals-allocation-preview {
                 display: flex;
                 align-items: center;
-                justify-content:
-                    space-between;
-                gap: 10px;
+                justify-content: space-between;
                 margin-top: 10px;
                 padding: 10px;
                 border-radius: 12px;
-                background:
-                    rgba(
-                        77,
-                        163,
-                        255,
-                        0.065
-                    );
+                background: rgba(77, 163, 255, 0.065);
             }
 
             .atlas-goals-allocation-preview span {
-                color:
-                    var(
-                        --color-text-muted
-                    );
+                color: var(--color-text-muted);
                 font-size: 9px;
             }
 
             .atlas-goals-allocation-preview strong {
-                color:
-                    var(
-                        --color-primary
-                    );
+                color: var(--color-primary);
                 font-size: 13px;
             }
 
-            .atlas-goals-allocation-empty {
-                padding:
-                    28px
-                    12px;
+            .atlas-goals-allocation-manage-summary {
                 margin-bottom: 14px;
-                color:
-                    var(
-                        --color-text-muted
-                    );
+            }
+
+            .atlas-goals-allocation-manage-summary > div {
+                padding: 13px;
+                border-radius: 15px;
+                background: rgba(255, 255, 255, 0.035);
+            }
+
+            .atlas-goals-allocation-manage-summary small,
+            .atlas-goals-allocation-manage-summary strong {
+                display: block;
+            }
+
+            .atlas-goals-allocation-manage-summary small {
+                color: var(--color-text-muted);
+                font-size: 9px;
+            }
+
+            .atlas-goals-allocation-manage-summary strong {
+                margin-top: 5px;
+                font-size: 15px;
+            }
+
+            .atlas-goals-allocation-record {
+                display: flex;
+                align-items: flex-start;
+                justify-content: space-between;
+                gap: 13px;
+                padding: 13px;
+                border: 1px solid rgba(145, 164, 202, 0.12);
+                border-radius: 15px;
+                background: rgba(255, 255, 255, 0.025);
+            }
+
+            .atlas-goals-allocation-record strong,
+            .atlas-goals-allocation-record small {
+                display: block;
+            }
+
+            .atlas-goals-allocation-record small {
+                margin-top: 4px;
+                color: var(--color-text-muted);
+                font-size: 9px;
+            }
+
+            .atlas-goals-allocation-record p {
+                margin: 6px 0 0;
+                color: var(--color-text-muted);
+                font-size: 9px;
+            }
+
+            .atlas-goals-allocation-record-source {
+                display: inline-flex;
+                margin-bottom: 7px;
+                padding: 4px 8px;
+                border-radius: 99px;
+                background: rgba(77, 163, 255, 0.1);
+                color: var(--color-primary);
+                font-size: 8px;
+                font-weight: 800;
+            }
+
+            .atlas-goals-allocation-record-source[data-source="prior_liquidity"] {
+                background: rgba(82, 207, 139, 0.1);
+                color: #67db9d;
+            }
+
+            .atlas-goals-allocation-record-actions {
+                flex: 0 0 auto;
+                text-align: right;
+            }
+
+            .atlas-goals-allocation-record-actions > strong {
+                font-size: 13px;
+            }
+
+            .atlas-goals-allocation-record-actions button {
+                display: block;
+                margin: 8px 0 0 auto;
+                padding: 0;
+                border: 0;
+                background: transparent;
+                color: var(--color-primary);
+                font-size: 9px;
+            }
+
+            .atlas-goals-allocation-record-actions button.danger {
+                color: var(--color-danger);
+            }
+
+            .atlas-goals-allocation-empty {
+                padding: 28px 12px;
+                color: var(--color-text-muted);
                 text-align: center;
                 line-height: 1.5;
             }
@@ -4367,181 +3884,64 @@ const AtlasGoalsAllocation = {
                 font-size: 9px;
             }
 
-            .atlas-goals-allocation-records {
-                display: grid;
-                margin-bottom: 14px;
+            @media (max-width: 380px) {
+
+                .atlas-goals-allocation-main-head {
+                    align-items: flex-end;
+                }
+
+                .atlas-goals-allocation-main-head p {
+                    max-width: 195px;
+                }
+
+                .atlas-goals-allocation-source-title {
+                    grid-template-columns:
+                        38px
+                        minmax(0, 1fr)
+                        auto;
+                    gap: 8px;
+                }
+
+                .atlas-goals-allocation-icon {
+                    width: 38px;
+                    height: 38px;
+                }
+
+                .atlas-goals-allocation-source-title > b {
+                    font-size: 18px;
+                }
+
+                .atlas-goals-allocation-metric {
+                    padding:
+                        11px
+                        5px;
+                }
+
+                .atlas-goals-allocation-metric strong {
+                    font-size: 12px;
+                }
+
             }
 
-            .atlas-goals-allocation-record {
-                display: flex;
-                align-items: flex-start;
-                justify-content:
-                    space-between;
-                gap: 13px;
-                padding:
-                    14px
-                    0;
-                border-bottom:
-                    1px solid
-                    rgba(
-                        145,
-                        164,
-                        202,
-                        0.1
-                    );
-            }
+            @media (max-width: 335px) {
 
-            .atlas-goals-allocation-record[data-incompatible="true"] {
-                padding:
-                    13px
-                    11px;
-                border:
-                    1px solid
-                    rgba(
-                        255,
-                        95,
-                        112,
-                        0.2
-                    );
-                border-radius: 14px;
-                background:
-                    rgba(
-                        255,
-                        95,
-                        112,
-                        0.055
-                    );
-            }
+                .atlas-goals-allocation-source-title {
+                    grid-template-columns:
+                        38px
+                        minmax(0, 1fr);
+                }
 
-            .atlas-goals-allocation-record > div:first-child {
-                min-width: 0;
-            }
-
-            .atlas-goals-allocation-record strong,
-            .atlas-goals-allocation-record small {
-                display: block;
-            }
-
-            .atlas-goals-allocation-record > div:first-child > strong {
-                font-size: 12px;
-            }
-
-            .atlas-goals-allocation-record small {
-                margin-top: 4px;
-                color:
-                    var(
-                        --color-text-muted
-                    );
-                font-size: 9px;
-            }
-
-            .atlas-goals-allocation-record p {
-                margin:
-                    6px
-                    0
-                    0;
-                color:
-                    var(
-                        --color-text-muted
-                    );
-                font-size: 9px;
-                line-height: 1.45;
-            }
-
-            .atlas-goals-allocation-record-source {
-                display: inline-flex;
-                min-height: 21px;
-                align-items: center;
-                margin-bottom: 7px;
-                padding:
-                    0
-                    8px;
-                border-radius: 99px;
-                background:
-                    rgba(
-                        77,
-                        163,
-                        255,
-                        0.1
-                    );
-                color:
-                    var(
-                        --color-primary
-                    );
-                font-size: 8px;
-                font-weight: 800;
-            }
-
-            .atlas-goals-allocation-record-source[data-source="prior_liquidity"] {
-                background:
-                    rgba(
-                        95,
-                        214,
-                        150,
-                        0.1
-                    );
-                color: #86e4ac;
-            }
-
-            .atlas-goals-allocation-warning {
-                display: block;
-                margin-top: 7px;
-                color:
-                    var(
-                        --color-danger
-                    );
-                font-size: 9px;
-                line-height: 1.45;
-            }
-
-            .atlas-goals-allocation-record-actions {
-                flex:
-                    0
-                    0
-                    auto;
-                text-align: right;
-            }
-
-            .atlas-goals-allocation-record-actions > strong {
-                font-size: 13px;
-                white-space: nowrap;
-            }
-
-            .atlas-goals-allocation-record-actions button {
-                display: block;
-                margin:
-                    8px
-                    0
-                    0
-                    auto;
-                padding: 0;
-                border: 0;
-                background: transparent;
-                color:
-                    var(
-                        --color-primary
-                    );
-                font-size: 9px;
-            }
-
-            .atlas-goals-allocation-record-actions button.danger {
-                color:
-                    var(
-                        --color-danger
-                    );
-            }
-
-            @media (
-                max-width: 350px
-            ) {
+                .atlas-goals-allocation-source-title > b {
+                    grid-column:
+                        2;
+                    justify-self:
+                        start;
+                }
 
                 .atlas-goals-allocation-methods,
                 .atlas-goals-allocation-manage-summary {
                     grid-template-columns:
-                        minmax(
-                            0,
-                            1fr
-                        );
+                        minmax(0, 1fr);
                 }
 
                 .atlas-goals-allocation-record {
@@ -4568,40 +3968,6 @@ const AtlasGoalsAllocation = {
         document.head.appendChild(
             style
         );
-
-    },
-
-    installRender() {
-
-        this.originalRender =
-            AtlasGoals.render.bind(
-                AtlasGoals
-            );
-
-        AtlasGoals.render =
-            data => {
-
-                const html =
-                    this.originalRender(
-                        data
-                    );
-
-                const panel =
-                    this.summaryPanel(
-                        data
-                    );
-
-                return html.replace(
-                    '<button\n                    class="primary"',
-                    `
-
-                        ${panel}
-
-                        <button
-                            class="primary"`
-                );
-
-            };
 
     },
 
@@ -4773,8 +4139,6 @@ const AtlasGoalsAllocation = {
             true;
 
         this.installStyles();
-
-        this.installRender();
 
         this.bindEvents();
 
