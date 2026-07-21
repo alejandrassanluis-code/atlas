@@ -649,7 +649,7 @@ const AtlasSetup = {
                     "Liquidez",
 
                 description:
-                    "Introduce el saldo actual disponible en cada cuenta."
+                    "Introduce el saldo inicial disponible en cada cuenta."
             },
 
             investments: {
@@ -741,6 +741,7 @@ const AtlasSetup = {
                     this.currencyField(
                         `balance_${account.id}`,
                         account.name,
+                        account.initialBalance ??
                         account.balance
                     )
             )
@@ -800,6 +801,7 @@ const AtlasSetup = {
                     this.currencyField(
                         `balance_${account.id}`,
                         account.name,
+                        account.initialBalance ??
                         account.balance
                     )
             )
@@ -1146,12 +1148,22 @@ const AtlasSetup = {
             ).forEach(
                 account => {
 
-                    account.balance =
+                    const balance =
                         this.number(
                             values.get(
                                 `balance_${account.id}`
                             )
                         );
+
+                    account.balance =
+                        balance;
+
+                    account.initialBalance =
+                        balance;
+
+                    account.initialBalanceUpdatedAt =
+                        new Date()
+                            .toISOString();
 
                     account.updatedAt =
                         new Date()
@@ -1173,19 +1185,35 @@ const AtlasSetup = {
             ).forEach(
                 account => {
 
-                    account.invested =
+                    const invested =
                         this.number(
                             values.get(
                                 `invested_${account.id}`
                             )
                         );
 
-                    account.balance =
+                    const balance =
                         this.number(
                             values.get(
                                 `balance_${account.id}`
                             )
                         );
+
+                    account.invested =
+                        invested;
+
+                    account.balance =
+                        balance;
+
+                    account.initialInvested =
+                        invested;
+
+                    account.initialBalance =
+                        balance;
+
+                    account.initialBalanceUpdatedAt =
+                        new Date()
+                            .toISOString();
 
                     account.valueUpdatedAt =
                         new Date()
