@@ -1082,6 +1082,19 @@ const AtlasGoals = {
                             minmax(0, 1fr)
                         );
                     gap: 10px;
+                    min-width: 0;
+                }
+
+                .atlas-goal-actions > * {
+                    min-width: 0;
+                }
+
+                .atlas-goal-actions input,
+                .atlas-goal-actions select {
+                    width: 100%;
+                    min-width: 0;
+                    max-width: 100%;
+                    box-sizing: border-box;
                 }
 
                 .atlas-goal-danger {
@@ -1178,6 +1191,20 @@ const AtlasGoals = {
                     color: #98a2bb;
                     font-size: 12px;
                     line-height: 1.5;
+                }
+
+                @media (
+                    max-width: 520px
+                ) {
+
+                    .atlas-goal-date-fields {
+                        grid-template-columns:
+                            minmax(
+                                0,
+                                1fr
+                            );
+                    }
+
                 }
 
                 @media (
@@ -2077,7 +2104,10 @@ const AtlasGoals = {
                 </div>
 
                 <div
-                    class="atlas-goal-actions"
+                    class="
+                        atlas-goal-actions
+                        atlas-goal-date-fields
+                    "
                 >
 
                     <label
