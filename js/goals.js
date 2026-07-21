@@ -1163,8 +1163,21 @@ const AtlasGoals = {
                         );
                 }
 
-                .atlas-goals-distributions-placeholder {
-                    display: none;
+                .atlas-goals-distributions-empty {
+                    padding: 30px 18px;
+                    text-align: center;
+                }
+
+                .atlas-goals-distributions-empty strong,
+                .atlas-goals-distributions-empty span {
+                    display: block;
+                }
+
+                .atlas-goals-distributions-empty span {
+                    margin-top: 8px;
+                    color: #98a2bb;
+                    font-size: 12px;
+                    line-height: 1.5;
                 }
 
                 @media (
@@ -1525,8 +1538,8 @@ const AtlasGoals = {
             </section>
 
             <button
+                class="primary"
                 type="button"
-                class="primary atlas-goals-new-button"
                 data-goal-action="new"
                 style="
                     width:100%;
@@ -1618,18 +1631,46 @@ const AtlasGoals = {
 
     },
 
-    distributionsContent() {
+    distributionsContent(
+        data
+    ) {
+
+        if (
+            typeof AtlasGoalsAllocation !==
+                "undefined" &&
+            typeof AtlasGoalsAllocation
+                .summaryPanel ===
+                "function"
+        ) {
+
+            return AtlasGoalsAllocation
+                .summaryPanel(
+                    data
+                );
+
+        }
 
         return `
 
-            <button
-                    class="primary atlas-goals-distributions-placeholder"
-                    type="button"
-                    tabindex="-1"
-                    aria-hidden="true"
+            <section
+                class="panel"
             >
-                Distribuciones
-            </button>
+
+                <div
+                    class="atlas-goals-distributions-empty"
+                >
+
+                    <strong>
+                        Distribuciones no disponibles
+                    </strong>
+
+                    <span>
+                        No se ha podido cargar el módulo de distribuciones.
+                    </span>
+
+                </div>
+
+            </section>
 
         `;
 
@@ -1683,7 +1724,9 @@ const AtlasGoals = {
 
                 ${
                     isDistributions
-                        ? this.distributionsContent()
+                        ? this.distributionsContent(
+                            this.data
+                        )
                         : this.goalsContent(
                             this.data
                         )
