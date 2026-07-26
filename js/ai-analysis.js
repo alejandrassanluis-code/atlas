@@ -64,6 +64,87 @@ const AtlasAIAnalysis = {
 
     },
 
+    categoryName(
+        category
+    ) {
+
+        if (!category) {
+
+            return "Sin categoría";
+
+        }
+
+        return (
+            category.category ||
+            category.label ||
+            category.name ||
+            "Sin categoría"
+        );
+
+    },
+
+    categoryAmount(
+        category,
+        context
+    ) {
+
+        if (!category) {
+
+            return 0;
+
+        }
+
+        return context.number(
+            category.amount
+        );
+
+    },
+
+    findCategory(
+        summary,
+        categoryName
+    ) {
+
+        const normalizedName =
+            String(
+                categoryName || ""
+            )
+                .trim()
+                .toLocaleLowerCase(
+                    "es-ES"
+                );
+
+        if (!normalizedName) {
+
+            return null;
+
+        }
+
+        return (
+            summary.categories || []
+        )
+            .find(
+                category => {
+
+                    const currentName =
+                        this.categoryName(
+                            category
+                        )
+                            .trim()
+                            .toLocaleLowerCase(
+                                "es-ES"
+                            );
+
+                    return (
+                        currentName ===
+                        normalizedName
+                    );
+
+                }
+            ) || null;
+
+    },
+
     savingsDifference(
         summary,
         context
@@ -108,6 +189,22 @@ const AtlasAIAnalysis = {
         context.number(
             summary.previous
                 .monthlyIncome
+        );
+
+    },
+
+    investmentDifference(
+        summary,
+        context
+    ) {
+
+        return context.number(
+            summary.current
+                .monthlyInvested
+        ) -
+        context.number(
+            summary.previous
+                .monthlyInvested
         );
 
     },
@@ -234,21 +331,11 @@ const AtlasAIAnalysis = {
                 context
             );
 
-        const currentInvested =
-            context.number(
-                summary.current
-                    .monthlyInvested
-            );
-
-        const previousInvested =
-            context.number(
-                summary.previous
-                    .monthlyInvested
-            );
-
         const investedDifference =
-            currentInvested -
-            previousInvested;
+            this.investmentDifference(
+                summary,
+                context
+            );
 
         if (
             incomeDifference > 0
@@ -619,19 +706,23 @@ const AtlasAIAnalysis = {
 
         if (
             topCategory &&
-            context.number(
-                topCategory.amount
+            this.categoryAmount(
+                topCategory,
+                context
             ) > 0
         ) {
 
             recommendations.push(
                 `Revisa ${
-                    topCategory.category ||
-                    topCategory.label ||
-                    "tu categoría principal"
+                    this.categoryName(
+                        topCategory
+                    )
                 }, que concentra ${
                     context.formatCurrency(
-                        topCategory.amount
+                        this.categoryAmount(
+                            topCategory,
+                            context
+                        )
                     )
                 } de gasto este mes.`
             );
@@ -689,8 +780,7 @@ const AtlasAIAnalysis = {
         }
 
         if (
-            recommendations.length ===
-            0
+            recommendations.length === 0
         ) {
 
             recommendations.push(
@@ -761,8 +851,11 @@ const AtlasAIAnalysis = {
             daysInMonth;
 
         const additionalExpenses =
-            projectedExpenses -
-            currentExpenses;
+            Math.max(
+                0,
+                projectedExpenses -
+                currentExpenses
+            );
 
         const projectedSavings =
             currentSavings -
@@ -786,10 +879,449 @@ const AtlasAIAnalysis = {
 
     },
 
+    simulateCategoryReduction(
+        category,
+        percentage,
+        summary,
+        context
+    ) {
+
+        const normalizedPercentage =
+            Math.min(
+                100,
+                Math.max(
+                    0,
+                    context.number(
+                        percentage
+                    )
+                )
+            );
+
+        const amount =
+            this.categoryAmount(
+                category,
+                context
+            );
+
+        const reduction =
+            amount *
+            normalizedPercentage /
+            100;
+
+        const currentSavings =
+            context.number(
+                summary.current
+                    .monthlySavings
+            );
+
+        return {
+
+            category:
+                this.categoryName(
+                    category
+                ),
+
+            percentage:
+                normalizedPercentage,
+
+            originalAmount:
+                amount,
+
+            reduction,
+
+            resultingAmount:
+                Math.max(
+                    0,
+                    amount -
+                    reduction
+                ),
+
+            currentSavings,
+
+            projectedSavings:
+                currentSavings +
+                reduction
+
+        };
+
+    },
+
+    opportunities(
+        summary,
+        context
+    ) {
+
+        const opportunities = [];
+
+        const current =
+            summary.current;
+
+        const topCategory =
+            this.topCategory(
+                summary,
+                context
+            );
+
+        const savingsDifference =
+            this.savingsDifference(
+                summary,
+                context
+            );
+
+        const expenseDifference =
+            this.expenseDifference(
+                summary,
+                context
+            );
+
+        const income =
+            context.number(
+                current.monthlyIncome
+            );
+
+        const savingRate =
+            context.number(
+                current.monthlySavingRate
+            );
+
+        const liquidity =
+            context.number(
+                current.liquidity
+            );
+
+        const debt =
+            context.number(
+                current.debt
+            );
+
+        if (
+            savingsDifference < 0
+        ) {
+
+            opportunities.push({
+
+                priority:
+                    100,
+
+                type:
+                    "warning",
+
+                topic:
+                    "savings",
+
+                intent:
+                    "compare-savings",
+
+                title:
+                    "Tu ahorro ha bajado",
+
+                text:
+                    `Este mes llevas ${
+                        context.formatCurrency(
+                            Math.abs(
+                                savingsDifference
+                            )
+                        )
+                    } menos de ahorro que el mes anterior.`
+
+            });
+
+        }
+
+        if (
+            expenseDifference > 0
+        ) {
+
+            opportunities.push({
+
+                priority:
+                    90,
+
+                type:
+                    "warning",
+
+                topic:
+                    "expenses",
+
+                intent:
+                    "compare-expenses",
+
+                title:
+                    "Tus gastos han aumentado",
+
+                text:
+                    `Los gastos netos han aumentado ${
+                        context.formatCurrency(
+                            expenseDifference
+                        )
+                    } respecto al mes anterior.`
+
+            });
+
+        }
+
+        if (
+            summary.budget
+                ?.status ===
+                "exceeded"
+        ) {
+
+            opportunities.push({
+
+                priority:
+                    110,
+
+                type:
+                    "danger",
+
+                topic:
+                    "budgets",
+
+                intent:
+                    "budget-status",
+
+                title:
+                    "Has superado el presupuesto",
+
+                text:
+                    `El presupuesto mensual está excedido en ${
+                        context.formatCurrency(
+                            Math.abs(
+                                context.number(
+                                    summary.budget
+                                        .remaining
+                                )
+                            )
+                        )
+                    }.`
+
+            });
+
+        } else if (
+            summary.budget &&
+            context.number(
+                summary.budget.total
+            ) > 0
+        ) {
+
+            const remaining =
+                context.number(
+                    summary.budget
+                        .remaining
+                );
+
+            const total =
+                context.number(
+                    summary.budget
+                        .total
+                );
+
+            const remainingPercentage =
+                total > 0
+                    ? remaining /
+                        total *
+                        100
+                    : 0;
+
+            if (
+                remaining >= 0 &&
+                remainingPercentage <= 15
+            ) {
+
+                opportunities.push({
+
+                    priority:
+                        80,
+
+                    type:
+                        "warning",
+
+                    topic:
+                        "budgets",
+
+                    intent:
+                        "budget-status",
+
+                    title:
+                        "Tu presupuesto está casi agotado",
+
+                    text:
+                        `Solo quedan ${
+                            context.formatCurrency(
+                                remaining
+                            )
+                        } disponibles este mes.`
+
+                });
+
+            }
+
+        }
+
+        if (
+            topCategory
+        ) {
+
+            opportunities.push({
+
+                priority:
+                    60,
+
+                type:
+                    "information",
+
+                topic:
+                    "expenses",
+
+                intent:
+                    "top-category",
+
+                category:
+                    this.categoryName(
+                        topCategory
+                    ),
+
+                title:
+                    "Tu principal gasto del mes",
+
+                text:
+                    `${
+                        this.categoryName(
+                            topCategory
+                        )
+                    } es la categoría con más gasto, con ${
+                        context.formatCurrency(
+                            this.categoryAmount(
+                                topCategory,
+                                context
+                            )
+                        )
+                    }.`
+
+            });
+
+        }
+
+        if (
+            income > 0 &&
+            savingRate >= 20
+        ) {
+
+            opportunities.push({
+
+                priority:
+                    50,
+
+                type:
+                    "success",
+
+                topic:
+                    "savings",
+
+                intent:
+                    "saving-rate",
+
+                title:
+                    "Tu tasa de ahorro es sólida",
+
+                text:
+                    `Este mes estás ahorrando el ${
+                        context.formatPercent(
+                            savingRate
+                        )
+                    } de tus ingresos.`
+
+            });
+
+        }
+
+        if (
+            liquidity < 0
+        ) {
+
+            opportunities.push({
+
+                priority:
+                    120,
+
+                type:
+                    "danger",
+
+                topic:
+                    "liquidity",
+
+                intent:
+                    "liquidity-status",
+
+                title:
+                    "Tu liquidez es negativa",
+
+                text:
+                    `La liquidez total se sitúa en ${
+                        context.formatCurrency(
+                            liquidity
+                        )
+                    }.`
+
+            });
+
+        }
+
+        if (
+            debt > liquidity &&
+            debt > 0
+        ) {
+
+            opportunities.push({
+
+                priority:
+                    70,
+
+                type:
+                    "warning",
+
+                topic:
+                    "debt",
+
+                intent:
+                    "debt-status",
+
+                title:
+                    "La deuda supera tu liquidez",
+
+                text:
+                    `La diferencia es de ${
+                        context.formatCurrency(
+                            debt -
+                            liquidity
+                        )
+                    }.`
+
+            });
+
+        }
+
+        return opportunities
+            .sort(
+                (
+                    first,
+                    second
+                ) =>
+                    second.priority -
+                    first.priority
+            )
+            .slice(
+                0,
+                5
+            );
+
+    },
+
     response(
         type,
         text,
-        followUps = []
+        followUps = [],
+        metadata = {}
     ) {
 
         return {
@@ -801,8 +1333,10 @@ const AtlasAIAnalysis = {
             followUps:
                 followUps.slice(
                     0,
-                    4
-                )
+                    5
+                ),
+
+            metadata
 
         };
 
@@ -822,155 +1356,3 @@ const AtlasAIAnalysis = {
     }
 
 };
-
-
-/* ==========================================================
-   SUSTITUIR EN ai-local.js
-
-   Elimina desde:
-
-       topCategory(summary) {
-
-   hasta el cierre de:
-
-       insufficient(...) {
-
-   pero conserva alertColor(), renderAlerts() y todo lo demás.
-
-   Pega en ese lugar este bloque.
-========================================================== */
-
-    topCategory(summary) {
-
-        return AtlasAIAnalysis
-            .topCategory(
-                summary,
-                this
-            );
-
-    },
-
-    secondCategory(summary) {
-
-        return AtlasAIAnalysis
-            .secondCategory(
-                summary,
-                this
-            );
-
-    },
-
-    savingsDifference(summary) {
-
-        return AtlasAIAnalysis
-            .savingsDifference(
-                summary,
-                this
-            );
-
-    },
-
-    expenseDifference(summary) {
-
-        return AtlasAIAnalysis
-            .expenseDifference(
-                summary,
-                this
-            );
-
-    },
-
-    incomeDifference(summary) {
-
-        return AtlasAIAnalysis
-            .incomeDifference(
-                summary,
-                this
-            );
-
-    },
-
-    mainMessage(summary) {
-
-        return AtlasAIAnalysis
-            .mainMessage(
-                summary,
-                this
-            );
-
-    },
-
-    explanation(summary) {
-
-        return AtlasAIAnalysis
-            .explanation(
-                summary,
-                this
-            );
-
-    },
-
-    alerts(summary) {
-
-        return AtlasAIAnalysis
-            .alerts(
-                summary,
-                this
-            );
-
-    },
-
-    recommendations(summary) {
-
-        return AtlasAIAnalysis
-            .recommendations(
-                summary,
-                this
-            );
-
-    },
-
-    prediction(summary) {
-
-        return AtlasAIAnalysis
-            .prediction(
-                summary,
-                this
-            );
-
-    },
-
-    response(
-        type,
-        text,
-        followUps = []
-    ) {
-
-        return AtlasAIAnalysis
-            .response(
-                type,
-                text,
-                followUps
-            );
-
-    },
-
-    insufficient(
-        text,
-        followUps = []
-    ) {
-
-        return AtlasAIAnalysis
-            .insufficient(
-                text,
-                followUps
-            );
-
-    },
-
-/* ==========================================================
-   ORDEN DE LOS SCRIPTS EN index.html
-========================================================== */
-
-<script src="ai-analysis.js"></script>
-<script src="ai-local.js"></script>
