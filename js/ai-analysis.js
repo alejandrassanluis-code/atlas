@@ -1127,6 +1127,579 @@ const AtlasAIAnalysis = {
     },
 
     /* ======================================================
+       REASONING ENGINE
+    ====================================================== */
+
+    reason(
+        summary,
+        context,
+        questionKey = null,
+        metadata = {}
+    ) {
+
+        const current =
+            summary.current || {};
+
+        const topCategory =
+            this.topCategory(
+                summary,
+                context
+            );
+
+        const secondCategory =
+            this.secondCategory(
+                summary,
+                context
+            );
+
+        const savings =
+            context.number(
+                current.monthlySavings
+            );
+
+        const income =
+            context.number(
+                current.monthlyIncome
+            );
+
+        const expenses =
+            context.number(
+                current.monthlyExpenses
+            );
+
+        const liquidity =
+            context.number(
+                current.liquidity
+            );
+
+        const debt =
+            context.number(
+                current.debt
+            );
+
+        const investments =
+            context.number(
+                current.investments
+            );
+
+        const monthlyInvested =
+            context.number(
+                current.monthlyInvested
+            );
+
+        const savingRate =
+            context.number(
+                current.monthlySavingRate
+            );
+
+        const savingsDifference =
+            this.savingsDifference(
+                summary,
+                context
+            );
+
+        const expenseDifference =
+            this.expenseDifference(
+                summary,
+                context
+            );
+
+        const incomeDifference =
+            this.incomeDifference(
+                summary,
+                context
+            );
+
+        const investmentDifference =
+            this.investmentDifference(
+                summary,
+                context
+            );
+
+        const conversationContext =
+            this.createConversationContext(
+                questionKey,
+                summary,
+                context,
+                metadata
+            );
+
+        const reasoning = {
+
+            questionKey:
+                questionKey || null,
+
+            theme:
+                conversationContext.theme,
+
+            metric:
+                conversationContext.metric,
+
+            conversationContext,
+
+            period:
+                summary.monthKey ||
+                null,
+
+            comparisonPeriod:
+                summary.previousMonthKey ||
+                null,
+
+            current: {
+
+                savings,
+
+                income,
+
+                expenses,
+
+                liquidity,
+
+                debt,
+
+                investments,
+
+                monthlyInvested,
+
+                savingRate
+
+            },
+
+            differences: {
+
+                savings:
+                    savingsDifference,
+
+                expenses:
+                    expenseDifference,
+
+                income:
+                    incomeDifference,
+
+                investments:
+                    investmentDifference
+
+            },
+
+            categories: {
+
+                top:
+                    topCategory
+                        ? {
+
+                            name:
+                                this.categoryName(
+                                    topCategory
+                                ),
+
+                            amount:
+                                this.categoryAmount(
+                                    topCategory,
+                                    context
+                                ),
+
+                            expenseShare:
+                                this.categoryShareOfExpenses(
+                                    topCategory,
+                                    summary,
+                                    context
+                                ),
+
+                            incomeShare:
+                                this.categoryShareOfIncome(
+                                    topCategory,
+                                    summary,
+                                    context
+                                )
+
+                        }
+                        : null,
+
+                second:
+                    secondCategory
+                        ? {
+
+                            name:
+                                this.categoryName(
+                                    secondCategory
+                                ),
+
+                            amount:
+                                this.categoryAmount(
+                                    secondCategory,
+                                    context
+                                ),
+
+                            expenseShare:
+                                this.categoryShareOfExpenses(
+                                    secondCategory,
+                                    summary,
+                                    context
+                                ),
+
+                            incomeShare:
+                                this.categoryShareOfIncome(
+                                    secondCategory,
+                                    summary,
+                                    context
+                                )
+
+                        }
+                        : null
+
+            },
+
+            alerts:
+                this.alerts(
+                    summary,
+                    context
+                ),
+
+            opportunities:
+                this.opportunities(
+                    summary,
+                    context
+                ),
+
+            recommendations:
+                this.recommendations(
+                    summary,
+                    context
+                ),
+
+            prediction:
+                this.prediction(
+                    summary,
+                    context
+                ),
+
+            mainMessage:
+                this.mainMessage(
+                    summary,
+                    context
+                ),
+
+            explanation:
+                this.explanation(
+                    summary,
+                    context
+                ),
+
+            health:
+                "neutral",
+
+            focus:
+                null,
+
+            evidence:
+                [],
+
+            followUps:
+                []
+
+        };
+
+        if (
+            savings < 0 ||
+            liquidity < 0 ||
+            summary.budget
+                ?.status ===
+                "exceeded"
+        ) {
+
+            reasoning.health =
+                "danger";
+
+        } else if (
+            debt > 0 &&
+            debt > liquidity
+        ) {
+
+            reasoning.health =
+                "warning";
+
+        } else if (
+            income > 0 &&
+            savingRate >= 20
+        ) {
+
+            reasoning.health =
+                "excellent";
+
+        } else if (
+            income > 0 &&
+            savingRate >= 10
+        ) {
+
+            reasoning.health =
+                "good";
+
+        }
+
+        if (
+            summary.budget
+                ?.status ===
+                "exceeded"
+        ) {
+
+            reasoning.focus = {
+
+                type:
+                    "budget",
+
+                level:
+                    "danger",
+
+                title:
+                    "Presupuesto excedido",
+
+                value:
+                    Math.abs(
+                        context.number(
+                            summary.budget
+                                .remaining
+                        )
+                    )
+
+            };
+
+        } else if (
+            liquidity < 0
+        ) {
+
+            reasoning.focus = {
+
+                type:
+                    "liquidity",
+
+                level:
+                    "danger",
+
+                title:
+                    "Liquidez negativa",
+
+                value:
+                    liquidity
+
+            };
+
+        } else if (
+            savings < 0
+        ) {
+
+            reasoning.focus = {
+
+                type:
+                    "savings",
+
+                level:
+                    "danger",
+
+                title:
+                    "Ahorro negativo",
+
+                value:
+                    savings
+
+            };
+
+        } else if (
+            savingsDifference < 0
+        ) {
+
+            reasoning.focus = {
+
+                type:
+                    "savings",
+
+                level:
+                    "warning",
+
+                title:
+                    "Descenso del ahorro",
+
+                value:
+                    savingsDifference
+
+            };
+
+        } else if (
+            expenseDifference > 0
+        ) {
+
+            reasoning.focus = {
+
+                type:
+                    "expenses",
+
+                level:
+                    "warning",
+
+                title:
+                    "Aumento de gastos",
+
+                value:
+                    expenseDifference
+
+            };
+
+        } else if (topCategory) {
+
+            reasoning.focus = {
+
+                type:
+                    "category",
+
+                level:
+                    "information",
+
+                title:
+                    this.categoryName(
+                        topCategory
+                    ),
+
+                value:
+                    this.categoryAmount(
+                        topCategory,
+                        context
+                    )
+
+            };
+
+        } else if (
+            savingRate >= 20
+        ) {
+
+            reasoning.focus = {
+
+                type:
+                    "saving-rate",
+
+                level:
+                    "success",
+
+                title:
+                    "Tasa de ahorro sólida",
+
+                value:
+                    savingRate
+
+            };
+
+        }
+
+        if (
+            incomeDifference !== 0
+        ) {
+
+            reasoning.evidence.push({
+
+                type:
+                    "income-change",
+
+                value:
+                    incomeDifference
+
+            });
+
+        }
+
+        if (
+            expenseDifference !== 0
+        ) {
+
+            reasoning.evidence.push({
+
+                type:
+                    "expense-change",
+
+                value:
+                    expenseDifference
+
+            });
+
+        }
+
+        if (
+            savingsDifference !== 0
+        ) {
+
+            reasoning.evidence.push({
+
+                type:
+                    "savings-change",
+
+                value:
+                    savingsDifference
+
+            });
+
+        }
+
+        if (
+            investmentDifference !== 0
+        ) {
+
+            reasoning.evidence.push({
+
+                type:
+                    "investment-change",
+
+                value:
+                    investmentDifference
+
+            });
+
+        }
+
+        if (topCategory) {
+
+            reasoning.evidence.push({
+
+                type:
+                    "top-category",
+
+                category:
+                    this.categoryName(
+                        topCategory
+                    ),
+
+                value:
+                    this.categoryAmount(
+                        topCategory,
+                        context
+                    ),
+
+                expenseShare:
+                    this.categoryShareOfExpenses(
+                        topCategory,
+                        summary,
+                        context
+                    ),
+
+                incomeShare:
+                    this.categoryShareOfIncome(
+                        topCategory,
+                        summary,
+                        context
+                    )
+
+            });
+
+        }
+
+        reasoning.followUps =
+            this.dynamicFollowUps(
+                conversationContext,
+                summary,
+                context
+            );
+
+        return reasoning;
+
+    },
+
+    /* ======================================================
        MENSAJE PRINCIPAL
     ====================================================== */
 
