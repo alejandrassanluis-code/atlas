@@ -6,7 +6,49 @@
 
 const AtlasAIAnalysis = {
 
-    topCategory(
+    /* ======================================================
+       NORMALIZACIÓN
+    ====================================================== */
+
+    normalizeText(value) {
+
+        return String(
+            value || ""
+        )
+            .trim()
+            .toLocaleLowerCase(
+                "es-ES"
+            )
+            .normalize(
+                "NFD"
+            )
+            .replace(
+                /[\u0300-\u036f]/g,
+                ""
+            );
+
+    },
+
+    unique(values) {
+
+        return [
+            ...new Set(
+                (
+                    values || []
+                )
+                    .filter(
+                        Boolean
+                    )
+            )
+        ];
+
+    },
+
+    /* ======================================================
+       CATEGORÍAS
+    ====================================================== */
+
+    sortedCategories(
         summary,
         context
     ) {
@@ -31,7 +73,22 @@ const AtlasAIAnalysis = {
                     context.number(
                         first.amount
                     )
-            )[0] || null;
+            );
+
+    },
+
+    topCategory(
+        summary,
+        context
+    ) {
+
+        return (
+            this.sortedCategories(
+                summary,
+                context
+            )[0] ||
+            null
+        );
 
     },
 
@@ -41,32 +98,16 @@ const AtlasAIAnalysis = {
     ) {
 
         return (
-            summary.categories || []
-        )
-            .filter(
-                category =>
-                    context.number(
-                        category.amount
-                    ) > 0
-            )
-            .sort(
-                (
-                    first,
-                    second
-                ) =>
-                    context.number(
-                        second.amount
-                    ) -
-                    context.number(
-                        first.amount
-                    )
-            )[1] || null;
+            this.sortedCategories(
+                summary,
+                context
+            )[1] ||
+            null
+        );
 
     },
 
-    categoryName(
-        category
-    ) {
+    categoryName(category) {
 
         if (!category) {
 
@@ -106,13 +147,40 @@ const AtlasAIAnalysis = {
     ) {
 
         const normalizedName =
-            String(
-                categoryName || ""
-            )
-                .trim()
-                .toLocaleLowerCase(
-                    "es-ES"
-                );
+            this.normalizeText(
+                categoryName
+            );
+
+        if (!normalizedName) {
+
+            return null;
+
+        }
+
+        return (
+            summary.categories || []
+        )
+            .find(
+                category =>
+                    this.normalizeText(
+                        this.categoryName(
+                            category
+                        )
+                    ) ===
+                    normalizedName
+            ) || null;
+
+    },
+
+    findCategoryContaining(
+        summary,
+        categoryName
+    ) {
+
+        const normalizedName =
+            this.normalizeText(
+                categoryName
+            );
 
         if (!normalizedName) {
 
@@ -127,17 +195,19 @@ const AtlasAIAnalysis = {
                 category => {
 
                     const currentName =
-                        this.categoryName(
-                            category
-                        )
-                            .trim()
-                            .toLocaleLowerCase(
-                                "es-ES"
-                            );
+                        this.normalizeText(
+                            this.categoryName(
+                                category
+                            )
+                        );
 
                     return (
-                        currentName ===
-                        normalizedName
+                        currentName.includes(
+                            normalizedName
+                        ) ||
+                        normalizedName.includes(
+                            currentName
+                        )
                     );
 
                 }
@@ -145,18 +215,88 @@ const AtlasAIAnalysis = {
 
     },
 
+    categoryShareOfExpenses(
+        category,
+        summary,
+        context
+    ) {
+
+        const expenses =
+            context.number(
+                summary.current
+                    .monthlyExpenses
+            );
+
+        if (
+            !category ||
+            expenses <= 0
+        ) {
+
+            return 0;
+
+        }
+
+        return (
+            this.categoryAmount(
+                category,
+                context
+            ) /
+            expenses *
+            100
+        );
+
+    },
+
+    categoryShareOfIncome(
+        category,
+        summary,
+        context
+    ) {
+
+        const income =
+            context.number(
+                summary.current
+                    .monthlyIncome
+            );
+
+        if (
+            !category ||
+            income <= 0
+        ) {
+
+            return 0;
+
+        }
+
+        return (
+            this.categoryAmount(
+                category,
+                context
+            ) /
+            income *
+            100
+        );
+
+    },
+
+    /* ======================================================
+       DIFERENCIAS ENTRE PERIODOS
+    ====================================================== */
+
     savingsDifference(
         summary,
         context
     ) {
 
-        return context.number(
-            summary.current
-                .monthlySavings
-        ) -
-        context.number(
-            summary.previous
-                .monthlySavings
+        return (
+            context.number(
+                summary.current
+                    .monthlySavings
+            ) -
+            context.number(
+                summary.previous
+                    .monthlySavings
+            )
         );
 
     },
@@ -166,13 +306,15 @@ const AtlasAIAnalysis = {
         context
     ) {
 
-        return context.number(
-            summary.current
-                .monthlyExpenses
-        ) -
-        context.number(
-            summary.previous
-                .monthlyExpenses
+        return (
+            context.number(
+                summary.current
+                    .monthlyExpenses
+            ) -
+            context.number(
+                summary.previous
+                    .monthlyExpenses
+            )
         );
 
     },
@@ -182,13 +324,15 @@ const AtlasAIAnalysis = {
         context
     ) {
 
-        return context.number(
-            summary.current
-                .monthlyIncome
-        ) -
-        context.number(
-            summary.previous
-                .monthlyIncome
+        return (
+            context.number(
+                summary.current
+                    .monthlyIncome
+            ) -
+            context.number(
+                summary.previous
+                    .monthlyIncome
+            )
         );
 
     },
@@ -198,16 +342,793 @@ const AtlasAIAnalysis = {
         context
     ) {
 
-        return context.number(
-            summary.current
-                .monthlyInvested
-        ) -
-        context.number(
-            summary.previous
-                .monthlyInvested
+        return (
+            context.number(
+                summary.current
+                    .monthlyInvested
+            ) -
+            context.number(
+                summary.previous
+                    .monthlyInvested
+            )
         );
 
     },
+
+    /* ======================================================
+       CONTEXTO CONVERSACIONAL
+    ====================================================== */
+
+    questionTheme(questionKey) {
+
+        const question =
+            String(
+                questionKey || ""
+            );
+
+        if (
+            question.startsWith(
+                "status-"
+            )
+        ) {
+
+            return "status";
+
+        }
+
+        if (
+            question.startsWith(
+                "savings-"
+            )
+        ) {
+
+            return "savings";
+
+        }
+
+        if (
+            question.startsWith(
+                "expenses-"
+            )
+        ) {
+
+            return "expenses";
+
+        }
+
+        if (
+            question.startsWith(
+                "income-"
+            )
+        ) {
+
+            return "income";
+
+        }
+
+        if (
+            question.startsWith(
+                "liquidity-"
+            )
+        ) {
+
+            return "liquidity";
+
+        }
+
+        if (
+            question.startsWith(
+                "debt-"
+            )
+        ) {
+
+            return "debt";
+
+        }
+
+        if (
+            question.startsWith(
+                "investments-"
+            )
+        ) {
+
+            return "investments";
+
+        }
+
+        if (
+            question.startsWith(
+                "goals-"
+            )
+        ) {
+
+            return "goals";
+
+        }
+
+        if (
+            question.startsWith(
+                "prediction-"
+            )
+        ) {
+
+            return "prediction";
+
+        }
+
+        if (
+            question.startsWith(
+                "comparison-"
+            )
+        ) {
+
+            return "comparisons";
+
+        }
+
+        if (
+            question.startsWith(
+                "simulation-"
+            )
+        ) {
+
+            return "simulations";
+
+        }
+
+        if (
+            question.startsWith(
+                "budget-"
+            )
+        ) {
+
+            return "budgets";
+
+        }
+
+        if (
+            question.startsWith(
+                "recurring-"
+            )
+        ) {
+
+            return "recurring";
+
+        }
+
+        return null;
+
+    },
+
+    questionMetric(questionKey) {
+
+        const metrics = {
+
+            "status-overview":
+                "net-worth",
+
+            "status-improved":
+                "improvements",
+
+            "status-worsened":
+                "declines",
+
+            "status-weakness":
+                "weakness",
+
+            "status-priority":
+                "priority",
+
+            "savings-current":
+                "savings",
+
+            "savings-status":
+                "period-status",
+
+            "savings-compare":
+                "savings",
+
+            "savings-rate":
+                "saving-rate",
+
+            "savings-year":
+                "annual-savings",
+
+            "expenses-top":
+                "expense-category",
+
+            "expenses-change":
+                "expenses",
+
+            "expenses-income-share":
+                "expense-income-share",
+
+            "expenses-budget":
+                "budget",
+
+            "income-current":
+                "income",
+
+            "income-compare":
+                "income",
+
+            "income-stability":
+                "income-stability",
+
+            "liquidity-current":
+                "liquidity",
+
+            "liquidity-debt":
+                "liquidity-debt",
+
+            "liquidity-security":
+                "security-months",
+
+            "liquidity-invest":
+                "investment-capacity",
+
+            "liquidity-amortize":
+                "debt-repayment-capacity",
+
+            "debt-current":
+                "debt",
+
+            "debt-risk":
+                "debt-risk",
+
+            "debt-change":
+                "debt-payments",
+
+            "investments-current":
+                "investments",
+
+            "investments-month":
+                "monthly-invested",
+
+            "investments-weight":
+                "investment-weight",
+
+            "investments-liquidity":
+                "investment-liquidity",
+
+            "goals-status":
+                "goals",
+
+            "goals-available-savings":
+                "available-savings",
+
+            "goals-priority":
+                "goal-priority",
+
+            "prediction-close":
+                "projected-savings",
+
+            "prediction-expenses":
+                "projected-expenses",
+
+            "prediction-negative":
+                "projected-savings",
+
+            "prediction-save-500":
+                "target-savings",
+
+            "comparison-month":
+                "monthly-comparison",
+
+            "comparison-savings":
+                "savings",
+
+            "comparison-expenses":
+                "expenses",
+
+            "comparison-income":
+                "income",
+
+            "comparison-investments":
+                "monthly-invested",
+
+            "simulation-top-20":
+                "category-reduction",
+
+            "simulation-save-200":
+                "savings-increase",
+
+            "simulation-invest-200":
+                "investment-increase",
+
+            "simulation-income-minus-10":
+                "income-reduction",
+
+            "simulation-unexpected-1000":
+                "unexpected-expense",
+
+            "simulation-debt-500":
+                "debt-repayment",
+
+            "budget-status":
+                "budget",
+
+            "budget-remaining":
+                "budget-remaining",
+
+            "budget-risk":
+                "budget-risk",
+
+            "recurring-status":
+                "recurring",
+
+            "recurring-prediction":
+                "recurring-prediction"
+
+        };
+
+        return (
+            metrics[
+                questionKey
+            ] ||
+            null
+        );
+
+    },
+
+    questionEntity(
+        questionKey,
+        summary,
+        context
+    ) {
+
+        if (
+            questionKey ===
+                "expenses-top" ||
+            questionKey ===
+                "simulation-top-20"
+        ) {
+
+            const category =
+                this.topCategory(
+                    summary,
+                    context
+                );
+
+            if (!category) {
+
+                return null;
+
+            }
+
+            return {
+
+                type:
+                    "category",
+
+                name:
+                    this.categoryName(
+                        category
+                    ),
+
+                amount:
+                    this.categoryAmount(
+                        category,
+                        context
+                    ),
+
+                rank:
+                    1
+
+            };
+
+        }
+
+        return null;
+
+    },
+
+    createConversationContext(
+        questionKey,
+        summary,
+        context,
+        metadata = {}
+    ) {
+
+        const entity =
+            metadata.entity ||
+            this.questionEntity(
+                questionKey,
+                summary,
+                context
+            );
+
+        return {
+
+            questionKey:
+                questionKey || null,
+
+            theme:
+                metadata.theme ||
+                this.questionTheme(
+                    questionKey
+                ),
+
+            metric:
+                metadata.metric ||
+                this.questionMetric(
+                    questionKey
+                ),
+
+            period:
+                metadata.period ||
+                summary.monthKey ||
+                null,
+
+            comparisonPeriod:
+                metadata.comparisonPeriod ||
+                summary.previousMonthKey ||
+                null,
+
+            entity:
+                entity || null,
+
+            category:
+                metadata.category ||
+                (
+                    entity
+                        ?.type ===
+                        "category"
+                        ? entity.name
+                        : null
+                ),
+
+            simulation:
+                metadata.simulation ||
+                null,
+
+            source:
+                metadata.source ||
+                "guided",
+
+            canCompare:
+                metadata.canCompare !==
+                false,
+
+            canChangePeriod:
+                metadata.canChangePeriod !==
+                false
+
+        };
+
+    },
+
+    mergeConversationContext(
+        previousContext,
+        nextContext
+    ) {
+
+        return {
+
+            ...(
+                previousContext ||
+                {}
+            ),
+
+            ...(
+                nextContext ||
+                {}
+            ),
+
+            entity:
+                nextContext
+                    ?.entity ||
+                previousContext
+                    ?.entity ||
+                null,
+
+            simulation:
+                nextContext
+                    ?.simulation ||
+                previousContext
+                    ?.simulation ||
+                null
+
+        };
+
+    },
+
+    /* ======================================================
+       SEGUIMIENTOS DINÁMICOS
+    ====================================================== */
+
+    dynamicFollowUps(
+        conversationContext,
+        summary,
+        context
+    ) {
+
+        if (!conversationContext) {
+
+            return [];
+
+        }
+
+        const followUps = [];
+
+        const theme =
+            conversationContext.theme;
+
+        const metric =
+            conversationContext.metric;
+
+        const entity =
+            conversationContext.entity;
+
+        if (
+            conversationContext
+                .canChangePeriod
+        ) {
+
+            followUps.push(
+                "context-previous-period"
+            );
+
+        }
+
+        if (
+            conversationContext
+                .canCompare &&
+            summary.previous
+        ) {
+
+            followUps.push(
+                "context-compare-period"
+            );
+
+        }
+
+        if (
+            entity
+                ?.type ===
+                "category"
+        ) {
+
+            followUps.push(
+                "context-category-share"
+            );
+
+            followUps.push(
+                "context-category-income-share"
+            );
+
+            followUps.push(
+                "context-category-reduce-20"
+            );
+
+            if (
+                this.secondCategory(
+                    summary,
+                    context
+                )
+            ) {
+
+                followUps.push(
+                    "context-second-category"
+                );
+
+            }
+
+            followUps.push(
+                "context-category-movements"
+            );
+
+        }
+
+        if (
+            theme ===
+                "expenses" ||
+            metric ===
+                "expenses"
+        ) {
+
+            followUps.push(
+                "expenses-top"
+            );
+
+            followUps.push(
+                "expenses-income-share"
+            );
+
+            if (summary.budget) {
+
+                followUps.push(
+                    "expenses-budget"
+                );
+
+            }
+
+        }
+
+        if (
+            theme ===
+                "savings" ||
+            metric ===
+                "savings"
+        ) {
+
+            followUps.push(
+                "savings-rate"
+            );
+
+            followUps.push(
+                "savings-year"
+            );
+
+            followUps.push(
+                "simulation-save-200"
+            );
+
+        }
+
+        if (
+            theme ===
+                "income" ||
+            metric ===
+                "income"
+        ) {
+
+            followUps.push(
+                "income-stability"
+            );
+
+            followUps.push(
+                "simulation-income-minus-10"
+            );
+
+        }
+
+        if (
+            theme ===
+                "liquidity"
+        ) {
+
+            followUps.push(
+                "liquidity-security"
+            );
+
+            followUps.push(
+                "liquidity-invest"
+            );
+
+        }
+
+        if (
+            theme ===
+                "investments"
+        ) {
+
+            followUps.push(
+                "investments-liquidity"
+            );
+
+            followUps.push(
+                "investments-weight"
+            );
+
+        }
+
+        if (
+            theme ===
+                "debt"
+        ) {
+
+            followUps.push(
+                "debt-risk"
+            );
+
+            followUps.push(
+                "simulation-debt-500"
+            );
+
+        }
+
+        if (
+            theme ===
+                "prediction"
+        ) {
+
+            followUps.push(
+                "prediction-expenses"
+            );
+
+            followUps.push(
+                "prediction-negative"
+            );
+
+            followUps.push(
+                "simulation-unexpected-1000"
+            );
+
+        }
+
+        if (
+            theme ===
+                "budgets" &&
+            summary.budget
+        ) {
+
+            followUps.push(
+                "budget-remaining"
+            );
+
+            followUps.push(
+                "budget-risk"
+            );
+
+        }
+
+        return this.unique(
+            followUps
+        )
+            .filter(
+                questionKey =>
+                    questionKey !==
+                    conversationContext
+                        .questionKey
+            )
+            .slice(
+                0,
+                5
+            );
+
+    },
+
+    contextualActionLabel(
+        actionKey,
+        conversationContext
+    ) {
+
+        const category =
+            conversationContext
+                ?.category ||
+            conversationContext
+                ?.entity
+                ?.name ||
+            "esta categoría";
+
+        const labels = {
+
+            "context-previous-period":
+                "¿Y en el periodo anterior?",
+
+            "context-compare-period":
+                "Compararlo con el periodo anterior",
+
+            "context-category-share":
+                `¿Qué peso tiene ${category} en mis gastos?`,
+
+            "context-category-income-share":
+                `¿Qué porcentaje de mis ingresos destino a ${category}?`,
+
+            "context-category-reduce-20":
+                `¿Qué pasa si reduzco ${category} un 20 %?`,
+
+            "context-second-category":
+                "Analizar la segunda categoría",
+
+            "context-category-movements":
+                `Ver movimientos de ${category}`
+
+        };
+
+        return (
+            labels[
+                actionKey
+            ] ||
+            null
+        );
+
+    },
+
+    /* ======================================================
+       MENSAJE PRINCIPAL
+    ====================================================== */
 
     mainMessage(
         summary,
@@ -432,6 +1353,10 @@ const AtlasAIAnalysis = {
         return parts.join(" ");
 
     },
+
+    /* ======================================================
+       ALERTAS
+    ====================================================== */
 
     alerts(
         summary,
@@ -663,6 +1588,10 @@ const AtlasAIAnalysis = {
 
     },
 
+    /* ======================================================
+       RECOMENDACIONES
+    ====================================================== */
+
     recommendations(
         summary,
         context
@@ -796,6 +1725,10 @@ const AtlasAIAnalysis = {
 
     },
 
+    /* ======================================================
+       PREDICCIÓN
+    ====================================================== */
+
     prediction(
         summary,
         context
@@ -811,9 +1744,7 @@ const AtlasAIAnalysis = {
             summary.monthKey ===
             currentMonthKey;
 
-        if (
-            !isCurrentMonth
-        ) {
+        if (!isCurrentMonth) {
 
             return null;
 
@@ -878,6 +1809,10 @@ const AtlasAIAnalysis = {
         };
 
     },
+
+    /* ======================================================
+       SIMULACIONES
+    ====================================================== */
 
     simulateCategoryReduction(
         category,
@@ -945,6 +1880,236 @@ const AtlasAIAnalysis = {
         };
 
     },
+
+    simulateIncomeReduction(
+        percentage,
+        summary,
+        context
+    ) {
+
+        const normalizedPercentage =
+            Math.min(
+                100,
+                Math.max(
+                    0,
+                    context.number(
+                        percentage
+                    )
+                )
+            );
+
+        const income =
+            context.number(
+                summary.current
+                    .monthlyIncome
+            );
+
+        const savings =
+            context.number(
+                summary.current
+                    .monthlySavings
+            );
+
+        const reduction =
+            income *
+            normalizedPercentage /
+            100;
+
+        return {
+
+            percentage:
+                normalizedPercentage,
+
+            currentIncome:
+                income,
+
+            reduction,
+
+            projectedIncome:
+                income -
+                reduction,
+
+            currentSavings:
+                savings,
+
+            projectedSavings:
+                savings -
+                reduction
+
+        };
+
+    },
+
+    simulateExtraInvestment(
+        amount,
+        summary,
+        context
+    ) {
+
+        const investment =
+            Math.max(
+                0,
+                context.number(
+                    amount
+                )
+            );
+
+        const liquidity =
+            context.number(
+                summary.current
+                    .liquidity
+            );
+
+        const investments =
+            context.number(
+                summary.current
+                    .investments
+            );
+
+        const savings =
+            context.number(
+                summary.current
+                    .monthlySavings
+            );
+
+        return {
+
+            amount:
+                investment,
+
+            currentLiquidity:
+                liquidity,
+
+            projectedLiquidity:
+                liquidity -
+                investment,
+
+            currentInvestments:
+                investments,
+
+            projectedInvestments:
+                investments +
+                investment,
+
+            currentSavings:
+                savings,
+
+            projectedSavings:
+                savings -
+                investment
+
+        };
+
+    },
+
+    simulateUnexpectedExpense(
+        amount,
+        summary,
+        context
+    ) {
+
+        const expense =
+            Math.max(
+                0,
+                context.number(
+                    amount
+                )
+            );
+
+        const savings =
+            context.number(
+                summary.current
+                    .monthlySavings
+            );
+
+        const liquidity =
+            context.number(
+                summary.current
+                    .liquidity
+            );
+
+        return {
+
+            amount:
+                expense,
+
+            currentSavings:
+                savings,
+
+            projectedSavings:
+                savings -
+                expense,
+
+            currentLiquidity:
+                liquidity,
+
+            projectedLiquidity:
+                liquidity -
+                expense
+
+        };
+
+    },
+
+    simulateDebtRepayment(
+        amount,
+        summary,
+        context
+    ) {
+
+        const debt =
+            context.number(
+                summary.current
+                    .debt
+            );
+
+        const liquidity =
+            context.number(
+                summary.current
+                    .liquidity
+            );
+
+        const requestedPayment =
+            Math.max(
+                0,
+                context.number(
+                    amount
+                )
+            );
+
+        const payment =
+            Math.min(
+                requestedPayment,
+                debt
+            );
+
+        return {
+
+            requestedPayment,
+
+            payment,
+
+            currentDebt:
+                debt,
+
+            projectedDebt:
+                debt -
+                payment,
+
+            currentLiquidity:
+                liquidity,
+
+            projectedLiquidity:
+                liquidity -
+                payment
+
+        };
+
+    },
+
+    /* ======================================================
+       OPORTUNIDADES
+    ====================================================== */
 
     opportunities(
         summary,
@@ -1158,9 +2323,7 @@ const AtlasAIAnalysis = {
 
         }
 
-        if (
-            topCategory
-        ) {
+        if (topCategory) {
 
             opportunities.push({
 
@@ -1317,12 +2480,25 @@ const AtlasAIAnalysis = {
 
     },
 
+    /* ======================================================
+       RESPUESTAS
+    ====================================================== */
+
     response(
         type,
         text,
         followUps = [],
         metadata = {}
     ) {
+
+        const normalizedFollowUps =
+            this.unique(
+                followUps
+            )
+                .slice(
+                    0,
+                    5
+                );
 
         return {
 
@@ -1331,26 +2507,116 @@ const AtlasAIAnalysis = {
             text,
 
             followUps:
-                followUps.slice(
-                    0,
-                    5
-                ),
+                normalizedFollowUps,
 
-            metadata
+            metadata: {
+
+                ...metadata,
+
+                createdAt:
+                    Date.now()
+
+            }
 
         };
 
     },
 
+    contextualResponse(
+        type,
+        text,
+        questionKey,
+        summary,
+        context,
+        followUps = [],
+        metadata = {}
+    ) {
+
+        const conversationContext =
+            this.createConversationContext(
+                questionKey,
+                summary,
+                context,
+                metadata
+            );
+
+        const dynamicFollowUps =
+            this.dynamicFollowUps(
+                conversationContext,
+                summary,
+                context
+            );
+
+        return this.response(
+            type,
+            text,
+            this.unique([
+                ...followUps,
+                ...dynamicFollowUps
+            ]),
+            {
+
+                ...metadata,
+
+                conversationContext
+
+            }
+        );
+
+    },
+
     insufficient(
         text,
-        followUps = []
+        followUps = [],
+        metadata = {}
     ) {
 
         return this.response(
             "Datos insuficientes",
             text,
-            followUps
+            followUps,
+            metadata
+        );
+
+    },
+
+    contextualInsufficient(
+        text,
+        questionKey,
+        summary,
+        context,
+        followUps = [],
+        metadata = {}
+    ) {
+
+        const conversationContext =
+            this.createConversationContext(
+                questionKey,
+                summary,
+                context,
+                metadata
+            );
+
+        const dynamicFollowUps =
+            this.dynamicFollowUps(
+                conversationContext,
+                summary,
+                context
+            );
+
+        return this.insufficient(
+            text,
+            this.unique([
+                ...followUps,
+                ...dynamicFollowUps
+            ]),
+            {
+
+                ...metadata,
+
+                conversationContext
+
+            }
         );
 
     }
