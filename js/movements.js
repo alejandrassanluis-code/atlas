@@ -11,6 +11,7 @@ const AtlasMovements = {
     editingId: null,
     recurringOccurrenceId: null,
     saving: false,
+    sheetSwipe: null,
 
     open(
         data,
@@ -1313,6 +1314,7 @@ const AtlasMovements = {
                     z-index: 3201;
                     max-height: 94vh;
                     overflow-y: auto;
+                    overscroll-behavior: contain;
                     -webkit-overflow-scrolling:
                         touch;
                     padding:
@@ -1368,12 +1370,28 @@ const AtlasMovements = {
                 }
 
                 .movement-handle {
+                    width: 84px;
+                    height: 30px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin:
+                        -4px
+                        auto
+                        8px;
+                    border-radius: 99px;
+                    background: transparent;
+                    touch-action: none;
+                    user-select: none;
+                    -webkit-user-select: none;
+                    cursor: grab;
+                }
+
+                .movement-handle::before {
+                    content: "";
+                    display: block;
                     width: 46px;
                     height: 5px;
-                    margin:
-                        0
-                        auto
-                        23px;
                     border-radius: 99px;
                     background:
                         rgba(
@@ -1382,6 +1400,10 @@ const AtlasMovements = {
                             255,
                             0.22
                         );
+                }
+
+                .movement-handle:active {
+                    cursor: grabbing;
                 }
 
                 .movement-header {
@@ -1711,6 +1733,7 @@ const AtlasMovements = {
 
                 <div
                     class="movement-handle"
+                    aria-label="Desliza hacia abajo para cerrar"
                 ></div>
 
                 ${content}
@@ -1718,6 +1741,344 @@ const AtlasMovements = {
             </section>
 
         `;
+
+        this.bindSheetSwipe();
+
+    },
+
+    bindSheetSwipe() {
+
+        const root =
+            this.root();
+
+        const sheet =
+            root?.querySelector(
+                ".movement-sheet"
+            );
+
+        const handle =
+            root?.querySelector(
+                ".movement-handle"
+            );
+
+        if (
+            !sheet ||
+            !handle
+        ) {
+
+            return;
+
+        }
+
+        this.sheetSwipe =
+            null;
+
+        handle.addEventListener(
+            "touchstart",
+            event => {
+
+                if (
+                    event.touches.length !==
+                    1
+                ) {
+
+                    return;
+
+                }
+
+                event.stopPropagation();
+
+                const touch =
+                    event.touches[0];
+
+                this.sheetSwipe = {
+
+                    sheet,
+
+                    startY:
+                        touch.clientY,
+
+                    currentY:
+                        touch.clientY,
+
+                    startTime:
+                        Date.now(),
+
+                    originalTransform:
+                        sheet.style
+                            .transform,
+
+                    originalTransition:
+                        sheet.style
+                            .transition,
+
+                    originalWillChange:
+                        sheet.style
+                            .willChange
+
+                };
+
+                sheet.style.transition =
+                    "none";
+
+                sheet.style.willChange =
+                    "transform";
+
+            },
+            {
+                passive:
+                    true
+            }
+        );
+
+        handle.addEventListener(
+            "touchmove",
+            event => {
+
+                if (
+                    !this.sheetSwipe ||
+                    event.touches.length !==
+                        1
+                ) {
+
+                    return;
+
+                }
+
+                event.stopPropagation();
+
+                const touch =
+                    event.touches[0];
+
+                const distance =
+                    Math.max(
+                        0,
+                        touch.clientY -
+                            this.sheetSwipe
+                                .startY
+                    );
+
+                this.sheetSwipe.currentY =
+                    touch.clientY;
+
+                if (
+                    distance <=
+                    0
+                ) {
+
+                    return;
+
+                }
+
+                event.preventDefault();
+
+                this.sheetSwipe
+                    .sheet
+                    .style
+                    .transform =
+                    `translate3d(0, ${distance}px, 0)`;
+
+            },
+            {
+                passive:
+                    false
+            }
+        );
+
+        handle.addEventListener(
+            "touchend",
+            event => {
+
+                event.stopPropagation();
+
+                this.finishSheetSwipe();
+
+            },
+            {
+                passive:
+                    true
+            }
+        );
+
+        handle.addEventListener(
+            "touchcancel",
+            event => {
+
+                event.stopPropagation();
+
+                this.cancelSheetSwipe();
+
+            },
+            {
+                passive:
+                    true
+            }
+        );
+
+    },
+
+    finishSheetSwipe() {
+
+        if (!this.sheetSwipe) {
+
+            return;
+
+        }
+
+        const gesture =
+            this.sheetSwipe;
+
+        this.sheetSwipe =
+            null;
+
+        const distance =
+            Math.max(
+                0,
+                gesture.currentY -
+                    gesture.startY
+            );
+
+        const elapsed =
+            Math.max(
+                1,
+                Date.now() -
+                    gesture.startTime
+            );
+
+        const velocity =
+            distance /
+            elapsed;
+
+        const shouldClose =
+            distance >=
+                85 ||
+            (
+                distance >=
+                    35 &&
+                velocity >=
+                    0.35
+            );
+
+        if (shouldClose) {
+
+            this.closeSheetBySwipe(
+                gesture
+            );
+
+            return;
+
+        }
+
+        this.restoreSheetAfterSwipe(
+            gesture
+        );
+
+    },
+
+    cancelSheetSwipe() {
+
+        if (!this.sheetSwipe) {
+
+            return;
+
+        }
+
+        const gesture =
+            this.sheetSwipe;
+
+        this.sheetSwipe =
+            null;
+
+        this.restoreSheetAfterSwipe(
+            gesture
+        );
+
+    },
+
+    restoreSheetAfterSwipe(
+        gesture
+    ) {
+
+        const sheet =
+            gesture.sheet;
+
+        if (
+            !sheet ||
+            !sheet.isConnected
+        ) {
+
+            return;
+
+        }
+
+        sheet.style.transition =
+            "transform 180ms ease";
+
+        sheet.style.transform =
+            "translate3d(0, 0, 0)";
+
+        window.setTimeout(
+            () => {
+
+                if (
+                    !sheet.isConnected
+                ) {
+
+                    return;
+
+                }
+
+                sheet.style.transition =
+                    gesture.originalTransition;
+
+                sheet.style.transform =
+                    gesture.originalTransform;
+
+                sheet.style.willChange =
+                    gesture.originalWillChange;
+
+            },
+            190
+        );
+
+    },
+
+    closeSheetBySwipe(
+        gesture
+    ) {
+
+        const sheet =
+            gesture.sheet;
+
+        if (
+            !sheet ||
+            !sheet.isConnected
+        ) {
+
+            return;
+
+        }
+
+        sheet.style.transition =
+            "transform 180ms ease";
+
+        sheet.style.transform =
+            "translate3d(0, 110%, 0)";
+
+        window.setTimeout(
+            () => {
+
+                if (
+                    sheet.isConnected
+                ) {
+
+                    this.close();
+
+                }
+
+            },
+            180
+        );
 
     },
 
@@ -4344,6 +4705,9 @@ const AtlasMovements = {
     },
 
     close() {
+
+        this.sheetSwipe =
+            null;
 
         const root =
             this.root();
