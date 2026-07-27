@@ -72,6 +72,9 @@ const AtlasApp = {
     modalObserver:
         null,
 
+    modalSwipe:
+        null,
+
     init() {
 
         this.data =
@@ -94,6 +97,10 @@ const AtlasApp = {
         this.resetMovementFiltersState();
 
         this.bindEvents();
+
+        this.bindNumericInputBehavior();
+
+        this.bindModalSwipe();
 
         this.observeModals();
 
@@ -1089,6 +1096,7 @@ const AtlasApp = {
         }
 
         return defaultOpen;
+
     },
 
     openAnalysisBudgets() {
@@ -1151,6 +1159,575 @@ const AtlasApp = {
                 "smooth"
 
         });
+
+    },
+
+    bindNumericInputBehavior() {
+
+        document.addEventListener(
+            "focusin",
+            event => {
+
+                const target =
+                    event.target;
+
+                if (
+                    !(target instanceof HTMLInputElement)
+                ) {
+
+                    return;
+
+                }
+
+                const isNumericInput =
+                    target.type ===
+                        "number" ||
+                    target.inputMode ===
+                        "decimal" ||
+                    target.inputMode ===
+                        "numeric";
+
+                if (
+                    !isNumericInput ||
+                    target.disabled ||
+                    target.readOnly
+                ) {
+
+                    return;
+
+                }
+
+                const normalizedValue =
+                    String(
+                        target.value ?? ""
+                    )
+                        .replace(
+                            ",",
+                            "."
+                        )
+                        .trim();
+
+                if (
+                    normalizedValue !== "" &&
+                    Number(
+                        normalizedValue
+                    ) === 0
+                ) {
+
+                    target.value =
+                        "";
+
+                }
+
+            }
+        );
+
+    },
+
+    modalPanelForSwipe(
+        target,
+        touchY
+    ) {
+
+        const modalRoot =
+            document.getElementById(
+                "modal-root"
+            );
+
+        if (
+            !modalRoot ||
+            !target ||
+            !modalRoot.contains(
+                target
+            )
+        ) {
+
+            return null;
+
+        }
+
+        if (
+            target.closest(
+                "button, a, input, select, textarea"
+            )
+        ) {
+
+            return null;
+
+        }
+
+        let element =
+            target instanceof Element
+                ? target
+                : target.parentElement;
+
+        while (
+            element &&
+            element !== modalRoot
+        ) {
+
+            const rectangle =
+                element.getBoundingClientRect();
+
+            const wideEnough =
+                rectangle.width >=
+                window.innerWidth *
+                    0.7;
+
+            const tallEnough =
+                rectangle.height >=
+                180;
+
+            const reachesBottom =
+                rectangle.bottom >=
+                window.innerHeight -
+                    40;
+
+            const startedAtTop =
+                touchY <=
+                rectangle.top +
+                    100;
+
+            const isNotFullOverlay =
+                rectangle.height <
+                window.innerHeight *
+                    0.98;
+
+            if (
+                wideEnough &&
+                tallEnough &&
+                reachesBottom &&
+                startedAtTop &&
+                isNotFullOverlay
+            ) {
+
+                return element;
+
+            }
+
+            element =
+                element.parentElement;
+
+        }
+
+        return null;
+
+    },
+
+    bindModalSwipe() {
+
+        const modalRoot =
+            document.getElementById(
+                "modal-root"
+            );
+
+        if (!modalRoot) {
+
+            return;
+
+        }
+
+        modalRoot.addEventListener(
+            "touchstart",
+            event => {
+
+                if (
+                    event.touches.length !==
+                    1
+                ) {
+
+                    return;
+
+                }
+
+                const touch =
+                    event.touches[0];
+
+                const panel =
+                    this.modalPanelForSwipe(
+                        event.target,
+                        touch.clientY
+                    );
+
+                if (!panel) {
+
+                    return;
+
+                }
+
+                this.modalSwipe = {
+
+                    panel,
+
+                    startY:
+                        touch.clientY,
+
+                    currentY:
+                        touch.clientY,
+
+                    originalTransform:
+                        panel.style.transform,
+
+                    originalTransition:
+                        panel.style.transition,
+
+                    originalWillChange:
+                        panel.style.willChange
+
+                };
+
+                panel.style.transition =
+                    "none";
+
+                panel.style.willChange =
+                    "transform";
+
+            },
+            {
+                passive:
+                    true
+            }
+        );
+
+        modalRoot.addEventListener(
+            "touchmove",
+            event => {
+
+                if (
+                    !this.modalSwipe ||
+                    event.touches.length !==
+                        1
+                ) {
+
+                    return;
+
+                }
+
+                const touch =
+                    event.touches[0];
+
+                const difference =
+                    Math.max(
+                        0,
+                        touch.clientY -
+                            this.modalSwipe
+                                .startY
+                    );
+
+                this.modalSwipe.currentY =
+                    touch.clientY;
+
+                if (
+                    difference <=
+                    0
+                ) {
+
+                    return;
+
+                }
+
+                if (
+                    difference >
+                    5
+                ) {
+
+                    event.preventDefault();
+
+                }
+
+                this.modalSwipe.panel
+                    .style.transform =
+                    `translate3d(0, ${difference}px, 0)`;
+
+            },
+            {
+                passive:
+                    false
+            }
+        );
+
+        modalRoot.addEventListener(
+            "touchend",
+            () => {
+
+                this.finishModalSwipe();
+
+            },
+            {
+                passive:
+                    true
+            }
+        );
+
+        modalRoot.addEventListener(
+            "touchcancel",
+            () => {
+
+                this.cancelModalSwipe();
+
+            },
+            {
+                passive:
+                    true
+            }
+        );
+
+    },
+
+    finishModalSwipe() {
+
+        if (!this.modalSwipe) {
+
+            return;
+
+        }
+
+        const gesture =
+            this.modalSwipe;
+
+        this.modalSwipe =
+            null;
+
+        const distance =
+            Math.max(
+                0,
+                gesture.currentY -
+                    gesture.startY
+            );
+
+        const panelHeight =
+            gesture.panel
+                .getBoundingClientRect()
+                .height;
+
+        const closeDistance =
+            Math.min(
+                150,
+                Math.max(
+                    85,
+                    panelHeight *
+                        0.18
+                )
+            );
+
+        if (
+            distance >=
+            closeDistance
+        ) {
+
+            this.closeModalBySwipe(
+                gesture
+            );
+
+            return;
+
+        }
+
+        this.restoreModalAfterSwipe(
+            gesture
+        );
+
+    },
+
+    cancelModalSwipe() {
+
+        if (!this.modalSwipe) {
+
+            return;
+
+        }
+
+        const gesture =
+            this.modalSwipe;
+
+        this.modalSwipe =
+            null;
+
+        this.restoreModalAfterSwipe(
+            gesture
+        );
+
+    },
+
+    restoreModalAfterSwipe(
+        gesture
+    ) {
+
+        const panel =
+            gesture.panel;
+
+        if (
+            !panel ||
+            !panel.isConnected
+        ) {
+
+            return;
+
+        }
+
+        panel.style.transition =
+            "transform 180ms ease";
+
+        panel.style.transform =
+            gesture.originalTransform;
+
+        window.setTimeout(
+            () => {
+
+                if (
+                    !panel.isConnected
+                ) {
+
+                    return;
+
+                }
+
+                panel.style.transition =
+                    gesture.originalTransition;
+
+                panel.style.willChange =
+                    gesture.originalWillChange;
+
+            },
+            190
+        );
+
+    },
+
+    closeModalButton(panel) {
+
+        if (!panel) {
+
+            return null;
+
+        }
+
+        const buttons =
+            Array.from(
+                panel.querySelectorAll(
+                    "button, [role='button']"
+                )
+            );
+
+        return (
+            buttons.find(
+                button => {
+
+                    const action =
+                        String(
+                            button.dataset
+                                ?.action ||
+                            ""
+                        )
+                            .toLowerCase();
+
+                    const label =
+                        `${button.getAttribute(
+                            "aria-label"
+                        ) || ""} ${
+                            button.textContent ||
+                            ""
+                        }`
+                            .replace(
+                                /\s+/g,
+                                " "
+                            )
+                            .trim()
+                            .toLowerCase();
+
+                    return (
+                        action.includes(
+                            "close"
+                        ) ||
+                        action.includes(
+                            "cancel"
+                        ) ||
+                        action.includes(
+                            "cerrar"
+                        ) ||
+                        action.includes(
+                            "cancelar"
+                        ) ||
+                        label ===
+                            "cerrar" ||
+                        label ===
+                            "cancelar" ||
+                        label.includes(
+                            "cerrar panel"
+                        ) ||
+                        label.includes(
+                            "cerrar ventana"
+                        )
+                    );
+
+                }
+            ) ||
+            null
+        );
+
+    },
+
+    closeModalBySwipe(
+        gesture
+    ) {
+
+        const panel =
+            gesture.panel;
+
+        if (
+            !panel ||
+            !panel.isConnected
+        ) {
+
+            return;
+
+        }
+
+        panel.style.transition =
+            "transform 180ms ease";
+
+        panel.style.transform =
+            "translate3d(0, 110%, 0)";
+
+        window.setTimeout(
+            () => {
+
+                if (
+                    !panel.isConnected
+                ) {
+
+                    return;
+
+                }
+
+                const closeButton =
+                    this.closeModalButton(
+                        panel
+                    );
+
+                if (closeButton) {
+
+                    closeButton.click();
+
+                    return;
+
+                }
+
+                const modalRoot =
+                    document.getElementById(
+                        "modal-root"
+                    );
+
+                if (modalRoot) {
+
+                    modalRoot.innerHTML =
+                        "";
+
+                }
+
+            },
+            180
+        );
 
     },
 
