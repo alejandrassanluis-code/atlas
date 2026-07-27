@@ -10,29 +10,25 @@ const AtlasLocalAI = {
 
     state: {
 
-        initialized:
-            false,
+        initialized: false,
 
-        messages:
-            [],
+        messages: [],
 
-        currentTheme:
-            null,
+        currentTheme: null,
 
-        currentQuestion:
-            null,
+        currentQuestion: null,
 
-        view:
-            "themes",
+        view: "themes",
 
-        themePage:
-            0,
+        themePage: 0,
 
-        navigation:
-            [],
+        navigation: [],
 
-        followUps:
-            []
+        followUps: [],
+
+        activeMonthKey: null,
+
+        conversationContext: null
 
     },
 
@@ -54,9 +50,7 @@ const AtlasLocalAI = {
 
     },
 
-    previousMonthKey(
-        monthKey
-    ) {
+    previousMonthKey(monthKey) {
 
         return AtlasCalculations
             .previousMonthKey(
@@ -92,11 +86,68 @@ const AtlasLocalAI = {
 
     },
 
+    monthLabel(monthKey) {
+
+        if (!monthKey) {
+
+            return "";
+
+        }
+
+        const parts =
+            String(monthKey)
+                .split("-");
+
+        const year =
+            Number(
+                parts[0]
+            );
+
+        const month =
+            Number(
+                parts[1]
+            );
+
+        if (
+            !Number.isFinite(year) ||
+            !Number.isFinite(month)
+        ) {
+
+            return monthKey;
+
+        }
+
+        const date =
+            new Date(
+                year,
+                month - 1,
+                1
+            );
+
+        return date
+            .toLocaleDateString(
+                "es-ES",
+                {
+                    month: "long",
+                    year: "numeric"
+                }
+            )
+            .replace(
+                /^./,
+                character =>
+                    character.toUpperCase()
+            );
+
+    },
+
     summary(
-        data = this.data
+        data = this.data,
+        requestedMonthKey = null
     ) {
 
         const monthKey =
+            requestedMonthKey ||
+            this.state.activeMonthKey ||
             this.currentMonthKey();
 
         const previousMonthKey =
@@ -159,9 +210,16 @@ const AtlasLocalAI = {
 
     },
 
-    hasFinancialData(
-        summary
-    ) {
+    currentSummary(data = this.data) {
+
+        return this.summary(
+            data,
+            this.currentMonthKey()
+        );
+
+    },
+
+    hasFinancialData(summary) {
 
         const current =
             summary.current;
@@ -290,6 +348,48 @@ const AtlasLocalAI = {
 
     },
 
+    prediction(summary) {
+
+        return AtlasAIAnalysis
+            .prediction(
+                summary,
+                this
+            );
+
+    },
+
+    response(
+        type,
+        text,
+        followUps = [],
+        metadata = {}
+    ) {
+
+        return AtlasAIAnalysis
+            .response(
+                type,
+                text,
+                followUps,
+                metadata
+            );
+
+    },
+
+    insufficient(
+        text,
+        followUps = [],
+        metadata = {}
+    ) {
+
+        return AtlasAIAnalysis
+            .insufficient(
+                text,
+                followUps,
+                metadata
+            );
+
+    },
+
     alertColor(level) {
 
         const colors = {
@@ -329,12 +429,7 @@ const AtlasLocalAI = {
                             padding:14px 0;
                             border-bottom:
                                 1px solid
-                                rgba(
-                                    145,
-                                    164,
-                                    202,
-                                    0.12
-                                );
+                                rgba(145,164,202,0.12);
                         "
                     >
 
@@ -398,9 +493,7 @@ const AtlasLocalAI = {
 
     },
 
-    renderRecommendations(
-        summary
-    ) {
+    renderRecommendations(summary) {
 
         return this
             .recommendations(
@@ -420,12 +513,7 @@ const AtlasLocalAI = {
                             padding:14px 0;
                             border-bottom:
                                 1px solid
-                                rgba(
-                                    145,
-                                    164,
-                                    202,
-                                    0.12
-                                );
+                                rgba(145,164,202,0.12);
                         "
                     >
 
@@ -433,21 +521,14 @@ const AtlasLocalAI = {
                             style="
                                 width:28px;
                                 height:28px;
-                                flex:
-                                    0 0
-                                    28px;
+                                flex:0 0 28px;
                                 display:flex;
                                 align-items:center;
                                 justify-content:center;
                                 border-radius:10px;
                                 color:#d9b45f;
                                 background:
-                                    rgba(
-                                        217,
-                                        180,
-                                        95,
-                                        0.1
-                                    );
+                                    rgba(217,180,95,0.1);
                                 font-size:12px;
                                 font-weight:800;
                             "
@@ -471,6 +552,35 @@ const AtlasLocalAI = {
                 `
             )
             .join("");
+
+    },
+
+    emptyState() {
+
+        return {
+
+            initialized: false,
+
+            messages: [],
+
+            currentTheme: null,
+
+            currentQuestion: null,
+
+            view: "themes",
+
+            themePage: 0,
+
+            navigation: [],
+
+            followUps: [],
+
+            activeMonthKey:
+                this.currentMonthKey(),
+
+            conversationContext: null
+
+        };
 
     },
 
@@ -522,6 +632,12 @@ const AtlasLocalAI = {
         this.state.followUps =
             [];
 
+        this.state.activeMonthKey =
+            this.currentMonthKey();
+
+        this.state.conversationContext =
+            null;
+
     },
 
     themes(summary) {
@@ -532,211 +648,107 @@ const AtlasLocalAI = {
         const themes = [
 
             {
-
-                key:
-                    "status",
-
-                icon:
-                    "✦",
-
-                label:
-                    "Estado financiero",
-
+                key: "status",
+                icon: "✦",
+                label: "Estado financiero",
                 description:
                     "Diagnóstico general y puntos importantes"
-
             },
 
             {
-
-                key:
-                    "savings",
-
-                icon:
-                    "🐷",
-
-                label:
-                    "Ahorro",
-
+                key: "savings",
+                icon: "🐷",
+                label: "Ahorro",
                 description:
                     "Resultado, tasa y evolución mensual"
-
             },
 
             {
-
-                key:
-                    "expenses",
-
-                icon:
-                    "🧾",
-
-                label:
-                    "Gastos",
-
+                key: "expenses",
+                icon: "🧾",
+                label: "Gastos",
                 description:
                     "Categorías, cambios y margen de mejora"
-
             },
 
             {
-
-                key:
-                    "income",
-
-                icon:
-                    "💰",
-
-                label:
-                    "Ingresos",
-
+                key: "income",
+                icon: "💰",
+                label: "Ingresos",
                 description:
                     "Nivel actual y comparación mensual"
-
             },
 
             {
-
-                key:
-                    "liquidity",
-
-                icon:
-                    "💵",
-
-                label:
-                    "Liquidez y seguridad",
-
+                key: "liquidity",
+                icon: "💵",
+                label: "Liquidez y seguridad",
                 description:
                     "Liquidez, deuda y capacidad de reserva"
-
             },
 
             {
-
-                key:
-                    "debt",
-
-                icon:
-                    "💳",
-
-                label:
-                    "Deuda",
-
+                key: "debt",
+                icon: "💳",
+                label: "Deuda",
                 description:
                     "Nivel, riesgo y posibles amortizaciones"
-
             },
 
             {
-
-                key:
-                    "investments",
-
-                icon:
-                    "📈",
-
-                label:
-                    "Inversiones",
-
+                key: "investments",
+                icon: "📈",
+                label: "Inversiones",
                 description:
                     "Valor, aportaciones y peso patrimonial"
-
             },
 
             {
-
-                key:
-                    "goals",
-
-                icon:
-                    "🎯",
-
-                label:
-                    "Objetivos",
-
+                key: "goals",
+                icon: "🎯",
+                label: "Objetivos",
                 description:
                     "Progreso, prioridades y ahorro disponible"
-
             },
 
             {
-
-                key:
-                    "prediction",
-
-                icon:
-                    "🔮",
-
-                label:
-                    "Predicción de cierre",
-
+                key: "prediction",
+                icon: "🔮",
+                label: "Predicción de cierre",
                 description:
                     "Estimación del resultado final del mes"
-
             },
 
             {
-
-                key:
-                    "comparisons",
-
-                icon:
-                    "⚖️",
-
-                label:
-                    "Comparaciones",
-
+                key: "comparisons",
+                icon: "⚖️",
+                label: "Comparaciones",
                 description:
                     "Cambios frente al mes anterior"
-
             },
 
             {
-
-                key:
-                    "simulations",
-
-                icon:
-                    "🧮",
-
-                label:
-                    "Simulaciones",
-
+                key: "simulations",
+                icon: "🧮",
+                label: "Simulaciones",
                 description:
                     "Escenarios de gasto, ahorro e inversión"
-
             },
 
             {
-
-                key:
-                    "budgets",
-
-                icon:
-                    "📋",
-
-                label:
-                    "Presupuestos",
-
+                key: "budgets",
+                icon: "📋",
+                label: "Presupuestos",
                 description:
                     "Estado y margen restante"
-
             },
 
             {
-
-                key:
-                    "recurring",
-
-                icon:
-                    "🔁",
-
-                label:
-                    "Movimientos recurrentes",
-
+                key: "recurring",
+                icon: "🔁",
+                label: "Movimientos recurrentes",
                 description:
                     "Impacto esperado y datos pendientes"
-
             }
 
         ];
@@ -821,53 +833,38 @@ const AtlasLocalAI = {
             status: [
 
                 {
-
                     key:
                         "status-overview",
-
                     label:
                         "¿Cómo estoy financieramente?"
-
                 },
 
                 {
-
                     key:
                         "status-improved",
-
                     label:
                         "¿Qué ha mejorado este mes?"
-
                 },
 
                 {
-
                     key:
                         "status-worsened",
-
                     label:
                         "¿Qué ha empeorado?"
-
                 },
 
                 {
-
                     key:
                         "status-weakness",
-
                     label:
                         "¿Cuál es mi punto más débil?"
-
                 },
 
                 {
-
                     key:
                         "status-priority",
-
                     label:
                         "¿Qué debería revisar primero?"
-
                 }
 
             ],
@@ -875,53 +872,38 @@ const AtlasLocalAI = {
             savings: [
 
                 {
-
                     key:
                         "savings-current",
-
                     label:
                         "¿Cuánto estoy ahorrando?"
-
                 },
 
                 {
-
                     key:
                         "savings-status",
-
                     label:
                         "¿Es provisional o cerrado?"
-
                 },
 
                 {
-
                     key:
                         "savings-compare",
-
                     label:
                         "¿Ahorro más que el mes pasado?"
-
                 },
 
                 {
-
                     key:
                         "savings-rate",
-
                     label:
                         "¿Cuál es mi tasa de ahorro?"
-
                 },
 
                 {
-
                     key:
                         "savings-year",
-
                     label:
                         "¿Cuánto podría ahorrar en un año?"
-
                 }
 
             ],
@@ -929,53 +911,38 @@ const AtlasLocalAI = {
             expenses: [
 
                 {
-
                     key:
                         "expenses-top",
-
                     label:
                         "¿En qué gasto más?"
-
                 },
 
                 {
-
                     key:
                         "expenses-change",
-
                     label:
                         "¿Mis gastos han aumentado?"
-
                 },
 
                 {
-
                     key:
                         "expenses-income-share",
-
                     label:
                         "¿Qué porcentaje de mis ingresos gasto?"
-
                 },
 
                 {
-
                     key:
                         "expenses-budget",
-
                     label:
                         "¿Estoy cumpliendo mi presupuesto?"
-
                 },
 
                 {
-
                     key:
                         "simulation-top-20",
-
                     label:
                         "¿Qué pasa si reduzco mi mayor gasto un 20 %?"
-
                 }
 
             ],
@@ -983,43 +950,31 @@ const AtlasLocalAI = {
             income: [
 
                 {
-
                     key:
                         "income-current",
-
                     label:
                         "¿Cuánto he ingresado este mes?"
-
                 },
 
                 {
-
                     key:
                         "income-compare",
-
                     label:
                         "¿He ingresado más que el mes pasado?"
-
                 },
 
                 {
-
                     key:
                         "income-stability",
-
                     label:
                         "¿Mis ingresos parecen estables?"
-
                 },
 
                 {
-
                     key:
                         "simulation-income-minus-10",
-
                     label:
                         "¿Qué pasa si mis ingresos bajan un 10 %?"
-
                 }
 
             ],
@@ -1027,53 +982,38 @@ const AtlasLocalAI = {
             liquidity: [
 
                 {
-
                     key:
                         "liquidity-current",
-
                     label:
                         "¿Cómo está mi liquidez?"
-
                 },
 
                 {
-
                     key:
                         "liquidity-debt",
-
                     label:
                         "¿Cómo se compara con mi deuda?"
-
                 },
 
                 {
-
                     key:
                         "liquidity-security",
-
                     label:
                         "¿Tengo margen de seguridad?"
-
                 },
 
                 {
-
                     key:
                         "liquidity-invest",
-
                     label:
                         "¿Puedo invertir más?"
-
                 },
 
                 {
-
                     key:
                         "liquidity-amortize",
-
                     label:
                         "¿Puedo amortizar deuda?"
-
                 }
 
             ],
@@ -1081,43 +1021,31 @@ const AtlasLocalAI = {
             debt: [
 
                 {
-
                     key:
                         "debt-current",
-
                     label:
                         "¿Cuánta deuda tengo?"
-
                 },
 
                 {
-
                     key:
                         "debt-risk",
-
                     label:
                         "¿Mi deuda es alta?"
-
                 },
 
                 {
-
                     key:
                         "debt-change",
-
                     label:
                         "¿Cómo ha evolucionado este mes?"
-
                 },
 
                 {
-
                     key:
                         "simulation-debt-500",
-
                     label:
                         "¿Qué pasa si amortizo 500 €?"
-
                 }
 
             ],
@@ -1125,53 +1053,38 @@ const AtlasLocalAI = {
             investments: [
 
                 {
-
                     key:
                         "investments-current",
-
                     label:
                         "¿Cómo van mis inversiones?"
-
                 },
 
                 {
-
                     key:
                         "investments-month",
-
                     label:
                         "¿Cuánto he aportado este mes?"
-
                 },
 
                 {
-
                     key:
                         "investments-weight",
-
                     label:
                         "¿Qué peso tienen en mi patrimonio?"
-
                 },
 
                 {
-
                     key:
                         "investments-liquidity",
-
                     label:
                         "¿Estoy invirtiendo demasiado para mi liquidez?"
-
                 },
 
                 {
-
                     key:
                         "simulation-invest-200",
-
                     label:
                         "¿Qué pasa si invierto 200 € más?"
-
                 }
 
             ],
@@ -1179,33 +1092,24 @@ const AtlasLocalAI = {
             goals: [
 
                 {
-
                     key:
                         "goals-status",
-
                     label:
                         "¿Cómo van mis objetivos?"
-
                 },
 
                 {
-
                     key:
                         "goals-available-savings",
-
                     label:
                         "¿Cuánto ahorro puedo distribuir?"
-
                 },
 
                 {
-
                     key:
                         "goals-priority",
-
                     label:
                         "¿Qué objetivo debería priorizar?"
-
                 }
 
             ],
@@ -1213,53 +1117,38 @@ const AtlasLocalAI = {
             prediction: [
 
                 {
-
                     key:
                         "prediction-close",
-
                     label:
                         "¿Cómo cerraré el mes?"
-
                 },
 
                 {
-
                     key:
                         "prediction-expenses",
-
                     label:
                         "¿Cuánto gastaré previsiblemente?"
-
                 },
 
                 {
-
                     key:
                         "prediction-negative",
-
                     label:
                         "¿Puedo acabar con ahorro negativo?"
-
                 },
 
                 {
-
                     key:
                         "prediction-save-500",
-
                     label:
                         "¿Qué necesito para cerrar con 500 € de ahorro?"
-
                 },
 
                 {
-
                     key:
                         "simulation-unexpected-1000",
-
                     label:
                         "¿Qué pasa si tengo un gasto de 1.000 €?"
-
                 }
 
             ],
@@ -1267,53 +1156,38 @@ const AtlasLocalAI = {
             comparisons: [
 
                 {
-
                     key:
                         "comparison-month",
-
                     label:
                         "Compara este mes con el anterior"
-
                 },
 
                 {
-
                     key:
                         "comparison-savings",
-
                     label:
                         "¿Cómo ha cambiado mi ahorro?"
-
                 },
 
                 {
-
                     key:
                         "comparison-expenses",
-
                     label:
                         "¿Cómo han cambiado mis gastos?"
-
                 },
 
                 {
-
                     key:
                         "comparison-income",
-
                     label:
                         "¿Cómo han cambiado mis ingresos?"
-
                 },
 
                 {
-
                     key:
                         "comparison-investments",
-
                     label:
                         "¿Cómo han cambiado mis aportaciones?"
-
                 }
 
             ],
@@ -1321,53 +1195,38 @@ const AtlasLocalAI = {
             simulations: [
 
                 {
-
                     key:
                         "simulation-top-20",
-
                     label:
                         "Reducir mi mayor gasto un 20 %"
-
                 },
 
                 {
-
                     key:
                         "simulation-save-200",
-
                     label:
                         "Ahorrar 200 € más al mes"
-
                 },
 
                 {
-
                     key:
                         "simulation-invest-200",
-
                     label:
                         "Invertir 200 € adicionales"
-
                 },
 
                 {
-
                     key:
                         "simulation-income-minus-10",
-
                     label:
                         "Reducir mis ingresos un 10 %"
-
                 },
 
                 {
-
                     key:
                         "simulation-unexpected-1000",
-
                     label:
                         "Añadir un gasto inesperado de 1.000 €"
-
                 }
 
             ],
@@ -1375,33 +1234,24 @@ const AtlasLocalAI = {
             budgets: [
 
                 {
-
                     key:
                         "budget-status",
-
                     label:
                         "¿Estoy cumpliendo mi presupuesto?"
-
                 },
 
                 {
-
                     key:
                         "budget-remaining",
-
                     label:
                         "¿Cuánto presupuesto me queda?"
-
                 },
 
                 {
-
                     key:
                         "budget-risk",
-
                     label:
                         "¿Tengo riesgo de superarlo?"
-
                 }
 
             ],
@@ -1409,23 +1259,17 @@ const AtlasLocalAI = {
             recurring: [
 
                 {
-
                     key:
                         "recurring-status",
-
                     label:
                         "¿Qué puedo analizar de mis recurrentes?"
-
                 },
 
                 {
-
                     key:
                         "recurring-prediction",
-
                     label:
                         "¿Cómo afectan a la predicción?"
-
                 }
 
             ]
@@ -1445,9 +1289,9 @@ const AtlasLocalAI = {
                 result.filter(
                     question =>
                         question.key ===
-                        "expenses-top" ||
+                            "expenses-top" ||
                         question.key ===
-                        "expenses-change"
+                            "expenses-change"
                 );
 
         }
@@ -1462,9 +1306,9 @@ const AtlasLocalAI = {
                 result.filter(
                     question =>
                         question.key ===
-                        "income-current" ||
+                            "income-current" ||
                         question.key ===
-                        "income-compare"
+                            "income-compare"
                 );
 
         }
@@ -1479,9 +1323,9 @@ const AtlasLocalAI = {
                 result.filter(
                     question =>
                         question.key ===
-                        "investments-current" ||
+                            "investments-current" ||
                         question.key ===
-                        "investments-month"
+                            "investments-month"
                 );
 
         }
@@ -1493,10 +1337,38 @@ const AtlasLocalAI = {
 
     },
 
+    contextualLabel(actionKey) {
+
+        return AtlasAIAnalysis
+            .contextualActionLabel(
+                actionKey,
+                this.state
+                    .conversationContext
+            );
+    },
+
     questionLabel(
         questionKey,
         summary
     ) {
+
+        if (
+            String(
+                questionKey || ""
+            )
+                .startsWith(
+                    "context-"
+                )
+        ) {
+
+            return (
+                this.contextualLabel(
+                    questionKey
+                ) ||
+                "Continuar análisis"
+            );
+
+        }
 
         const themes =
             this.themes(
@@ -1556,44 +1428,6 @@ const AtlasLocalAI = {
             ] ||
             "Analizar mis datos"
         );
-
-    },
-
-    prediction(summary) {
-
-        return AtlasAIAnalysis
-            .prediction(
-                summary,
-                this
-            );
-
-    },
-
-    response(
-        type,
-        text,
-        followUps = []
-    ) {
-
-        return AtlasAIAnalysis
-            .response(
-                type,
-                text,
-                followUps
-            );
-
-    },
-
-    insufficient(
-        text,
-        followUps = []
-    ) {
-
-        return AtlasAIAnalysis
-            .insufficient(
-                text,
-                followUps
-            );
 
     },
 
@@ -2108,11 +1942,19 @@ const AtlasLocalAI = {
             "savings-status"
         ) {
 
+            const isCurrentMonth =
+                summary.monthKey ===
+                this.currentMonthKey();
+
             return this.response(
                 "Dato real",
-                `El ahorro de ${
-                    summary.monthKey
-                } es provisional mientras el mes permanezca abierto. No puede distribuirse entre objetivos hasta que el periodo quede cerrado.`,
+                isCurrentMonth
+                    ? `El ahorro de ${
+                        summary.monthKey
+                    } es provisional mientras el mes permanezca abierto. No puede distribuirse entre objetivos hasta que el periodo quede cerrado.`
+                    : `El periodo ${
+                        summary.monthKey
+                    } es un periodo anterior. Su ahorro puede considerarse cerrado si Atlas ya ha ejecutado el cierre correspondiente.`,
                 [
                     "savings-current",
                     "goals-available-savings",
@@ -2158,7 +2000,11 @@ const AtlasLocalAI = {
 
             return this.response(
                 "Dato real",
-                `Este mes llevas ${
+                `En ${
+                    this.monthLabel(
+                        summary.monthKey
+                    )
+                } llevas ${
                     this.formatCurrency(
                         savings
                     )
@@ -2166,7 +2012,11 @@ const AtlasLocalAI = {
                     this.formatCurrency(
                         previousSavings
                     )
-                } el mes anterior. ${
+                } en ${
+                    this.monthLabel(
+                        summary.previousMonthKey
+                    )
+                }. ${
                     comparisonText
                 }`,
                 [
@@ -2188,7 +2038,7 @@ const AtlasLocalAI = {
             ) {
 
                 return this.insufficient(
-                    "No puedo calcular una tasa de ahorro representativa porque no hay ingresos registrados este mes.",
+                    "No puedo calcular una tasa de ahorro representativa porque no hay ingresos registrados en este periodo.",
                     [
                         "income-current",
                         "savings-current"
@@ -2199,7 +2049,7 @@ const AtlasLocalAI = {
 
             return this.response(
                 "Dato real",
-                `Tu tasa de ahorro actual es del ${
+                `Tu tasa de ahorro es del ${
                     this.formatPercent(
                         savingRate
                     )
@@ -2224,11 +2074,15 @@ const AtlasLocalAI = {
 
             return this.response(
                 "Estimación",
-                `Si mantuvieras durante doce meses el resultado actual, generarías aproximadamente ${
+                `Si mantuvieras durante doce meses el resultado de ${
+                    this.monthLabel(
+                        summary.monthKey
+                    )
+                }, generarías aproximadamente ${
                     this.formatCurrency(
                         annualSavings
                     )
-                }. Esta estimación replica el ahorro provisional del mes y no incorpora variaciones futuras.`,
+                }. Esta estimación replica el resultado del periodo y no incorpora variaciones futuras.`,
                 [
                     "savings-rate",
                     "simulation-save-200",
@@ -2246,7 +2100,7 @@ const AtlasLocalAI = {
             if (!topCategory) {
 
                 return this.insufficient(
-                    "No hay gastos positivos clasificados por categoría en el periodo actual.",
+                    "No hay gastos positivos clasificados por categoría en el periodo analizado.",
                     [
                         "expenses-change",
                         "income-current"
@@ -2256,7 +2110,11 @@ const AtlasLocalAI = {
             }
 
             let text =
-                `Tu categoría principal es ${
+                `En ${
+                    this.monthLabel(
+                        summary.monthKey
+                    )
+                }, tu categoría principal es ${
                     topCategory.category ||
                     topCategory.label ||
                     "Sin categoría"
@@ -2313,9 +2171,17 @@ const AtlasLocalAI = {
                         this.formatCurrency(
                             previousExpenses
                         )
+                    } en ${
+                        this.monthLabel(
+                            summary.previousMonthKey
+                        )
                     } a ${
                         this.formatCurrency(
                             expenses
+                        )
+                    } en ${
+                        this.monthLabel(
+                            summary.monthKey
                         )
                     }.`,
                     [
@@ -2343,9 +2209,17 @@ const AtlasLocalAI = {
                         this.formatCurrency(
                             previousExpenses
                         )
+                    } en ${
+                        this.monthLabel(
+                            summary.previousMonthKey
+                        )
                     } a ${
                         this.formatCurrency(
                             expenses
+                        )
+                    } en ${
+                        this.monthLabel(
+                            summary.monthKey
                         )
                     }.`,
                     [
@@ -2363,7 +2237,7 @@ const AtlasLocalAI = {
                     this.formatCurrency(
                         expenses
                     )
-                }, sin cambios frente al mes anterior.`,
+                }, sin cambios frente al periodo anterior.`,
                 [
                     "expenses-top",
                     "expenses-income-share",
@@ -2403,7 +2277,7 @@ const AtlasLocalAI = {
                     this.formatPercent(
                         percentage
                     )
-                } de tus ingresos del mes.`,
+                } de tus ingresos del periodo.`,
                 [
                     "savings-rate",
                     "expenses-top",
@@ -2415,9 +2289,9 @@ const AtlasLocalAI = {
 
         if (
             questionKey ===
-            "expenses-budget" ||
+                "expenses-budget" ||
             questionKey ===
-            "budget-status"
+                "budget-status"
         ) {
 
             if (
@@ -2489,7 +2363,7 @@ const AtlasLocalAI = {
             ) {
 
                 return this.insufficient(
-                    "No hay ingresos registrados en el periodo actual.",
+                    "No hay ingresos registrados en el periodo analizado.",
                     [
                         "income-compare",
                         "expenses-top"
@@ -2504,7 +2378,11 @@ const AtlasLocalAI = {
                     this.formatCurrency(
                         income
                     )
-                } de ingresos este mes.`,
+                } de ingresos en ${
+                    this.monthLabel(
+                        summary.monthKey
+                    )
+                }.`,
                 [
                     "income-compare",
                     "income-stability",
@@ -2529,7 +2407,7 @@ const AtlasLocalAI = {
                         this.formatCurrency(
                             incomeDifference
                         )
-                    } frente al mes anterior.`,
+                    } frente al periodo anterior.`,
                     [
                         "income-stability",
                         "savings-compare",
@@ -2551,7 +2429,7 @@ const AtlasLocalAI = {
                                 incomeDifference
                             )
                         )
-                    } frente al mes anterior.`,
+                    } frente al periodo anterior.`,
                     [
                         "simulation-income-minus-10",
                         "savings-compare",
@@ -2567,7 +2445,7 @@ const AtlasLocalAI = {
                     this.formatCurrency(
                         income
                     )
-                }, sin cambios frente al mes anterior.`,
+                }, sin cambios frente al periodo anterior.`,
                 [
                     "income-stability",
                     "savings-rate"
@@ -2587,7 +2465,7 @@ const AtlasLocalAI = {
             ) {
 
                 return this.insufficient(
-                    "Necesito ingresos registrados tanto en el mes actual como en el anterior para realizar una primera comparación de estabilidad.",
+                    "Necesito ingresos registrados tanto en el periodo analizado como en el anterior para realizar una primera comparación de estabilidad.",
                     [
                         "income-current",
                         "income-compare"
@@ -2611,7 +2489,7 @@ const AtlasLocalAI = {
 
                 return this.response(
                     "Estimación",
-                    `La variación frente al mes anterior es del ${
+                    `La variación frente al periodo anterior es del ${
                         this.formatPercent(
                             variation
                         )
@@ -2626,7 +2504,7 @@ const AtlasLocalAI = {
 
             return this.response(
                 "Estimación",
-                `La variación frente al mes anterior es del ${
+                `La variación frente al periodo anterior es del ${
                     this.formatPercent(
                         variation
                     )
@@ -2751,7 +2629,7 @@ const AtlasLocalAI = {
 
             return this.response(
                 "Estimación",
-                `Tomando el gasto neto de este mes como referencia, tu liquidez cubriría aproximadamente ${
+                `Tomando el gasto neto del periodo como referencia, tu liquidez cubriría aproximadamente ${
                     coveredMonths.toLocaleString(
                         "es-ES",
                         {
@@ -2893,7 +2771,7 @@ const AtlasLocalAI = {
                     this.formatCurrency(
                         debt
                     )
-                }. Este mes has registrado ${
+                }. En el periodo has registrado ${
                     this.formatCurrency(
                         debtPayments
                     )
@@ -2979,7 +2857,7 @@ const AtlasLocalAI = {
 
             return this.response(
                 "Dato real",
-                `Este mes has destinado ${
+                `En el periodo has destinado ${
                     this.formatCurrency(
                         debtPayments
                     )
@@ -3021,7 +2899,11 @@ const AtlasLocalAI = {
 
             return this.response(
                 "Dato real",
-                `Este mes has aportado ${
+                `En ${
+                    this.monthLabel(
+                        summary.monthKey
+                    )
+                } has aportado ${
                     this.formatCurrency(
                         monthlyInvested
                     )
@@ -3095,7 +2977,7 @@ const AtlasLocalAI = {
                         this.formatCurrency(
                             monthlyInvested
                         )
-                    } este mes mientras tu liquidez es ${
+                    } durante el periodo mientras tu liquidez es ${
                         this.formatCurrency(
                             liquidity
                         )
@@ -3192,13 +3074,13 @@ const AtlasLocalAI = {
 
         if (
             questionKey ===
-            "prediction-close" ||
+                "prediction-close" ||
             questionKey ===
-            "prediction-expenses" ||
+                "prediction-expenses" ||
             questionKey ===
-            "prediction-negative" ||
+                "prediction-negative" ||
             questionKey ===
-            "prediction-save-500"
+                "prediction-save-500"
         ) {
 
             const prediction =
@@ -3342,7 +3224,15 @@ const AtlasLocalAI = {
 
             return this.response(
                 "Dato real",
-                `Frente al mes anterior, los ingresos ${
+                `Comparando ${
+                    this.monthLabel(
+                        summary.monthKey
+                    )
+                } con ${
+                    this.monthLabel(
+                        summary.previousMonthKey
+                    )
+                }, los ingresos ${
                     incomeDifference > 0
                         ? `han aumentado ${
                             this.formatCurrency(
@@ -3443,7 +3333,7 @@ const AtlasLocalAI = {
         ) {
 
             let text =
-                "Las aportaciones no han cambiado frente al mes anterior.";
+                "Las aportaciones no han cambiado frente al periodo anterior.";
 
             if (
                 investedDifference > 0
@@ -3454,7 +3344,7 @@ const AtlasLocalAI = {
                         this.formatCurrency(
                             investedDifference
                         )
-                    } más que el mes anterior.`;
+                    } más que en el periodo anterior.`;
 
             } else if (
                 investedDifference < 0
@@ -3467,7 +3357,7 @@ const AtlasLocalAI = {
                                 investedDifference
                             )
                         )
-                    } menos que el mes anterior.`;
+                    } menos que en el periodo anterior.`;
 
             }
 
@@ -3500,33 +3390,30 @@ const AtlasLocalAI = {
 
             }
 
-            const reduction =
-                this.number(
-                    topCategory.amount
-                ) *
-                0.2;
-
-            const simulatedSavings =
-                savings +
-                reduction;
+            const simulation =
+                AtlasAIAnalysis
+                    .simulateCategoryReduction(
+                        topCategory,
+                        20,
+                        summary,
+                        this
+                    );
 
             return this.response(
                 "Simulación",
                 `Reducir un 20 % ${
-                    topCategory.category ||
-                    topCategory.label ||
-                    "tu categoría principal"
+                    simulation.category
                 } liberaría ${
                     this.formatCurrency(
-                        reduction
+                        simulation.reduction
                     )
                 }. Tu ahorro mensual pasaría de ${
                     this.formatCurrency(
-                        savings
+                        simulation.currentSavings
                     )
                 } a aproximadamente ${
                     this.formatCurrency(
-                        simulatedSavings
+                        simulation.projectedSavings
                     )
                 }.`,
                 [
@@ -3534,7 +3421,20 @@ const AtlasLocalAI = {
                     "savings-rate",
                     "simulation-save-200",
                     "prediction-close"
-                ]
+                ],
+                {
+                    entity: {
+                        type:
+                            "category",
+                        name:
+                            simulation.category,
+                        amount:
+                            simulation.originalAmount,
+                        rank:
+                            1
+                    },
+                    simulation
+                }
             );
 
         }
@@ -3574,32 +3474,41 @@ const AtlasLocalAI = {
             "simulation-invest-200"
         ) {
 
+            const simulation =
+                AtlasAIAnalysis
+                    .simulateExtraInvestment(
+                        200,
+                        summary,
+                        this
+                    );
+
             return this.response(
                 "Simulación",
                 `Una aportación adicional de 200 € reduciría tu liquidez de ${
                     this.formatCurrency(
-                        liquidity
+                        simulation.currentLiquidity
                     )
                 } a ${
                     this.formatCurrency(
-                        liquidity -
-                        200
+                        simulation.projectedLiquidity
                     )
                 } y elevaría tus inversiones de ${
                     this.formatCurrency(
-                        investments
+                        simulation.currentInvestments
                     )
                 } a ${
                     this.formatCurrency(
-                        investments +
-                        200
+                        simulation.projectedInvestments
                     )
                 }. No sería un gasto, pero sí reduciría el ahorro mensual disponible en 200 €.`,
                 [
                     "investments-liquidity",
                     "liquidity-security",
                     "prediction-close"
-                ]
+                ],
+                {
+                    simulation
+                }
             );
 
         }
@@ -3623,32 +3532,37 @@ const AtlasLocalAI = {
 
             }
 
-            const reduction =
-                income *
-                0.1;
+            const simulation =
+                AtlasAIAnalysis
+                    .simulateIncomeReduction(
+                        10,
+                        summary,
+                        this
+                    );
 
             return this.response(
                 "Simulación",
                 `Una bajada del 10 % reduciría tus ingresos en ${
                     this.formatCurrency(
-                        reduction
+                        simulation.reduction
                     )
                 }, hasta ${
                     this.formatCurrency(
-                        income -
-                        reduction
+                        simulation.projectedIncome
                     )
                 }. Manteniendo el resto igual, el ahorro bajaría a ${
                     this.formatCurrency(
-                        savings -
-                        reduction
+                        simulation.projectedSavings
                     )
                 }.`,
                 [
                     "income-stability",
                     "prediction-close",
                     "simulation-top-20"
-                ]
+                ],
+                {
+                    simulation
+                }
             );
 
         }
@@ -3658,28 +3572,37 @@ const AtlasLocalAI = {
             "simulation-unexpected-1000"
         ) {
 
+            const simulation =
+                AtlasAIAnalysis
+                    .simulateUnexpectedExpense(
+                        1000,
+                        summary,
+                        this
+                    );
+
             return this.response(
                 "Simulación",
                 `Un gasto inesperado de 1.000 € reduciría el ahorro mensual de ${
                     this.formatCurrency(
-                        savings
+                        simulation.currentSavings
                     )
                 } a ${
                     this.formatCurrency(
-                        savings -
-                        1000
+                        simulation.projectedSavings
                     )
                 }. Si se pagara con liquidez, esta también bajaría hasta ${
                     this.formatCurrency(
-                        liquidity -
-                        1000
+                        simulation.projectedLiquidity
                     )
                 }.`,
                 [
                     "liquidity-security",
                     "prediction-close",
                     "simulation-save-200"
-                ]
+                ],
+                {
+                    simulation
+                }
             );
 
         }
@@ -3704,34 +3627,37 @@ const AtlasLocalAI = {
 
             }
 
-            const payment =
-                Math.min(
-                    500,
-                    debt
-                );
+            const simulation =
+                AtlasAIAnalysis
+                    .simulateDebtRepayment(
+                        500,
+                        summary,
+                        this
+                    );
 
             return this.response(
                 "Simulación",
                 `Amortizar ${
                     this.formatCurrency(
-                        payment
+                        simulation.payment
                     )
                 } reduciría la deuda a ${
                     this.formatCurrency(
-                        debt -
-                        payment
+                        simulation.projectedDebt
                     )
                 } y la liquidez a ${
                     this.formatCurrency(
-                        liquidity -
-                        payment
+                        simulation.projectedLiquidity
                     )
                 }. El pago no se consideraría gasto.`,
                 [
                     "liquidity-security",
                     "debt-risk",
                     "liquidity-amortize"
-                ]
+                ],
+                {
+                    simulation
+                }
             );
 
         }
@@ -3879,6 +3805,188 @@ const AtlasLocalAI = {
 
     },
 
+    buildConversationAnswer(
+        questionKey,
+        summary,
+        answer
+    ) {
+
+        const answerMetadata =
+            answer.metadata ||
+            {};
+
+        const generatedContext =
+            AtlasAIAnalysis
+                .createConversationContext(
+                    questionKey,
+                    summary,
+                    this,
+                    answerMetadata
+                );
+
+        const conversationContext =
+            AtlasAIAnalysis
+                .mergeConversationContext(
+                    this.state
+                        .conversationContext,
+                    generatedContext
+                );
+
+        const dynamicFollowUps =
+            AtlasAIAnalysis
+                .dynamicFollowUps(
+                    conversationContext,
+                    summary,
+                    this
+                );
+
+        return {
+
+            ...answer,
+
+            followUps:
+                AtlasAIAnalysis
+                    .unique([
+                        ...(
+                            answer.followUps ||
+                            []
+                        ),
+                        ...dynamicFollowUps
+                    ])
+                    .filter(
+                        followUp =>
+                            followUp !==
+                            questionKey
+                    )
+                    .slice(
+                        0,
+                        5
+                    ),
+
+            metadata: {
+
+                ...answerMetadata,
+
+                conversationContext
+
+            }
+
+        };
+
+    },
+
+    comparisonQuestionForContext() {
+
+        const metric =
+            this.state
+                .conversationContext
+                ?.metric;
+
+        const theme =
+            this.state
+                .conversationContext
+                ?.theme;
+
+        const metricQuestions = {
+
+            savings:
+                "comparison-savings",
+
+            "saving-rate":
+                "comparison-savings",
+
+            expenses:
+                "comparison-expenses",
+
+            "expense-category":
+                "comparison-expenses",
+
+            "expense-income-share":
+                "comparison-expenses",
+
+            income:
+                "comparison-income",
+
+            "income-stability":
+                "comparison-income",
+
+            investments:
+                "comparison-investments",
+
+            "monthly-invested":
+                "comparison-investments"
+
+        };
+
+        if (
+            metricQuestions[
+                metric
+            ]
+        ) {
+
+            return metricQuestions[
+                metric
+            ];
+
+        }
+
+        const themeQuestions = {
+
+            savings:
+                "comparison-savings",
+
+            expenses:
+                "comparison-expenses",
+
+            income:
+                "comparison-income",
+
+            investments:
+                "comparison-investments"
+
+        };
+
+        return (
+            themeQuestions[
+                theme
+            ] ||
+            "comparison-month"
+        );
+
+    },
+
+    contextCategory(summary) {
+
+        const categoryName =
+            this.state
+                .conversationContext
+                ?.category ||
+            this.state
+                .conversationContext
+                ?.entity
+                ?.name;
+
+        if (!categoryName) {
+
+            return null;
+
+        }
+
+        return (
+            AtlasAIAnalysis
+                .findCategory(
+                    summary,
+                    categoryName
+                ) ||
+            AtlasAIAnalysis
+                .findCategoryContaining(
+                    summary,
+                    categoryName
+                )
+        );
+
+    },
+
     addMessage(
         role,
         text,
@@ -3913,13 +4021,44 @@ const AtlasLocalAI = {
             themePage:
                 this.state.themePage,
 
-            followUps:
-                [
-                    ...(
-                        this.state.followUps ||
-                        []
-                    )
-                ]
+            followUps: [
+                ...(
+                    this.state.followUps ||
+                    []
+                )
+            ],
+
+            activeMonthKey:
+                this.state.activeMonthKey,
+
+            conversationContext:
+                this.state
+                    .conversationContext
+                    ? {
+                        ...this.state
+                            .conversationContext,
+                        entity:
+                            this.state
+                                .conversationContext
+                                .entity
+                                ? {
+                                    ...this.state
+                                        .conversationContext
+                                        .entity
+                                }
+                                : null,
+                        simulation:
+                            this.state
+                                .conversationContext
+                                .simulation
+                                ? {
+                                    ...this.state
+                                        .conversationContext
+                                        .simulation
+                                }
+                                : null
+                    }
+                    : null
 
         });
 
@@ -3980,27 +4119,58 @@ const AtlasLocalAI = {
 
     askQuestion(
         questionKey,
-        summary
+        summary,
+        options = {}
     ) {
 
         this.pushNavigation();
 
+        const inferredTheme =
+            AtlasAIAnalysis
+                .questionTheme(
+                    questionKey
+                );
+
+        if (
+            inferredTheme &&
+            inferredTheme !==
+                "simulations" &&
+            inferredTheme !==
+                "comparisons"
+        ) {
+
+            this.state.currentTheme =
+                inferredTheme;
+
+        }
+
         this.state.currentQuestion =
             questionKey;
+
+        this.state.activeMonthKey =
+            summary.monthKey;
 
         this.state.view =
             "followups";
 
         const label =
+            options.label ||
             this.questionLabel(
                 questionKey,
                 summary
             );
 
-        const answer =
+        const rawAnswer =
             this.answerQuestion(
                 questionKey,
                 summary
+            );
+
+        const answer =
+            this.buildConversationAnswer(
+                questionKey,
+                summary,
+                rawAnswer
             );
 
         this.addMessage(
@@ -4016,6 +4186,603 @@ const AtlasLocalAI = {
 
         this.state.followUps =
             answer.followUps;
+
+        this.state.conversationContext =
+            answer.metadata
+                ?.conversationContext ||
+            null;
+
+    },
+
+    addContextualAnswer(
+        label,
+        answer,
+        conversationContext,
+        summary
+    ) {
+
+        this.pushNavigation();
+
+        this.state.view =
+            "followups";
+
+        this.state.activeMonthKey =
+            summary.monthKey;
+
+        this.addMessage(
+            "user",
+            label
+        );
+
+        this.addMessage(
+            "atlas",
+            answer.text,
+            answer.type
+        );
+
+        const mergedContext =
+            AtlasAIAnalysis
+                .mergeConversationContext(
+                    this.state
+                        .conversationContext,
+                    conversationContext
+                );
+
+        const dynamicFollowUps =
+            AtlasAIAnalysis
+                .dynamicFollowUps(
+                    mergedContext,
+                    summary,
+                    this
+                );
+
+        this.state.conversationContext =
+            mergedContext;
+
+        this.state.followUps =
+            AtlasAIAnalysis
+                .unique([
+                    ...(
+                        answer.followUps ||
+                        []
+                    ),
+                    ...dynamicFollowUps
+                ])
+                .slice(
+                    0,
+                    5
+                );
+
+    },
+
+    handleContextAction(
+        actionKey,
+        summary
+    ) {
+
+        const context =
+            this.state
+                .conversationContext;
+
+        if (!context) {
+
+            this.addContextualAnswer(
+                "Continuar análisis",
+                this.insufficient(
+                    "No hay una consulta anterior suficiente para aplicar este seguimiento.",
+                    [
+                        "status-overview",
+                        "expenses-top",
+                        "savings-current"
+                    ]
+                ),
+                null,
+                summary
+            );
+
+            return;
+
+        }
+
+        if (
+            actionKey ===
+            "context-previous-period"
+        ) {
+
+            if (
+                !context.questionKey
+            ) {
+
+                return;
+
+            }
+
+            const baseMonthKey =
+                this.state
+                    .activeMonthKey ||
+                context.period ||
+                summary.monthKey;
+
+            const targetMonthKey =
+                this.previousMonthKey(
+                    baseMonthKey
+                );
+
+            const targetSummary =
+                this.summary(
+                    this.data,
+                    targetMonthKey
+                );
+
+            this.askQuestion(
+                context.questionKey,
+                targetSummary,
+                {
+                    label:
+                        `¿Y en ${
+                            this.monthLabel(
+                                targetMonthKey
+                            )
+                        }?`
+                }
+            );
+
+            return;
+
+        }
+
+        if (
+            actionKey ===
+            "context-compare-period"
+        ) {
+
+            const comparisonQuestion =
+                this.comparisonQuestionForContext();
+
+            this.askQuestion(
+                comparisonQuestion,
+                summary,
+                {
+                    label:
+                        `Comparar ${
+                            this.monthLabel(
+                                summary.monthKey
+                            )
+                        } con ${
+                            this.monthLabel(
+                                summary.previousMonthKey
+                            )
+                        }`
+                }
+            );
+
+            return;
+
+        }
+
+        if (
+            actionKey ===
+            "context-second-category"
+        ) {
+
+            const category =
+                this.secondCategory(
+                    summary
+                );
+
+            if (!category) {
+
+                this.addContextualAnswer(
+                    "Analizar la segunda categoría",
+                    this.insufficient(
+                        "No hay una segunda categoría de gasto positiva en este periodo.",
+                        [
+                            "expenses-top",
+                            "expenses-change"
+                        ]
+                    ),
+                    context,
+                    summary
+                );
+
+                return;
+
+            }
+
+            const categoryName =
+                AtlasAIAnalysis
+                    .categoryName(
+                        category
+                    );
+
+            const categoryAmount =
+                AtlasAIAnalysis
+                    .categoryAmount(
+                        category,
+                        this
+                    );
+
+            this.addContextualAnswer(
+                "Analizar la segunda categoría",
+                this.response(
+                    "Dato real",
+                    `La segunda categoría de gasto de ${
+                        this.monthLabel(
+                            summary.monthKey
+                        )
+                    } es ${
+                        categoryName
+                    }, con ${
+                        this.formatCurrency(
+                            categoryAmount
+                        )
+                    }.`,
+                    [
+                        "context-category-share",
+                        "context-category-income-share",
+                        "context-category-reduce-20"
+                    ]
+                ),
+                {
+                    questionKey:
+                        "expenses-top",
+                    theme:
+                        "expenses",
+                    metric:
+                        "expense-category",
+                    period:
+                        summary.monthKey,
+                    comparisonPeriod:
+                        summary.previousMonthKey,
+                    category:
+                        categoryName,
+                    entity: {
+                        type:
+                            "category",
+                        name:
+                            categoryName,
+                        amount:
+                            categoryAmount,
+                        rank:
+                            2
+                    },
+                    source:
+                        "contextual",
+                    canCompare:
+                        true,
+                    canChangePeriod:
+                        true
+                },
+                summary
+            );
+
+            return;
+
+        }
+
+        const category =
+            this.contextCategory(
+                summary
+            );
+
+        if (
+            actionKey ===
+            "context-category-share"
+        ) {
+
+            if (!category) {
+
+                this.addContextualAnswer(
+                    this.contextualLabel(
+                        actionKey
+                    ),
+                    this.insufficient(
+                        "La categoría analizada no tiene gastos registrados en este periodo.",
+                        [
+                            "expenses-top",
+                            "expenses-change"
+                        ]
+                    ),
+                    context,
+                    summary
+                );
+
+                return;
+
+            }
+
+            const percentage =
+                AtlasAIAnalysis
+                    .categoryShareOfExpenses(
+                        category,
+                        summary,
+                        this
+                    );
+
+            const categoryName =
+                AtlasAIAnalysis
+                    .categoryName(
+                        category
+                    );
+
+            this.addContextualAnswer(
+                this.contextualLabel(
+                    actionKey
+                ),
+                this.response(
+                    "Dato real",
+                    `${categoryName} representa el ${
+                        this.formatPercent(
+                            percentage
+                        )
+                    } de tus gastos netos de ${
+                        this.monthLabel(
+                            summary.monthKey
+                        )
+                    }.`,
+                    [
+                        "context-category-income-share",
+                        "context-category-reduce-20",
+                        "context-second-category"
+                    ]
+                ),
+                {
+                    ...context,
+                    questionKey:
+                        "context-category-share",
+                    metric:
+                        "category-expense-share",
+                    period:
+                        summary.monthKey,
+                    source:
+                        "contextual"
+                },
+                summary
+            );
+
+            return;
+
+        }
+
+        if (
+            actionKey ===
+            "context-category-income-share"
+        ) {
+
+            if (!category) {
+
+                this.addContextualAnswer(
+                    this.contextualLabel(
+                        actionKey
+                    ),
+                    this.insufficient(
+                        "La categoría analizada no tiene gastos registrados en este periodo.",
+                        [
+                            "expenses-top",
+                            "income-current"
+                        ]
+                    ),
+                    context,
+                    summary
+                );
+
+                return;
+
+            }
+
+            const income =
+                this.number(
+                    summary.current
+                        .monthlyIncome
+                );
+
+            if (
+                income <= 0
+            ) {
+
+                this.addContextualAnswer(
+                    this.contextualLabel(
+                        actionKey
+                    ),
+                    this.insufficient(
+                        "No puedo calcular el porcentaje sobre ingresos porque no hay ingresos positivos registrados en este periodo.",
+                        [
+                            "income-current",
+                            "expenses-top"
+                        ]
+                    ),
+                    context,
+                    summary
+                );
+
+                return;
+
+            }
+
+            const percentage =
+                AtlasAIAnalysis
+                    .categoryShareOfIncome(
+                        category,
+                        summary,
+                        this
+                    );
+
+            const categoryName =
+                AtlasAIAnalysis
+                    .categoryName(
+                        category
+                    );
+
+            this.addContextualAnswer(
+                this.contextualLabel(
+                    actionKey
+                ),
+                this.response(
+                    "Dato real",
+                    `${categoryName} representa el ${
+                        this.formatPercent(
+                            percentage
+                        )
+                    } de tus ingresos de ${
+                        this.monthLabel(
+                            summary.monthKey
+                        )
+                    }.`,
+                    [
+                        "context-category-share",
+                        "context-category-reduce-20",
+                        "savings-rate"
+                    ]
+                ),
+                {
+                    ...context,
+                    questionKey:
+                        "context-category-income-share",
+                    metric:
+                        "category-income-share",
+                    period:
+                        summary.monthKey,
+                    source:
+                        "contextual"
+                },
+                summary
+            );
+
+            return;
+
+        }
+
+        if (
+            actionKey ===
+            "context-category-reduce-20"
+        ) {
+
+            if (!category) {
+
+                this.addContextualAnswer(
+                    this.contextualLabel(
+                        actionKey
+                    ),
+                    this.insufficient(
+                        "La categoría analizada no tiene gasto positivo en este periodo.",
+                        [
+                            "expenses-top",
+                            "simulation-save-200"
+                        ]
+                    ),
+                    context,
+                    summary
+                );
+
+                return;
+
+            }
+
+            const simulation =
+                AtlasAIAnalysis
+                    .simulateCategoryReduction(
+                        category,
+                        20,
+                        summary,
+                        this
+                    );
+
+            this.addContextualAnswer(
+                this.contextualLabel(
+                    actionKey
+                ),
+                this.response(
+                    "Simulación",
+                    `Reducir un 20 % ${
+                        simulation.category
+                    } liberaría ${
+                        this.formatCurrency(
+                            simulation.reduction
+                        )
+                    }. El gasto de la categoría bajaría de ${
+                        this.formatCurrency(
+                            simulation.originalAmount
+                        )
+                    } a ${
+                        this.formatCurrency(
+                            simulation.resultingAmount
+                        )
+                    }, y tu ahorro pasaría de ${
+                        this.formatCurrency(
+                            simulation.currentSavings
+                        )
+                    } a aproximadamente ${
+                        this.formatCurrency(
+                            simulation.projectedSavings
+                        )
+                    }.`,
+                    [
+                        "context-category-share",
+                        "savings-rate",
+                        "context-second-category"
+                    ],
+                    {
+                        simulation
+                    }
+                ),
+                {
+                    ...context,
+                    questionKey:
+                        "context-category-reduce-20",
+                    theme:
+                        "simulations",
+                    metric:
+                        "category-reduction",
+                    period:
+                        summary.monthKey,
+                    simulation,
+                    source:
+                        "contextual"
+                },
+                summary
+            );
+
+            return;
+
+        }
+
+        if (
+            actionKey ===
+            "context-category-movements"
+        ) {
+
+            const categoryName =
+                context.category ||
+                context.entity
+                    ?.name ||
+                "la categoría analizada";
+
+            this.addContextualAnswer(
+                this.contextualLabel(
+                    actionKey
+                ),
+                this.response(
+                    "Navegación",
+                    `Atlas ya conserva ${
+                        categoryName
+                    } como categoría activa de la conversación. La apertura directa de su listado de movimientos requiere conectar esta acción con el filtro del módulo Movimientos.`,
+                    [
+                        "context-category-share",
+                        "context-category-reduce-20",
+                        "expenses-top"
+                    ]
+                ),
+                {
+                    ...context,
+                    questionKey:
+                        "context-category-movements",
+                    source:
+                        "contextual"
+                },
+                summary
+            );
+
+        }
 
     },
 
@@ -4037,6 +4804,12 @@ const AtlasLocalAI = {
 
         this.state.followUps =
             [];
+
+        this.state.activeMonthKey =
+            this.currentMonthKey();
+
+        this.state.conversationContext =
+            null;
 
         this.addMessage(
             "user",
@@ -4079,37 +4852,20 @@ const AtlasLocalAI = {
             previous.followUps ||
             [];
 
+        this.state.activeMonthKey =
+            previous.activeMonthKey ||
+            this.currentMonthKey();
+
+        this.state.conversationContext =
+            previous.conversationContext ||
+            null;
+
     },
 
     resetConversation() {
 
-        this.state = {
-
-            initialized:
-                false,
-
-            messages:
-                [],
-
-            currentTheme:
-                null,
-
-            currentQuestion:
-                null,
-
-            view:
-                "themes",
-
-            themePage:
-                0,
-
-            navigation:
-                [],
-
-            followUps:
-                []
-
-        };
+        this.state =
+            this.emptyState();
 
         this.initializeConversation();
 
@@ -4301,12 +5057,7 @@ const AtlasLocalAI = {
                     padding-top:14px;
                     border-top:
                         1px solid
-                        rgba(
-                            145,
-                            164,
-                            202,
-                            0.12
-                        );
+                        rgba(145,164,202,0.12);
                 "
             >
 
@@ -4314,9 +5065,7 @@ const AtlasLocalAI = {
                     style="
                         margin-bottom:10px;
                         color:
-                            var(
-                                --color-text-muted
-                            );
+                            var(--color-text-muted);
                         font-size:12px;
                         font-weight:700;
                     "
@@ -4345,21 +5094,11 @@ const AtlasLocalAI = {
                                             padding:13px;
                                             border:
                                                 1px solid
-                                                rgba(
-                                                    217,
-                                                    180,
-                                                    95,
-                                                    0.18
-                                                );
+                                                rgba(217,180,95,0.18);
                                             border-radius:15px;
                                             color:#f7f8fc;
                                             background:
-                                                rgba(
-                                                    217,
-                                                    180,
-                                                    95,
-                                                    0.06
-                                                );
+                                                rgba(217,180,95,0.06);
                                             text-align:left;
                                         "
                                     >
@@ -4399,9 +5138,7 @@ const AtlasLocalAI = {
                                                         display:block;
                                                         margin-top:4px;
                                                         color:
-                                                            var(
-                                                                --color-text-muted
-                                                            );
+                                                            var(--color-text-muted);
                                                         font-size:11px;
                                                         line-height:1.4;
                                                     "
@@ -4434,10 +5171,7 @@ const AtlasLocalAI = {
                                     grid-template-columns:
                                         repeat(
                                             2,
-                                            minmax(
-                                                0,
-                                                1fr
-                                            )
+                                            minmax(0,1fr)
                                         );
                                     gap:8px;
                                     margin-top:9px;
@@ -4483,9 +5217,7 @@ const AtlasLocalAI = {
 
     },
 
-    renderQuestionOptions(
-        summary
-    ) {
+    renderQuestionOptions(summary) {
 
         const theme =
             this.themeByKey(
@@ -4509,12 +5241,7 @@ const AtlasLocalAI = {
                     padding-top:14px;
                     border-top:
                         1px solid
-                        rgba(
-                            145,
-                            164,
-                            202,
-                            0.12
-                        );
+                        rgba(145,164,202,0.12);
                 "
             >
 
@@ -4522,9 +5249,7 @@ const AtlasLocalAI = {
                     style="
                         margin-bottom:10px;
                         color:
-                            var(
-                                --color-text-muted
-                            );
+                            var(--color-text-muted);
                         font-size:12px;
                         font-weight:700;
                     "
@@ -4587,6 +5312,35 @@ const AtlasLocalAI = {
 
     },
 
+    renderFollowUpButton(
+        questionKey,
+        summary
+    ) {
+
+        const isContextAction =
+            String(
+                questionKey || ""
+            )
+                .startsWith(
+                    "context-"
+                );
+
+        const label =
+            this.questionLabel(
+                questionKey,
+                summary
+            );
+
+        return this.renderActionButton(
+            isContextAction
+                ? "context"
+                : "question",
+            questionKey,
+            label
+        );
+
+    },
+
     renderFollowUps(summary) {
 
         const followUps =
@@ -4601,22 +5355,50 @@ const AtlasLocalAI = {
                     padding-top:14px;
                     border-top:
                         1px solid
-                        rgba(
-                            145,
-                            164,
-                            202,
-                            0.12
-                        );
+                        rgba(145,164,202,0.12);
                 "
             >
+
+                ${
+                    this.state.activeMonthKey
+                        ? `
+
+                            <div
+                                style="
+                                    display:inline-flex;
+                                    align-items:center;
+                                    margin-bottom:10px;
+                                    padding:5px 8px;
+                                    border:
+                                        1px solid
+                                        rgba(217,180,95,0.16);
+                                    border-radius:999px;
+                                    color:#d9b45f;
+                                    background:
+                                        rgba(217,180,95,0.06);
+                                    font-size:10px;
+                                    font-weight:800;
+                                "
+                            >
+                                Periodo: ${
+                                    this.escape(
+                                        this.monthLabel(
+                                            this.state
+                                                .activeMonthKey
+                                        )
+                                    )
+                                }
+                            </div>
+
+                        `
+                        : ""
+                }
 
                 <div
                     style="
                         margin-bottom:10px;
                         color:
-                            var(
-                                --color-text-muted
-                            );
+                            var(--color-text-muted);
                         font-size:12px;
                         font-weight:700;
                     "
@@ -4635,13 +5417,9 @@ const AtlasLocalAI = {
                         followUps
                             .map(
                                 questionKey =>
-                                    this.renderActionButton(
-                                        "question",
+                                    this.renderFollowUpButton(
                                         questionKey,
-                                        this.questionLabel(
-                                            questionKey,
-                                            summary
-                                        )
+                                        summary
                                     )
                             )
                             .join("")
@@ -4687,9 +5465,7 @@ const AtlasLocalAI = {
 
     },
 
-    renderConversation(
-        summary
-    ) {
+    renderConversation(summary) {
 
         this.initializeConversation();
 
@@ -4763,9 +5539,7 @@ const AtlasLocalAI = {
                         padding:0;
                         border:0;
                         color:
-                            var(
-                                --color-text-muted
-                            );
+                            var(--color-text-muted);
                         background:transparent;
                         font-size:11px;
                         text-decoration:underline;
@@ -4798,7 +5572,9 @@ const AtlasLocalAI = {
 
         const summary =
             this.summary(
-                this.data
+                this.data,
+                this.state
+                    .activeMonthKey
             );
 
         container.innerHTML =
@@ -4833,9 +5609,16 @@ const AtlasLocalAI = {
 
         this.initializeConversation();
 
-        const summary =
-            this.summary(
+        const currentSummary =
+            this.currentSummary(
                 data
+            );
+
+        const conversationSummary =
+            this.summary(
+                data,
+                this.state
+                    .activeMonthKey
             );
 
         return `
@@ -4883,7 +5666,7 @@ const AtlasLocalAI = {
                     >
                         ${this.escape(
                             this.mainMessage(
-                                summary
+                                currentSummary
                             )
                         )}
                     </div>
@@ -4892,16 +5675,14 @@ const AtlasLocalAI = {
                         style="
                             margin:12px 0 0;
                             color:
-                                var(
-                                    --color-text-muted
-                                );
+                                var(--color-text-muted);
                             font-size:13px;
                             line-height:1.5;
                         "
                     >
                         ${this.escape(
                             this.explanation(
-                                summary
+                                currentSummary
                             )
                         )}
                     </p>
@@ -4932,7 +5713,7 @@ const AtlasLocalAI = {
                     </div>
 
                     ${this.renderAlerts(
-                        summary
+                        currentSummary
                     )}
 
                 </section>
@@ -4961,7 +5742,7 @@ const AtlasLocalAI = {
                     </div>
 
                     ${this.renderRecommendations(
-                        summary
+                        currentSummary
                     )}
 
                 </section>
@@ -4982,7 +5763,7 @@ const AtlasLocalAI = {
                                     margin-top:5px;
                                 "
                             >
-                                Conversación financiera guiada
+                                Conversación financiera guiada con memoria de contexto
                             </p>
 
                         </div>
@@ -4996,7 +5777,7 @@ const AtlasLocalAI = {
                         "
                     >
                         ${this.renderConversation(
-                            summary
+                            conversationSummary
                         )}
                     </div>
 
@@ -5006,12 +5787,7 @@ const AtlasLocalAI = {
                     class="panel"
                     style="
                         border-color:
-                            rgba(
-                                145,
-                                164,
-                                202,
-                                0.14
-                            );
+                            rgba(145,164,202,0.14);
                     "
                 >
 
@@ -5068,7 +5844,9 @@ const AtlasLocalAI = {
 
                 const summary =
                     this.summary(
-                        this.data
+                        this.data,
+                        this.state
+                            .activeMonthKey
                     );
 
                 if (
@@ -5087,6 +5865,16 @@ const AtlasLocalAI = {
                 ) {
 
                     this.askQuestion(
+                        value,
+                        summary
+                    );
+
+                } else if (
+                    action ===
+                    "context"
+                ) {
+
+                    this.handleContextAction(
                         value,
                         summary
                     );
