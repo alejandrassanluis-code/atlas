@@ -279,6 +279,55 @@ const AtlasAIAnalysis = {
 
     },
 
+    analyzedCategory(
+        category,
+        summary,
+        context,
+        rank
+    ) {
+
+        if (!category) {
+
+            return null;
+
+        }
+
+        return {
+
+            raw:
+                category,
+
+            name:
+                this.categoryName(
+                    category
+                ),
+
+            amount:
+                this.categoryAmount(
+                    category,
+                    context
+                ),
+
+            rank,
+
+            expenseShare:
+                this.categoryShareOfExpenses(
+                    category,
+                    summary,
+                    context
+                ),
+
+            incomeShare:
+                this.categoryShareOfIncome(
+                    category,
+                    summary,
+                    context
+                )
+
+        };
+
+    },
+
     /* ======================================================
        DIFERENCIAS ENTRE PERIODOS
     ====================================================== */
@@ -1127,7 +1176,7 @@ const AtlasAIAnalysis = {
     },
 
     /* ======================================================
-       REASONING ENGINE
+       MOTOR DE RAZONAMIENTO
     ====================================================== */
 
     reason(
@@ -1138,7 +1187,12 @@ const AtlasAIAnalysis = {
     ) {
 
         const current =
-            summary.current || {};
+            summary.current ||
+            {};
+
+        const previous =
+            summary.previous ||
+            {};
 
         const topCategory =
             this.topCategory(
@@ -1152,69 +1206,161 @@ const AtlasAIAnalysis = {
                 context
             );
 
-        const savings =
-            context.number(
-                current.monthlySavings
-            );
+        const metrics = {
 
-        const income =
-            context.number(
-                current.monthlyIncome
-            );
+            income:
+                context.number(
+                    current.monthlyIncome
+                ),
 
-        const expenses =
-            context.number(
-                current.monthlyExpenses
-            );
+            expenses:
+                context.number(
+                    current.monthlyExpenses
+                ),
 
-        const liquidity =
-            context.number(
-                current.liquidity
-            );
+            grossExpenses:
+                context.number(
+                    current.monthlyGrossExpenses
+                ),
 
-        const debt =
-            context.number(
-                current.debt
-            );
+            savings:
+                context.number(
+                    current.monthlySavings
+                ),
 
-        const investments =
-            context.number(
-                current.investments
-            );
+            savingRate:
+                context.number(
+                    current.monthlySavingRate
+                ),
 
-        const monthlyInvested =
-            context.number(
-                current.monthlyInvested
-            );
+            monthlyInvested:
+                context.number(
+                    current.monthlyInvested
+                ),
 
-        const savingRate =
-            context.number(
-                current.monthlySavingRate
-            );
+            debtPayments:
+                context.number(
+                    current.monthlyDebtPayments
+                ),
 
-        const savingsDifference =
-            this.savingsDifference(
-                summary,
-                context
-            );
+            liquidity:
+                context.number(
+                    current.liquidity
+                ),
 
-        const expenseDifference =
-            this.expenseDifference(
-                summary,
-                context
-            );
+            investments:
+                context.number(
+                    current.investments
+                ),
 
-        const incomeDifference =
-            this.incomeDifference(
-                summary,
-                context
-            );
+            debt:
+                context.number(
+                    current.debt
+                ),
 
-        const investmentDifference =
-            this.investmentDifference(
-                summary,
-                context
-            );
+            previousIncome:
+                context.number(
+                    previous.monthlyIncome
+                ),
+
+            previousExpenses:
+                context.number(
+                    previous.monthlyExpenses
+                ),
+
+            previousSavings:
+                context.number(
+                    previous.monthlySavings
+                ),
+
+            previousInvested:
+                context.number(
+                    previous.monthlyInvested
+                )
+
+        };
+
+        metrics.netWorth =
+            metrics.liquidity +
+            metrics.investments -
+            metrics.debt;
+
+        metrics.grossAssets =
+            metrics.liquidity +
+            metrics.investments;
+
+        metrics.expenseIncomeShare =
+            metrics.income > 0
+                ? metrics.expenses /
+                    metrics.income *
+                    100
+                : 0;
+
+        metrics.investmentWeight =
+            metrics.grossAssets !== 0
+                ? metrics.investments /
+                    metrics.grossAssets *
+                    100
+                : 0;
+
+        metrics.debtLiquidityRatio =
+            metrics.liquidity > 0
+                ? metrics.debt /
+                    metrics.liquidity *
+                    100
+                : null;
+
+        metrics.securityMonths =
+            metrics.expenses > 0
+                ? metrics.liquidity /
+                    metrics.expenses
+                : null;
+
+        const differences = {
+
+            income:
+                metrics.income -
+                metrics.previousIncome,
+
+            expenses:
+                metrics.expenses -
+                metrics.previousExpenses,
+
+            savings:
+                metrics.savings -
+                metrics.previousSavings,
+
+            investments:
+                metrics.monthlyInvested -
+                metrics.previousInvested
+
+        };
+
+        const categories = {
+
+            top:
+                this.analyzedCategory(
+                    topCategory,
+                    summary,
+                    context,
+                    1
+                ),
+
+            second:
+                this.analyzedCategory(
+                    secondCategory,
+                    summary,
+                    context,
+                    2
+                ),
+
+            sorted:
+                this.sortedCategories(
+                    summary,
+                    context
+                )
+
+        };
 
         const conversationContext =
             this.createConversationContext(
@@ -1224,7 +1370,1199 @@ const AtlasAIAnalysis = {
                 metadata
             );
 
-        const reasoning = {
+        const risks = [];
+
+        const strengths = [];
+
+        const weaknesses = [];
+
+        const trends = [];
+
+        const opportunities = [];
+
+        const priorities = [];
+
+        const evidence = [];
+
+        if (
+            metrics.savings < 0
+        ) {
+
+            risks.push({
+
+                key:
+                    "negative-savings",
+
+                level:
+                    "danger",
+
+                score:
+                    100,
+
+                theme:
+                    "savings",
+
+                metric:
+                    "savings",
+
+                title:
+                    "Ahorro negativo",
+
+                value:
+                    metrics.savings,
+
+                cause:
+                    metrics.expenses >
+                        metrics.income
+                        ? "expenses-above-income"
+                        : null
+
+            });
+
+            weaknesses.push({
+
+                key:
+                    "negative-savings",
+
+                score:
+                    100,
+
+                theme:
+                    "savings",
+
+                title:
+                    "Resultado mensual negativo",
+
+                value:
+                    metrics.savings
+
+            });
+
+        }
+
+        if (
+            metrics.liquidity < 0
+        ) {
+
+            risks.push({
+
+                key:
+                    "negative-liquidity",
+
+                level:
+                    "danger",
+
+                score:
+                    120,
+
+                theme:
+                    "liquidity",
+
+                metric:
+                    "liquidity",
+
+                title:
+                    "Liquidez negativa",
+
+                value:
+                    metrics.liquidity
+
+            });
+
+            weaknesses.push({
+
+                key:
+                    "negative-liquidity",
+
+                score:
+                    120,
+
+                theme:
+                    "liquidity",
+
+                title:
+                    "Liquidez negativa",
+
+                value:
+                    metrics.liquidity
+
+            });
+
+        }
+
+        if (
+            metrics.income > 0 &&
+            metrics.expenses >
+                metrics.income
+        ) {
+
+            risks.push({
+
+                key:
+                    "expenses-above-income",
+
+                level:
+                    "danger",
+
+                score:
+                    110,
+
+                theme:
+                    "expenses",
+
+                metric:
+                    "expenses",
+
+                title:
+                    "Gastos superiores a ingresos",
+
+                value:
+                    metrics.expenses -
+                    metrics.income
+
+            });
+
+        }
+
+        if (
+            metrics.debt > 0 &&
+            metrics.debt >
+                metrics.liquidity
+        ) {
+
+            risks.push({
+
+                key:
+                    "debt-above-liquidity",
+
+                level:
+                    "warning",
+
+                score:
+                    80,
+
+                theme:
+                    "debt",
+
+                metric:
+                    "liquidity-debt",
+
+                title:
+                    "Deuda superior a liquidez",
+
+                value:
+                    metrics.debt -
+                    metrics.liquidity
+
+            });
+
+            weaknesses.push({
+
+                key:
+                    "debt-above-liquidity",
+
+                score:
+                    80,
+
+                theme:
+                    "debt",
+
+                title:
+                    "Desequilibrio entre deuda y liquidez",
+
+                value:
+                    metrics.debt -
+                    metrics.liquidity
+
+            });
+
+        }
+
+        if (
+            summary.budget
+                ?.status ===
+                "exceeded"
+        ) {
+
+            const exceededAmount =
+                Math.abs(
+                    context.number(
+                        summary.budget
+                            .remaining
+                    )
+                );
+
+            risks.push({
+
+                key:
+                    "budget-exceeded",
+
+                level:
+                    "danger",
+
+                score:
+                    115,
+
+                theme:
+                    "budgets",
+
+                metric:
+                    "budget",
+
+                title:
+                    "Presupuesto excedido",
+
+                value:
+                    exceededAmount
+
+            });
+
+            weaknesses.push({
+
+                key:
+                    "budget-exceeded",
+
+                score:
+                    115,
+
+                theme:
+                    "budgets",
+
+                title:
+                    "Presupuesto excedido",
+
+                value:
+                    exceededAmount
+
+            });
+
+        } else if (
+            summary.budget &&
+            context.number(
+                summary.budget.total
+            ) > 0
+        ) {
+
+            const budgetTotal =
+                context.number(
+                    summary.budget.total
+                );
+
+            const budgetRemaining =
+                context.number(
+                    summary.budget.remaining
+                );
+
+            const remainingPercentage =
+                budgetTotal > 0
+                    ? budgetRemaining /
+                        budgetTotal *
+                        100
+                    : 0;
+
+            if (
+                budgetRemaining >= 0 &&
+                remainingPercentage <= 15
+            ) {
+
+                risks.push({
+
+                    key:
+                        "budget-low-margin",
+
+                    level:
+                        "warning",
+
+                    score:
+                        70,
+
+                    theme:
+                        "budgets",
+
+                    metric:
+                        "budget-remaining",
+
+                    title:
+                        "Presupuesto casi agotado",
+
+                    value:
+                        budgetRemaining
+
+                });
+
+            }
+
+        }
+
+        if (
+            metrics.income > 0 &&
+            metrics.savingRate >= 20
+        ) {
+
+            strengths.push({
+
+                key:
+                    "strong-saving-rate",
+
+                score:
+                    90,
+
+                theme:
+                    "savings",
+
+                title:
+                    "Tasa de ahorro sólida",
+
+                value:
+                    metrics.savingRate
+
+            });
+
+        } else if (
+            metrics.income > 0 &&
+            metrics.savingRate >= 10
+        ) {
+
+            strengths.push({
+
+                key:
+                    "positive-saving-rate",
+
+                score:
+                    60,
+
+                theme:
+                    "savings",
+
+                title:
+                    "Tasa de ahorro positiva",
+
+                value:
+                    metrics.savingRate
+
+            });
+
+        } else if (
+            metrics.income > 0 &&
+            metrics.savingRate < 10 &&
+            metrics.savings >= 0
+        ) {
+
+            weaknesses.push({
+
+                key:
+                    "low-saving-rate",
+
+                score:
+                    60,
+
+                theme:
+                    "savings",
+
+                title:
+                    "Tasa de ahorro reducida",
+
+                value:
+                    metrics.savingRate
+
+            });
+
+        }
+
+        if (
+            metrics.debt === 0
+        ) {
+
+            strengths.push({
+
+                key:
+                    "no-debt",
+
+                score:
+                    70,
+
+                theme:
+                    "debt",
+
+                title:
+                    "Sin deuda pendiente",
+
+                value:
+                    0
+
+            });
+
+        }
+
+        if (
+            metrics.liquidity > 0 &&
+            metrics.expenses > 0 &&
+            metrics.securityMonths >= 3
+        ) {
+
+            strengths.push({
+
+                key:
+                    "security-buffer",
+
+                score:
+                    metrics.securityMonths >= 6
+                        ? 85
+                        : 65,
+
+                theme:
+                    "liquidity",
+
+                title:
+                    "Margen de seguridad positivo",
+
+                value:
+                    metrics.securityMonths
+
+            });
+
+        } else if (
+            metrics.liquidity > 0 &&
+            metrics.expenses > 0 &&
+            metrics.securityMonths < 3
+        ) {
+
+            weaknesses.push({
+
+                key:
+                    "low-security-buffer",
+
+                score:
+                    65,
+
+                theme:
+                    "liquidity",
+
+                title:
+                    "Fondo de seguridad reducido",
+
+                value:
+                    metrics.securityMonths
+
+            });
+
+        }
+
+        if (
+            differences.savings > 0
+        ) {
+
+            trends.push({
+
+                key:
+                    "savings-up",
+
+                direction:
+                    "up",
+
+                impact:
+                    "positive",
+
+                score:
+                    90,
+
+                theme:
+                    "savings",
+
+                metric:
+                    "savings",
+
+                title:
+                    "El ahorro ha mejorado",
+
+                value:
+                    differences.savings
+
+            });
+
+        } else if (
+            differences.savings < 0
+        ) {
+
+            trends.push({
+
+                key:
+                    "savings-down",
+
+                direction:
+                    "down",
+
+                impact:
+                    "negative",
+
+                score:
+                    100,
+
+                theme:
+                    "savings",
+
+                metric:
+                    "savings",
+
+                title:
+                    "El ahorro ha empeorado",
+
+                value:
+                    differences.savings
+
+            });
+
+        }
+
+        if (
+            differences.expenses > 0
+        ) {
+
+            trends.push({
+
+                key:
+                    "expenses-up",
+
+                direction:
+                    "up",
+
+                impact:
+                    "negative",
+
+                score:
+                    90,
+
+                theme:
+                    "expenses",
+
+                metric:
+                    "expenses",
+
+                title:
+                    "Los gastos han aumentado",
+
+                value:
+                    differences.expenses
+
+            });
+
+        } else if (
+            differences.expenses < 0
+        ) {
+
+            trends.push({
+
+                key:
+                    "expenses-down",
+
+                direction:
+                    "down",
+
+                impact:
+                    "positive",
+
+                score:
+                    80,
+
+                theme:
+                    "expenses",
+
+                metric:
+                    "expenses",
+
+                title:
+                    "Los gastos se han reducido",
+
+                value:
+                    differences.expenses
+
+            });
+
+        }
+
+        if (
+            differences.income > 0
+        ) {
+
+            trends.push({
+
+                key:
+                    "income-up",
+
+                direction:
+                    "up",
+
+                impact:
+                    "positive",
+
+                score:
+                    75,
+
+                theme:
+                    "income",
+
+                metric:
+                    "income",
+
+                title:
+                    "Los ingresos han aumentado",
+
+                value:
+                    differences.income
+
+            });
+
+        } else if (
+            differences.income < 0
+        ) {
+
+            trends.push({
+
+                key:
+                    "income-down",
+
+                direction:
+                    "down",
+
+                impact:
+                    "negative",
+
+                score:
+                    85,
+
+                theme:
+                    "income",
+
+                metric:
+                    "income",
+
+                title:
+                    "Los ingresos han bajado",
+
+                value:
+                    differences.income
+
+            });
+
+        }
+
+        if (
+            differences.investments > 0
+        ) {
+
+            trends.push({
+
+                key:
+                    "investments-up",
+
+                direction:
+                    "up",
+
+                impact:
+                    metrics.liquidity > 0
+                        ? "positive"
+                        : "warning",
+
+                score:
+                    55,
+
+                theme:
+                    "investments",
+
+                metric:
+                    "monthly-invested",
+
+                title:
+                    "Las aportaciones han aumentado",
+
+                value:
+                    differences.investments
+
+            });
+
+        } else if (
+            differences.investments < 0
+        ) {
+
+            trends.push({
+
+                key:
+                    "investments-down",
+
+                direction:
+                    "down",
+
+                impact:
+                    "neutral",
+
+                score:
+                    40,
+
+                theme:
+                    "investments",
+
+                metric:
+                    "monthly-invested",
+
+                title:
+                    "Las aportaciones han disminuido",
+
+                value:
+                    differences.investments
+
+            });
+
+        }
+
+        if (categories.top) {
+
+            opportunities.push({
+
+                key:
+                    "review-top-category",
+
+                score:
+                    60,
+
+                theme:
+                    "expenses",
+
+                metric:
+                    "expense-category",
+
+                title:
+                    "Revisar la categoría principal",
+
+                category:
+                    categories.top.name,
+
+                value:
+                    categories.top.amount,
+
+                potentialImpact:
+                    categories.top.amount *
+                    0.2
+
+            });
+
+        }
+
+        if (
+            metrics.savings >= 0 &&
+            metrics.income > 0 &&
+            metrics.savingRate < 10
+        ) {
+
+            opportunities.push({
+
+                key:
+                    "improve-saving-rate",
+
+                score:
+                    75,
+
+                theme:
+                    "savings",
+
+                metric:
+                    "saving-rate",
+
+                title:
+                    "Mejorar la tasa de ahorro",
+
+                value:
+                    metrics.savingRate
+
+            });
+
+        }
+
+        if (
+            metrics.debt > 0 &&
+            metrics.liquidity >
+                metrics.debt
+        ) {
+
+            opportunities.push({
+
+                key:
+                    "review-debt-repayment",
+
+                score:
+                    55,
+
+                theme:
+                    "debt",
+
+                metric:
+                    "debt-repayment-capacity",
+
+                title:
+                    "Revisar una posible amortización",
+
+                value:
+                    Math.min(
+                        metrics.debt,
+                        metrics.liquidity
+                    )
+
+            });
+
+        }
+
+        if (
+            metrics.debt === 0 &&
+            metrics.savings > 0 &&
+            metrics.liquidity > 0
+        ) {
+
+            opportunities.push({
+
+                key:
+                    "allocate-positive-savings",
+
+                score:
+                    50,
+
+                theme:
+                    "goals",
+
+                metric:
+                    "available-savings",
+
+                title:
+                    "Distribuir ahorro positivo",
+
+                value:
+                    metrics.savings
+
+            });
+
+        }
+
+        risks.forEach(
+            risk => {
+
+                priorities.push({
+
+                    key:
+                        risk.key,
+
+                    type:
+                        "risk",
+
+                    score:
+                        risk.score,
+
+                    level:
+                        risk.level,
+
+                    theme:
+                        risk.theme,
+
+                    metric:
+                        risk.metric,
+
+                    title:
+                        risk.title,
+
+                    value:
+                        risk.value
+
+                });
+
+            }
+        );
+
+        trends
+            .filter(
+                trend =>
+                    trend.impact ===
+                        "negative" ||
+                    trend.impact ===
+                        "warning"
+            )
+            .forEach(
+                trend => {
+
+                    priorities.push({
+
+                        key:
+                            trend.key,
+
+                        type:
+                            "trend",
+
+                        score:
+                            trend.score,
+
+                        level:
+                            trend.impact ===
+                                "negative"
+                                ? "warning"
+                                : "neutral",
+
+                        theme:
+                            trend.theme,
+
+                        metric:
+                            trend.metric,
+
+                        title:
+                            trend.title,
+
+                        value:
+                            trend.value
+
+                    });
+
+                }
+            );
+
+        weaknesses.forEach(
+            weakness => {
+
+                priorities.push({
+
+                    key:
+                        weakness.key,
+
+                    type:
+                        "weakness",
+
+                    score:
+                        weakness.score,
+
+                    level:
+                        "warning",
+
+                    theme:
+                        weakness.theme,
+
+                    metric:
+                        null,
+
+                    title:
+                        weakness.title,
+
+                    value:
+                        weakness.value
+
+                });
+
+            }
+        );
+
+        opportunities.forEach(
+            opportunity => {
+
+                priorities.push({
+
+                    key:
+                        opportunity.key,
+
+                    type:
+                        "opportunity",
+
+                    score:
+                        opportunity.score,
+
+                    level:
+                        "information",
+
+                    theme:
+                        opportunity.theme,
+
+                    metric:
+                        opportunity.metric,
+
+                    title:
+                        opportunity.title,
+
+                    value:
+                        opportunity.value
+
+                });
+
+            }
+        );
+
+        const sortedPriorities =
+            priorities
+                .sort(
+                    (
+                        first,
+                        second
+                    ) =>
+                        second.score -
+                        first.score
+                )
+                .filter(
+                    (
+                        priority,
+                        index,
+                        values
+                    ) =>
+                        values.findIndex(
+                            item =>
+                                item.key ===
+                                priority.key
+                        ) === index
+                );
+
+        const focus =
+            sortedPriorities[0] ||
+            null;
+
+        let health =
+            "neutral";
+
+        if (
+            risks.some(
+                risk =>
+                    risk.level ===
+                    "danger"
+            )
+        ) {
+
+            health =
+                "danger";
+
+        } else if (
+            risks.length > 0 ||
+            weaknesses.length > 0
+        ) {
+
+            health =
+                "warning";
+
+        } else if (
+            strengths.some(
+                strength =>
+                    strength.key ===
+                    "strong-saving-rate"
+            )
+        ) {
+
+            health =
+                "excellent";
+
+        } else if (
+            strengths.length > 0
+        ) {
+
+            health =
+                "good";
+
+        }
+
+        evidence.push({
+
+            key:
+                "current-income",
+
+            metric:
+                "income",
+
+            value:
+                metrics.income
+
+        });
+
+        evidence.push({
+
+            key:
+                "current-expenses",
+
+            metric:
+                "expenses",
+
+            value:
+                metrics.expenses
+
+        });
+
+        evidence.push({
+
+            key:
+                "current-savings",
+
+            metric:
+                "savings",
+
+            value:
+                metrics.savings
+
+        });
+
+        evidence.push({
+
+            key:
+                "current-liquidity",
+
+            metric:
+                "liquidity",
+
+            value:
+                metrics.liquidity
+
+        });
+
+        evidence.push({
+
+            key:
+                "current-investments",
+
+            metric:
+                "investments",
+
+            value:
+                metrics.investments
+
+        });
+
+        evidence.push({
+
+            key:
+                "current-debt",
+
+            metric:
+                "debt",
+
+            value:
+                metrics.debt
+
+        });
+
+        if (categories.top) {
+
+            evidence.push({
+
+                key:
+                    "top-category",
+
+                metric:
+                    "expense-category",
+
+                category:
+                    categories.top.name,
+
+                value:
+                    categories.top.amount,
+
+                expenseShare:
+                    categories.top
+                        .expenseShare,
+
+                incomeShare:
+                    categories.top
+                        .incomeShare
+
+            });
+
+        }
+
+        return {
 
             questionKey:
                 questionKey || null,
@@ -1235,8 +2573,6 @@ const AtlasAIAnalysis = {
             metric:
                 conversationContext.metric,
 
-            conversationContext,
-
             period:
                 summary.monthKey ||
                 null,
@@ -1245,457 +2581,90 @@ const AtlasAIAnalysis = {
                 summary.previousMonthKey ||
                 null,
 
-            current: {
+            hasFinancialData:
+                context.hasFinancialData(
+                    summary
+                ),
 
-                savings,
+            health,
 
-                income,
+            focus,
 
-                expenses,
+            metrics,
 
-                liquidity,
+            differences,
 
-                debt,
+            categories,
 
-                investments,
+            risks:
+                risks.sort(
+                    (
+                        first,
+                        second
+                    ) =>
+                        second.score -
+                        first.score
+                ),
 
-                monthlyInvested,
+            strengths:
+                strengths.sort(
+                    (
+                        first,
+                        second
+                    ) =>
+                        second.score -
+                        first.score
+                ),
 
-                savingRate
+            weaknesses:
+                weaknesses.sort(
+                    (
+                        first,
+                        second
+                    ) =>
+                        second.score -
+                        first.score
+                ),
 
-            },
-
-            differences: {
-
-                savings:
-                    savingsDifference,
-
-                expenses:
-                    expenseDifference,
-
-                income:
-                    incomeDifference,
-
-                investments:
-                    investmentDifference
-
-            },
-
-            categories: {
-
-                top:
-                    topCategory
-                        ? {
-
-                            name:
-                                this.categoryName(
-                                    topCategory
-                                ),
-
-                            amount:
-                                this.categoryAmount(
-                                    topCategory,
-                                    context
-                                ),
-
-                            expenseShare:
-                                this.categoryShareOfExpenses(
-                                    topCategory,
-                                    summary,
-                                    context
-                                ),
-
-                            incomeShare:
-                                this.categoryShareOfIncome(
-                                    topCategory,
-                                    summary,
-                                    context
-                                )
-
-                        }
-                        : null,
-
-                second:
-                    secondCategory
-                        ? {
-
-                            name:
-                                this.categoryName(
-                                    secondCategory
-                                ),
-
-                            amount:
-                                this.categoryAmount(
-                                    secondCategory,
-                                    context
-                                ),
-
-                            expenseShare:
-                                this.categoryShareOfExpenses(
-                                    secondCategory,
-                                    summary,
-                                    context
-                                ),
-
-                            incomeShare:
-                                this.categoryShareOfIncome(
-                                    secondCategory,
-                                    summary,
-                                    context
-                                )
-
-                        }
-                        : null
-
-            },
-
-            alerts:
-                this.alerts(
-                    summary,
-                    context
+            trends:
+                trends.sort(
+                    (
+                        first,
+                        second
+                    ) =>
+                        second.score -
+                        first.score
                 ),
 
             opportunities:
-                this.opportunities(
-                    summary,
-                    context
+                opportunities.sort(
+                    (
+                        first,
+                        second
+                    ) =>
+                        second.score -
+                        first.score
                 ),
 
-            recommendations:
-                this.recommendations(
-                    summary,
-                    context
-                ),
+            priorities:
+                sortedPriorities,
 
-            prediction:
-                this.prediction(
-                    summary,
-                    context
-                ),
+            evidence,
 
-            mainMessage:
-                this.mainMessage(
-                    summary,
-                    context
-                ),
-
-            explanation:
-                this.explanation(
-                    summary,
-                    context
-                ),
-
-            health:
-                "neutral",
-
-            focus:
+            budget:
+                summary.budget ||
                 null,
 
-            evidence:
-                [],
+            conversationContext,
 
             followUps:
-                []
+                this.dynamicFollowUps(
+                    conversationContext,
+                    summary,
+                    context
+                )
 
         };
-
-        if (
-            savings < 0 ||
-            liquidity < 0 ||
-            summary.budget
-                ?.status ===
-                "exceeded"
-        ) {
-
-            reasoning.health =
-                "danger";
-
-        } else if (
-            debt > 0 &&
-            debt > liquidity
-        ) {
-
-            reasoning.health =
-                "warning";
-
-        } else if (
-            income > 0 &&
-            savingRate >= 20
-        ) {
-
-            reasoning.health =
-                "excellent";
-
-        } else if (
-            income > 0 &&
-            savingRate >= 10
-        ) {
-
-            reasoning.health =
-                "good";
-
-        }
-
-        if (
-            summary.budget
-                ?.status ===
-                "exceeded"
-        ) {
-
-            reasoning.focus = {
-
-                type:
-                    "budget",
-
-                level:
-                    "danger",
-
-                title:
-                    "Presupuesto excedido",
-
-                value:
-                    Math.abs(
-                        context.number(
-                            summary.budget
-                                .remaining
-                        )
-                    )
-
-            };
-
-        } else if (
-            liquidity < 0
-        ) {
-
-            reasoning.focus = {
-
-                type:
-                    "liquidity",
-
-                level:
-                    "danger",
-
-                title:
-                    "Liquidez negativa",
-
-                value:
-                    liquidity
-
-            };
-
-        } else if (
-            savings < 0
-        ) {
-
-            reasoning.focus = {
-
-                type:
-                    "savings",
-
-                level:
-                    "danger",
-
-                title:
-                    "Ahorro negativo",
-
-                value:
-                    savings
-
-            };
-
-        } else if (
-            savingsDifference < 0
-        ) {
-
-            reasoning.focus = {
-
-                type:
-                    "savings",
-
-                level:
-                    "warning",
-
-                title:
-                    "Descenso del ahorro",
-
-                value:
-                    savingsDifference
-
-            };
-
-        } else if (
-            expenseDifference > 0
-        ) {
-
-            reasoning.focus = {
-
-                type:
-                    "expenses",
-
-                level:
-                    "warning",
-
-                title:
-                    "Aumento de gastos",
-
-                value:
-                    expenseDifference
-
-            };
-
-        } else if (topCategory) {
-
-            reasoning.focus = {
-
-                type:
-                    "category",
-
-                level:
-                    "information",
-
-                title:
-                    this.categoryName(
-                        topCategory
-                    ),
-
-                value:
-                    this.categoryAmount(
-                        topCategory,
-                        context
-                    )
-
-            };
-
-        } else if (
-            savingRate >= 20
-        ) {
-
-            reasoning.focus = {
-
-                type:
-                    "saving-rate",
-
-                level:
-                    "success",
-
-                title:
-                    "Tasa de ahorro sólida",
-
-                value:
-                    savingRate
-
-            };
-
-        }
-
-        if (
-            incomeDifference !== 0
-        ) {
-
-            reasoning.evidence.push({
-
-                type:
-                    "income-change",
-
-                value:
-                    incomeDifference
-
-            });
-
-        }
-
-        if (
-            expenseDifference !== 0
-        ) {
-
-            reasoning.evidence.push({
-
-                type:
-                    "expense-change",
-
-                value:
-                    expenseDifference
-
-            });
-
-        }
-
-        if (
-            savingsDifference !== 0
-        ) {
-
-            reasoning.evidence.push({
-
-                type:
-                    "savings-change",
-
-                value:
-                    savingsDifference
-
-            });
-
-        }
-
-        if (
-            investmentDifference !== 0
-        ) {
-
-            reasoning.evidence.push({
-
-                type:
-                    "investment-change",
-
-                value:
-                    investmentDifference
-
-            });
-
-        }
-
-        if (topCategory) {
-
-            reasoning.evidence.push({
-
-                type:
-                    "top-category",
-
-                category:
-                    this.categoryName(
-                        topCategory
-                    ),
-
-                value:
-                    this.categoryAmount(
-                        topCategory,
-                        context
-                    ),
-
-                expenseShare:
-                    this.categoryShareOfExpenses(
-                        topCategory,
-                        summary,
-                        context
-                    ),
-
-                incomeShare:
-                    this.categoryShareOfIncome(
-                        topCategory,
-                        summary,
-                        context
-                    )
-
-            });
-
-        }
-
-        reasoning.followUps =
-            this.dynamicFollowUps(
-                conversationContext,
-                summary,
-                context
-            );
-
-        return reasoning;
 
     },
 
