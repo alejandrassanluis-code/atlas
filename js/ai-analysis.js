@@ -1,7 +1,7 @@
 /* ==========================================================
    ATLAS
    ai-analysis.js
-   Atlas IA local — motor de análisis financiero
+   Atlas IA local — motor central de razonamiento financiero
 ========================================================== */
 
 const AtlasAIAnalysis = {
@@ -224,7 +224,7 @@ const AtlasAIAnalysis = {
         const expenses =
             context.number(
                 summary.current
-                    .monthlyExpenses
+                    ?.monthlyExpenses
             );
 
         if (
@@ -256,7 +256,7 @@ const AtlasAIAnalysis = {
         const income =
             context.number(
                 summary.current
-                    .monthlyIncome
+                    ?.monthlyIncome
             );
 
         if (
@@ -340,11 +340,11 @@ const AtlasAIAnalysis = {
         return (
             context.number(
                 summary.current
-                    .monthlySavings
+                    ?.monthlySavings
             ) -
             context.number(
                 summary.previous
-                    .monthlySavings
+                    ?.monthlySavings
             )
         );
 
@@ -358,11 +358,11 @@ const AtlasAIAnalysis = {
         return (
             context.number(
                 summary.current
-                    .monthlyExpenses
+                    ?.monthlyExpenses
             ) -
             context.number(
                 summary.previous
-                    .monthlyExpenses
+                    ?.monthlyExpenses
             )
         );
 
@@ -376,11 +376,11 @@ const AtlasAIAnalysis = {
         return (
             context.number(
                 summary.current
-                    .monthlyIncome
+                    ?.monthlyIncome
             ) -
             context.number(
                 summary.previous
-                    .monthlyIncome
+                    ?.monthlyIncome
             )
         );
 
@@ -394,11 +394,11 @@ const AtlasAIAnalysis = {
         return (
             context.number(
                 summary.current
-                    .monthlyInvested
+                    ?.monthlyInvested
             ) -
             context.number(
                 summary.previous
-                    .monthlyInvested
+                    ?.monthlyInvested
             )
         );
 
@@ -415,137 +415,51 @@ const AtlasAIAnalysis = {
                 questionKey || ""
             );
 
-        if (
-            question.startsWith(
-                "status-"
+        const themes = [
+            "status",
+            "savings",
+            "expenses",
+            "income",
+            "liquidity",
+            "debt",
+            "investments",
+            "goals",
+            "prediction",
+            "comparison",
+            "simulation",
+            "budget",
+            "recurring"
+        ];
+
+        const matchedTheme =
+            themes.find(
+                theme =>
+                    question.startsWith(
+                        `${theme}-`
+                    )
+            );
+
+        const aliases = {
+
+            comparison:
+                "comparisons",
+
+            simulation:
+                "simulations",
+
+            budget:
+                "budgets"
+
+        };
+
+        return matchedTheme
+            ? (
+                aliases[
+                    matchedTheme
+                ] ||
+                matchedTheme
             )
-        ) {
-
-            return "status";
-
-        }
-
-        if (
-            question.startsWith(
-                "savings-"
-            )
-        ) {
-
-            return "savings";
-
-        }
-
-        if (
-            question.startsWith(
-                "expenses-"
-            )
-        ) {
-
-            return "expenses";
-
-        }
-
-        if (
-            question.startsWith(
-                "income-"
-            )
-        ) {
-
-            return "income";
-
-        }
-
-        if (
-            question.startsWith(
-                "liquidity-"
-            )
-        ) {
-
-            return "liquidity";
-
-        }
-
-        if (
-            question.startsWith(
-                "debt-"
-            )
-        ) {
-
-            return "debt";
-
-        }
-
-        if (
-            question.startsWith(
-                "investments-"
-            )
-        ) {
-
-            return "investments";
-
-        }
-
-        if (
-            question.startsWith(
-                "goals-"
-            )
-        ) {
-
-            return "goals";
-
-        }
-
-        if (
-            question.startsWith(
-                "prediction-"
-            )
-        ) {
-
-            return "prediction";
-
-        }
-
-        if (
-            question.startsWith(
-                "comparison-"
-            )
-        ) {
-
-            return "comparisons";
-
-        }
-
-        if (
-            question.startsWith(
-                "simulation-"
-            )
-        ) {
-
-            return "simulations";
-
-        }
-
-        if (
-            question.startsWith(
-                "budget-"
-            )
-        ) {
-
-            return "budgets";
-
-        }
-
-        if (
-            question.startsWith(
-                "recurring-"
-            )
-        ) {
-
-            return "recurring";
-
-        }
-
-        return null;
+            : null;
 
     },
 
@@ -727,48 +641,48 @@ const AtlasAIAnalysis = {
     ) {
 
         if (
-            questionKey ===
-                "expenses-top" ||
-            questionKey ===
+            questionKey !==
+                "expenses-top" &&
+            questionKey !==
                 "simulation-top-20"
         ) {
 
-            const category =
-                this.topCategory(
-                    summary,
-                    context
-                );
-
-            if (!category) {
-
-                return null;
-
-            }
-
-            return {
-
-                type:
-                    "category",
-
-                name:
-                    this.categoryName(
-                        category
-                    ),
-
-                amount:
-                    this.categoryAmount(
-                        category,
-                        context
-                    ),
-
-                rank:
-                    1
-
-            };
+            return null;
 
         }
 
-        return null;
+        const category =
+            this.topCategory(
+                summary,
+                context
+            );
+
+        if (!category) {
+
+            return null;
+
+        }
+
+        return {
+
+            type:
+                "category",
+
+            name:
+                this.categoryName(
+                    category
+                ),
+
+            amount:
+                this.categoryAmount(
+                    category,
+                    context
+                ),
+
+            rank:
+                1
+
+        };
 
     },
 
@@ -939,14 +853,8 @@ const AtlasAIAnalysis = {
         ) {
 
             followUps.push(
-                "context-category-share"
-            );
-
-            followUps.push(
-                "context-category-income-share"
-            );
-
-            followUps.push(
+                "context-category-share",
+                "context-category-income-share",
                 "context-category-reduce-20"
             );
 
@@ -977,10 +885,7 @@ const AtlasAIAnalysis = {
         ) {
 
             followUps.push(
-                "expenses-top"
-            );
-
-            followUps.push(
+                "expenses-top",
                 "expenses-income-share"
             );
 
@@ -1002,14 +907,8 @@ const AtlasAIAnalysis = {
         ) {
 
             followUps.push(
-                "savings-rate"
-            );
-
-            followUps.push(
-                "savings-year"
-            );
-
-            followUps.push(
+                "savings-rate",
+                "savings-year",
                 "simulation-save-200"
             );
 
@@ -1023,10 +922,7 @@ const AtlasAIAnalysis = {
         ) {
 
             followUps.push(
-                "income-stability"
-            );
-
-            followUps.push(
+                "income-stability",
                 "simulation-income-minus-10"
             );
 
@@ -1034,14 +930,11 @@ const AtlasAIAnalysis = {
 
         if (
             theme ===
-                "liquidity"
+            "liquidity"
         ) {
 
             followUps.push(
-                "liquidity-security"
-            );
-
-            followUps.push(
+                "liquidity-security",
                 "liquidity-invest"
             );
 
@@ -1049,14 +942,11 @@ const AtlasAIAnalysis = {
 
         if (
             theme ===
-                "investments"
+            "investments"
         ) {
 
             followUps.push(
-                "investments-liquidity"
-            );
-
-            followUps.push(
+                "investments-liquidity",
                 "investments-weight"
             );
 
@@ -1064,14 +954,11 @@ const AtlasAIAnalysis = {
 
         if (
             theme ===
-                "debt"
+            "debt"
         ) {
 
             followUps.push(
-                "debt-risk"
-            );
-
-            followUps.push(
+                "debt-risk",
                 "simulation-debt-500"
             );
 
@@ -1079,18 +966,12 @@ const AtlasAIAnalysis = {
 
         if (
             theme ===
-                "prediction"
+            "prediction"
         ) {
 
             followUps.push(
-                "prediction-expenses"
-            );
-
-            followUps.push(
-                "prediction-negative"
-            );
-
-            followUps.push(
+                "prediction-expenses",
+                "prediction-negative",
                 "simulation-unexpected-1000"
             );
 
@@ -1103,10 +984,7 @@ const AtlasAIAnalysis = {
         ) {
 
             followUps.push(
-                "budget-remaining"
-            );
-
-            followUps.push(
+                "budget-remaining",
                 "budget-risk"
             );
 
@@ -1176,7 +1054,550 @@ const AtlasAIAnalysis = {
     },
 
     /* ======================================================
-       MOTOR DE RAZONAMIENTO
+       CONSTRUCCIÓN DE PREDICCIÓN
+    ====================================================== */
+
+    buildPrediction(
+        summary,
+        context,
+        metrics
+    ) {
+
+        const currentMonthKey =
+            context.currentMonthKey();
+
+        if (
+            summary.monthKey !==
+            currentMonthKey
+        ) {
+
+            return null;
+
+        }
+
+        const now =
+            new Date();
+
+        const daysInMonth =
+            new Date(
+                now.getFullYear(),
+                now.getMonth() + 1,
+                0
+            )
+                .getDate();
+
+        const elapsedDays =
+            Math.max(
+                1,
+                now.getDate()
+            );
+
+        const projectedExpenses =
+            metrics.expenses /
+            elapsedDays *
+            daysInMonth;
+
+        const additionalExpenses =
+            Math.max(
+                0,
+                projectedExpenses -
+                metrics.expenses
+            );
+
+        return {
+
+            elapsedDays,
+
+            daysInMonth,
+
+            currentExpenses:
+                metrics.expenses,
+
+            projectedExpenses,
+
+            additionalExpenses,
+
+            projectedSavings:
+                metrics.savings -
+                additionalExpenses
+
+        };
+
+    },
+
+    /* ======================================================
+       CONSTRUCCIÓN DE ALERTAS
+    ====================================================== */
+
+    buildAlerts(
+        diagnosis,
+        context
+    ) {
+
+        const alerts = [];
+
+        diagnosis.risks
+            .forEach(
+                risk => {
+
+                    const definitions = {
+
+                        "negative-savings": {
+
+                            icon:
+                                "⚠️",
+
+                            title:
+                                "Ahorro negativo",
+
+                            text:
+                                `El resultado del mes es ${
+                                    context.formatCurrency(
+                                        diagnosis.metrics
+                                            .savings
+                                    )
+                                }.`
+
+                        },
+
+                        "negative-liquidity": {
+
+                            icon:
+                                "💵",
+
+                            title:
+                                "Liquidez negativa",
+
+                            text:
+                                `Tu liquidez total es ${
+                                    context.formatCurrency(
+                                        diagnosis.metrics
+                                            .liquidity
+                                    )
+                                }.`
+
+                        },
+
+                        "expenses-above-income": {
+
+                            icon:
+                                "📉",
+
+                            title:
+                                "Gastos superiores a ingresos",
+
+                            text:
+                                `Los gastos superan los ingresos en ${
+                                    context.formatCurrency(
+                                        risk.value
+                                    )
+                                }.`
+
+                        },
+
+                        "debt-above-liquidity": {
+
+                            icon:
+                                "💳",
+
+                            title:
+                                "Deuda superior a liquidez",
+
+                            text:
+                                `La deuda supera tu liquidez en ${
+                                    context.formatCurrency(
+                                        risk.value
+                                    )
+                                }.`
+
+                        },
+
+                        "budget-exceeded": {
+
+                            icon:
+                                "🎯",
+
+                            title:
+                                "Presupuesto excedido",
+
+                            text:
+                                `Has superado el presupuesto del mes en ${
+                                    context.formatCurrency(
+                                        risk.value
+                                    )
+                                }.`
+
+                        },
+
+                        "budget-low-margin": {
+
+                            icon:
+                                "📋",
+
+                            title:
+                                "Presupuesto casi agotado",
+
+                            text:
+                                `El margen presupuestario restante es ${
+                                    context.formatCurrency(
+                                        risk.value
+                                    )
+                                }.`
+
+                        }
+
+                    };
+
+                    const definition =
+                        definitions[
+                            risk.key
+                        ];
+
+                    if (!definition) {
+
+                        return;
+
+                    }
+
+                    alerts.push({
+
+                        level:
+                            risk.level,
+
+                        icon:
+                            definition.icon,
+
+                        title:
+                            definition.title,
+
+                        text:
+                            definition.text
+
+                    });
+
+                }
+            );
+
+        const strongSaving =
+            diagnosis.strengths
+                .find(
+                    strength =>
+                        strength.key ===
+                        "strong-saving-rate"
+                );
+
+        if (strongSaving) {
+
+            alerts.push({
+
+                level:
+                    "success",
+
+                icon:
+                    "🐷",
+
+                title:
+                    "Buena tasa de ahorro",
+
+                text:
+                    `Estás ahorrando el ${
+                        context.formatPercent(
+                            diagnosis.metrics
+                                .savingRate
+                        )
+                    } de tus ingresos.`
+
+            });
+
+        }
+
+        if (
+            alerts.length ===
+            0
+        ) {
+
+            alerts.push({
+
+                level:
+                    "neutral",
+
+                icon:
+                    "✓",
+
+                title:
+                    "Sin alertas principales",
+
+                text:
+                    "Atlas no detecta incidencias financieras importantes este mes."
+
+            });
+
+        }
+
+        return alerts.slice(
+            0,
+            6
+        );
+
+    },
+
+    /* ======================================================
+       CONSTRUCCIÓN DE RECOMENDACIONES
+    ====================================================== */
+
+    buildRecommendations(
+        diagnosis,
+        context
+    ) {
+
+        const recommendations = [];
+
+        diagnosis.priorities
+            .forEach(
+                priority => {
+
+                    if (
+                        recommendations.length >=
+                        3
+                    ) {
+
+                        return;
+
+                    }
+
+                    const metrics =
+                        diagnosis.metrics;
+
+                    const topCategory =
+                        diagnosis.categories
+                            .top;
+
+                    if (
+                        priority.key ===
+                        "negative-liquidity"
+                    ) {
+
+                        recommendations.push(
+                            "Prioriza recuperar liquidez antes de aumentar las aportaciones a inversión o asumir nuevas obligaciones."
+                        );
+
+                        return;
+
+                    }
+
+                    if (
+                        priority.key ===
+                            "negative-savings" ||
+                        priority.key ===
+                            "expenses-above-income"
+                    ) {
+
+                        if (topCategory) {
+
+                            recommendations.push(
+                                `Revisa ${
+                                    topCategory.name
+                                }, que concentra ${
+                                    context.formatCurrency(
+                                        topCategory.amount
+                                    )
+                                } de gasto este mes.`
+                            );
+
+                        } else {
+
+                            recommendations.push(
+                                "Prioriza reducir gasto variable hasta recuperar un resultado mensual positivo."
+                            );
+
+                        }
+
+                        return;
+
+                    }
+
+                    if (
+                        priority.key ===
+                        "budget-exceeded"
+                    ) {
+
+                        recommendations.push(
+                            "Revisa los gastos pendientes y evita nuevas compras no esenciales hasta recuperar el control del presupuesto."
+                        );
+
+                        return;
+
+                    }
+
+                    if (
+                        priority.key ===
+                        "debt-above-liquidity"
+                    ) {
+
+                        recommendations.push(
+                            "Refuerza la liquidez antes de realizar amortizaciones adicionales que puedan reducir tu fondo de seguridad."
+                        );
+
+                        return;
+
+                    }
+
+                    if (
+                        priority.key ===
+                        "low-security-buffer"
+                    ) {
+
+                        recommendations.push(
+                            "Prioriza construir un fondo de seguridad equivalente al menos a tres meses del gasto actual."
+                        );
+
+                        return;
+
+                    }
+
+                    if (
+                        priority.key ===
+                            "low-saving-rate" ||
+                        priority.key ===
+                            "improve-saving-rate"
+                    ) {
+
+                        recommendations.push(
+                            `Tu tasa de ahorro es del ${
+                                context.formatPercent(
+                                    metrics.savingRate
+                                )
+                            }. Una reducción moderada en las categorías principales podría mejorarla.`
+                        );
+
+                        return;
+
+                    }
+
+                    if (
+                        priority.key ===
+                        "expenses-up"
+                    ) {
+
+                        recommendations.push(
+                            `Los gastos han aumentado ${
+                                context.formatCurrency(
+                                    Math.abs(
+                                        priority.value
+                                    )
+                                )
+                            }. Revisa qué categorías explican el incremento.`
+                        );
+
+                        return;
+
+                    }
+
+                    if (
+                        priority.key ===
+                        "savings-down"
+                    ) {
+
+                        recommendations.push(
+                            `El ahorro ha bajado ${
+                                context.formatCurrency(
+                                    Math.abs(
+                                        priority.value
+                                    )
+                                )
+                            }. Comprueba si se debe a más gastos, menos ingresos o ambos factores.`
+                        );
+
+                        return;
+
+                    }
+
+                    if (
+                        priority.key ===
+                            "review-top-category" &&
+                        topCategory
+                    ) {
+
+                        recommendations.push(
+                            `Revisa ${
+                                topCategory.name
+                            }, que concentra ${
+                                context.formatCurrency(
+                                    topCategory.amount
+                                )
+                            } de gasto este mes.`
+                        );
+
+                        return;
+
+                    }
+
+                    if (
+                        priority.key ===
+                        "review-debt-repayment"
+                    ) {
+
+                        recommendations.push(
+                            "Dispones de más liquidez que deuda. Valora una amortización parcial sin comprometer tu fondo de seguridad."
+                        );
+
+                        return;
+
+                    }
+
+                    if (
+                        priority.key ===
+                        "allocate-positive-savings"
+                    ) {
+
+                        recommendations.push(
+                            "No tienes deuda pendiente y el mes presenta ahorro positivo. Puedes priorizar objetivos o inversión según tus necesidades."
+                        );
+
+                    }
+
+                }
+            );
+
+        if (
+            diagnosis.strengths.some(
+                strength =>
+                    strength.key ===
+                    "strong-saving-rate"
+            ) &&
+            recommendations.length <
+                3
+        ) {
+
+            recommendations.push(
+                "Tu tasa de ahorro es sólida. Puedes valorar distribuir parte del ahorro cerrado entre tus objetivos."
+            );
+
+        }
+
+        if (
+            recommendations.length ===
+            0
+        ) {
+
+            recommendations.push(
+                "Mantén el registro actualizado para que las recomendaciones sean más precisas."
+            );
+
+        }
+
+        return this.unique(
+            recommendations
+        )
+            .slice(
+                0,
+                3
+            );
+
+    },
+
+    /* ======================================================
+       MOTOR CENTRAL DE RAZONAMIENTO
     ====================================================== */
 
     reason(
@@ -1291,29 +1712,37 @@ const AtlasAIAnalysis = {
 
         metrics.expenseIncomeShare =
             metrics.income > 0
-                ? metrics.expenses /
+                ? (
+                    metrics.expenses /
                     metrics.income *
                     100
+                )
                 : 0;
 
         metrics.investmentWeight =
             metrics.grossAssets !== 0
-                ? metrics.investments /
+                ? (
+                    metrics.investments /
                     metrics.grossAssets *
                     100
+                )
                 : 0;
 
         metrics.debtLiquidityRatio =
             metrics.liquidity > 0
-                ? metrics.debt /
+                ? (
+                    metrics.debt /
                     metrics.liquidity *
                     100
+                )
                 : null;
 
         metrics.securityMonths =
             metrics.expenses > 0
-                ? metrics.liquidity /
+                ? (
+                    metrics.liquidity /
                     metrics.expenses
+                )
                 : null;
 
         const differences = {
@@ -1654,11 +2083,9 @@ const AtlasAIAnalysis = {
                 );
 
             const remainingPercentage =
-                budgetTotal > 0
-                    ? budgetRemaining /
-                        budgetTotal *
-                        100
-                    : 0;
+                budgetRemaining /
+                budgetTotal *
+                100;
 
             if (
                 budgetRemaining >= 0 &&
@@ -2456,83 +2883,63 @@ const AtlasAIAnalysis = {
 
         }
 
-        evidence.push({
+        evidence.push(
 
-            key:
-                "current-income",
+            {
+                key:
+                    "current-income",
+                metric:
+                    "income",
+                value:
+                    metrics.income
+            },
 
-            metric:
-                "income",
+            {
+                key:
+                    "current-expenses",
+                metric:
+                    "expenses",
+                value:
+                    metrics.expenses
+            },
 
-            value:
-                metrics.income
+            {
+                key:
+                    "current-savings",
+                metric:
+                    "savings",
+                value:
+                    metrics.savings
+            },
 
-        });
+            {
+                key:
+                    "current-liquidity",
+                metric:
+                    "liquidity",
+                value:
+                    metrics.liquidity
+            },
 
-        evidence.push({
+            {
+                key:
+                    "current-investments",
+                metric:
+                    "investments",
+                value:
+                    metrics.investments
+            },
 
-            key:
-                "current-expenses",
+            {
+                key:
+                    "current-debt",
+                metric:
+                    "debt",
+                value:
+                    metrics.debt
+            }
 
-            metric:
-                "expenses",
-
-            value:
-                metrics.expenses
-
-        });
-
-        evidence.push({
-
-            key:
-                "current-savings",
-
-            metric:
-                "savings",
-
-            value:
-                metrics.savings
-
-        });
-
-        evidence.push({
-
-            key:
-                "current-liquidity",
-
-            metric:
-                "liquidity",
-
-            value:
-                metrics.liquidity
-
-        });
-
-        evidence.push({
-
-            key:
-                "current-investments",
-
-            metric:
-                "investments",
-
-            value:
-                metrics.investments
-
-        });
-
-        evidence.push({
-
-            key:
-                "current-debt",
-
-            metric:
-                "debt",
-
-            value:
-                metrics.debt
-
-        });
+        );
 
         if (categories.top) {
 
@@ -2562,7 +2969,57 @@ const AtlasAIAnalysis = {
 
         }
 
-        return {
+        const sortedRisks =
+            risks.sort(
+                (
+                    first,
+                    second
+                ) =>
+                    second.score -
+                    first.score
+            );
+
+        const sortedStrengths =
+            strengths.sort(
+                (
+                    first,
+                    second
+                ) =>
+                    second.score -
+                    first.score
+            );
+
+        const sortedWeaknesses =
+            weaknesses.sort(
+                (
+                    first,
+                    second
+                ) =>
+                    second.score -
+                    first.score
+            );
+
+        const sortedTrends =
+            trends.sort(
+                (
+                    first,
+                    second
+                ) =>
+                    second.score -
+                    first.score
+            );
+
+        const sortedOpportunities =
+            opportunities.sort(
+                (
+                    first,
+                    second
+                ) =>
+                    second.score -
+                    first.score
+            );
+
+        const diagnosis = {
 
             questionKey:
                 questionKey || null,
@@ -2597,54 +3054,19 @@ const AtlasAIAnalysis = {
             categories,
 
             risks:
-                risks.sort(
-                    (
-                        first,
-                        second
-                    ) =>
-                        second.score -
-                        first.score
-                ),
+                sortedRisks,
 
             strengths:
-                strengths.sort(
-                    (
-                        first,
-                        second
-                    ) =>
-                        second.score -
-                        first.score
-                ),
+                sortedStrengths,
 
             weaknesses:
-                weaknesses.sort(
-                    (
-                        first,
-                        second
-                    ) =>
-                        second.score -
-                        first.score
-                ),
+                sortedWeaknesses,
 
             trends:
-                trends.sort(
-                    (
-                        first,
-                        second
-                    ) =>
-                        second.score -
-                        first.score
-                ),
+                sortedTrends,
 
             opportunities:
-                opportunities.sort(
-                    (
-                        first,
-                        second
-                    ) =>
-                        second.score -
-                        first.score
-                ),
+                sortedOpportunities,
 
             priorities:
                 sortedPriorities,
@@ -2662,9 +3084,34 @@ const AtlasAIAnalysis = {
                     conversationContext,
                     summary,
                     context
-                )
+                ),
+
+            prediction:
+                this.buildPrediction(
+                    summary,
+                    context,
+                    metrics
+                ),
+
+            alerts: [],
+
+            recommendations: []
 
         };
+
+        diagnosis.alerts =
+            this.buildAlerts(
+                diagnosis,
+                context
+            );
+
+        diagnosis.recommendations =
+            this.buildRecommendations(
+                diagnosis,
+                context
+            );
+
+        return diagnosis;
 
     },
 
@@ -2677,39 +3124,42 @@ const AtlasAIAnalysis = {
         context
     ) {
 
+        const diagnosis =
+            this.reason(
+                summary,
+                context
+            );
+
         if (
-            !context.hasFinancialData(
-                summary
-            )
+            !diagnosis.hasFinancialData
         ) {
 
             return "Todavía no hay suficientes datos para realizar un análisis financiero.";
 
         }
 
-        const current =
-            summary.current;
+        const metrics =
+            diagnosis.metrics;
 
-        const savings =
-            context.number(
-                current.monthlySavings
-            );
-
-        const difference =
-            this.savingsDifference(
-                summary,
-                context
-            );
+        const savingsTrend =
+            diagnosis.trends
+                .find(
+                    trend =>
+                        trend.metric ===
+                        "savings"
+                );
 
         if (
-            savings < 0
+            diagnosis.focus
+                ?.key ===
+                "negative-liquidity"
         ) {
 
             return (
-                "Este mes tu ahorro es negativo. " +
-                `Has registrado un resultado de ${
+                "La liquidez es el principal punto de atención. " +
+                `Actualmente se sitúa en ${
                     context.formatCurrency(
-                        savings
+                        metrics.liquidity
                     )
                 }.`
             );
@@ -2717,19 +3167,52 @@ const AtlasAIAnalysis = {
         }
 
         if (
-            savings > 0 &&
-            difference > 0
+            metrics.savings < 0
+        ) {
+
+            let text =
+                `Este mes tu ahorro es negativo: ${
+                    context.formatCurrency(
+                        metrics.savings
+                    )
+                }.`;
+
+            if (
+                diagnosis.categories.top
+            ) {
+
+                text +=
+                    ` ${
+                        diagnosis.categories
+                            .top.name
+                    } es tu mayor categoría de gasto, con ${
+                        context.formatCurrency(
+                            diagnosis.categories
+                                .top.amount
+                        )
+                    }.`;
+
+            }
+
+            return text;
+
+        }
+
+        if (
+            savingsTrend
+                ?.key ===
+                "savings-up"
         ) {
 
             return (
                 "Tu situación mensual ha mejorado. " +
                 `Has ahorrado ${
                     context.formatCurrency(
-                        savings
+                        metrics.savings
                     )
                 }, ${
                     context.formatCurrency(
-                        difference
+                        savingsTrend.value
                     )
                 } más que el mes anterior.`
             );
@@ -2737,19 +3220,20 @@ const AtlasAIAnalysis = {
         }
 
         if (
-            savings > 0 &&
-            difference < 0
+            savingsTrend
+                ?.key ===
+                "savings-down"
         ) {
 
             return (
                 `Has ahorrado ${
                     context.formatCurrency(
-                        savings
+                        metrics.savings
                     )
                 }, aunque son ${
                     context.formatCurrency(
                         Math.abs(
-                            difference
+                            savingsTrend.value
                         )
                     )
                 } menos que el mes anterior.`
@@ -2758,13 +3242,13 @@ const AtlasAIAnalysis = {
         }
 
         if (
-            savings > 0
+            metrics.savings > 0
         ) {
 
             return (
                 `Este mes has generado un ahorro de ${
                     context.formatCurrency(
-                        savings
+                        metrics.savings
                     )
                 }.`
             );
@@ -2780,119 +3264,122 @@ const AtlasAIAnalysis = {
         context
     ) {
 
+        const diagnosis =
+            this.reason(
+                summary,
+                context
+            );
+
         const parts = [];
 
-        const incomeDifference =
-            this.incomeDifference(
-                summary,
-                context
-            );
+        diagnosis.trends
+            .forEach(
+                trend => {
 
-        const expenseDifference =
-            this.expenseDifference(
-                summary,
-                context
-            );
+                    if (
+                        trend.key ===
+                        "income-up"
+                    ) {
 
-        const investedDifference =
-            this.investmentDifference(
-                summary,
-                context
+                        parts.push(
+                            `Los ingresos han aumentado ${
+                                context.formatCurrency(
+                                    trend.value
+                                )
+                            }.`
+                        );
+
+                    } else if (
+                        trend.key ===
+                        "income-down"
+                    ) {
+
+                        parts.push(
+                            `Los ingresos han bajado ${
+                                context.formatCurrency(
+                                    Math.abs(
+                                        trend.value
+                                    )
+                                )
+                            }.`
+                        );
+
+                    } else if (
+                        trend.key ===
+                        "expenses-up"
+                    ) {
+
+                        parts.push(
+                            `Los gastos netos han aumentado ${
+                                context.formatCurrency(
+                                    trend.value
+                                )
+                            }.`
+                        );
+
+                    } else if (
+                        trend.key ===
+                        "expenses-down"
+                    ) {
+
+                        parts.push(
+                            `Los gastos netos se han reducido ${
+                                context.formatCurrency(
+                                    Math.abs(
+                                        trend.value
+                                    )
+                                )
+                            }.`
+                        );
+
+                    } else if (
+                        trend.key ===
+                        "investments-up"
+                    ) {
+
+                        parts.push(
+                            `Has invertido ${
+                                context.formatCurrency(
+                                    trend.value
+                                )
+                            } más que el mes anterior.`
+                        );
+
+                    } else if (
+                        trend.key ===
+                        "investments-down"
+                    ) {
+
+                        parts.push(
+                            `Has invertido ${
+                                context.formatCurrency(
+                                    Math.abs(
+                                        trend.value
+                                    )
+                                )
+                            } menos que el mes anterior.`
+                        );
+
+                    }
+
+                }
             );
 
         if (
-            incomeDifference > 0
-        ) {
-
-            parts.push(
-                `Los ingresos han aumentado ${
-                    context.formatCurrency(
-                        incomeDifference
-                    )
-                }.`
-            );
-
-        } else if (
-            incomeDifference < 0
-        ) {
-
-            parts.push(
-                `Los ingresos han bajado ${
-                    context.formatCurrency(
-                        Math.abs(
-                            incomeDifference
-                        )
-                    )
-                }.`
-            );
-
-        }
-
-        if (
-            expenseDifference > 0
-        ) {
-
-            parts.push(
-                `Los gastos netos han aumentado ${
-                    context.formatCurrency(
-                        expenseDifference
-                    )
-                }.`
-            );
-
-        } else if (
-            expenseDifference < 0
-        ) {
-
-            parts.push(
-                `Los gastos netos se han reducido ${
-                    context.formatCurrency(
-                        Math.abs(
-                            expenseDifference
-                        )
-                    )
-                }.`
-            );
-
-        }
-
-        if (
-            investedDifference > 0
-        ) {
-
-            parts.push(
-                `Has invertido ${
-                    context.formatCurrency(
-                        investedDifference
-                    )
-                } más que el mes anterior.`
-            );
-
-        } else if (
-            investedDifference < 0
-        ) {
-
-            parts.push(
-                `Has invertido ${
-                    context.formatCurrency(
-                        Math.abs(
-                            investedDifference
-                        )
-                    )
-                } menos que el mes anterior.`
-            );
-
-        }
-
-        if (
-            parts.length === 0
+            parts.length ===
+            0
         ) {
 
             return "No hay cambios relevantes respecto al mes anterior.";
 
         }
 
-        return parts.join(" ");
+        return parts
+            .slice(
+                0,
+                3
+            )
+            .join(" ");
 
     },
 
@@ -2905,228 +3392,12 @@ const AtlasAIAnalysis = {
         context
     ) {
 
-        const alerts = [];
-
-        const current =
-            summary.current;
-
-        const savings =
-            context.number(
-                current.monthlySavings
-            );
-
-        const income =
-            context.number(
-                current.monthlyIncome
-            );
-
-        const expenses =
-            context.number(
-                current.monthlyExpenses
-            );
-
-        const liquidity =
-            context.number(
-                current.liquidity
-            );
-
-        const debt =
-            context.number(
-                current.debt
-            );
-
-        const savingRate =
-            context.number(
-                current.monthlySavingRate
-            );
-
-        if (
-            savings < 0
-        ) {
-
-            alerts.push({
-
-                level:
-                    "danger",
-
-                icon:
-                    "⚠️",
-
-                title:
-                    "Ahorro negativo",
-
-                text:
-                    `El resultado del mes es ${
-                        context.formatCurrency(
-                            savings
-                        )
-                    }.`
-
-            });
-
-        }
-
-        if (
-            liquidity < 0
-        ) {
-
-            alerts.push({
-
-                level:
-                    "danger",
-
-                icon:
-                    "💵",
-
-                title:
-                    "Liquidez negativa",
-
-                text:
-                    `Tu liquidez total es ${
-                        context.formatCurrency(
-                            liquidity
-                        )
-                    }.`
-
-            });
-
-        }
-
-        if (
-            income > 0 &&
-            expenses > income
-        ) {
-
-            alerts.push({
-
-                level:
-                    "warning",
-
-                icon:
-                    "📉",
-
-                title:
-                    "Gastos superiores a ingresos",
-
-                text:
-                    "Los gastos netos del mes superan los ingresos registrados."
-
-            });
-
-        }
-
-        if (
-            income > 0 &&
-            savingRate >= 20
-        ) {
-
-            alerts.push({
-
-                level:
-                    "success",
-
-                icon:
-                    "🐷",
-
-                title:
-                    "Buena tasa de ahorro",
-
-                text:
-                    `Estás ahorrando el ${
-                        context.formatPercent(
-                            savingRate
-                        )
-                    } de tus ingresos.`
-
-            });
-
-        }
-
-        if (
-            debt > 0 &&
-            liquidity > 0 &&
-            debt > liquidity
-        ) {
-
-            alerts.push({
-
-                level:
-                    "warning",
-
-                icon:
-                    "💳",
-
-                title:
-                    "Deuda superior a liquidez",
-
-                text:
-                    `La deuda supera tu liquidez en ${
-                        context.formatCurrency(
-                            debt -
-                            liquidity
-                        )
-                    }.`
-
-            });
-
-        }
-
-        if (
-            summary.budget
-                ?.status ===
-                "exceeded"
-        ) {
-
-            alerts.push({
-
-                level:
-                    "danger",
-
-                icon:
-                    "🎯",
-
-                title:
-                    "Presupuesto excedido",
-
-                text:
-                    `Has superado el presupuesto del mes en ${
-                        context.formatCurrency(
-                            Math.abs(
-                                context.number(
-                                    summary.budget
-                                        .remaining
-                                )
-                            )
-                        )
-                    }.`
-
-            });
-
-        }
-
-        if (
-            alerts.length === 0
-        ) {
-
-            alerts.push({
-
-                level:
-                    "neutral",
-
-                icon:
-                    "✓",
-
-                title:
-                    "Sin alertas principales",
-
-                text:
-                    "Atlas no detecta incidencias financieras importantes este mes."
-
-            });
-
-        }
-
-        return alerts;
+        return this
+            .reason(
+                summary,
+                context
+            )
+            .alerts;
 
     },
 
@@ -3139,131 +3410,12 @@ const AtlasAIAnalysis = {
         context
     ) {
 
-        const recommendations = [];
-
-        const current =
-            summary.current;
-
-        const topCategory =
-            this.topCategory(
+        return this
+            .reason(
                 summary,
                 context
-            );
-
-        const savings =
-            context.number(
-                current.monthlySavings
-            );
-
-        const income =
-            context.number(
-                current.monthlyIncome
-            );
-
-        const savingRate =
-            context.number(
-                current.monthlySavingRate
-            );
-
-        const liquidity =
-            context.number(
-                current.liquidity
-            );
-
-        const debt =
-            context.number(
-                current.debt
-            );
-
-        if (
-            topCategory &&
-            this.categoryAmount(
-                topCategory,
-                context
-            ) > 0
-        ) {
-
-            recommendations.push(
-                `Revisa ${
-                    this.categoryName(
-                        topCategory
-                    )
-                }, que concentra ${
-                    context.formatCurrency(
-                        this.categoryAmount(
-                            topCategory,
-                            context
-                        )
-                    )
-                } de gasto este mes.`
-            );
-
-        }
-
-        if (
-            savings < 0
-        ) {
-
-            recommendations.push(
-                "Prioriza reducir gasto variable antes de realizar nuevas aportaciones a inversión."
-            );
-
-        } else if (
-            income > 0 &&
-            savingRate < 10
-        ) {
-
-            recommendations.push(
-                "Tu tasa de ahorro está por debajo del 10 %. Una reducción pequeña en las categorías principales podría mejorarla."
-            );
-
-        } else if (
-            savingRate >= 20
-        ) {
-
-            recommendations.push(
-                "Tu tasa de ahorro es sólida. Puedes valorar distribuir parte del ahorro cerrado entre tus objetivos."
-            );
-
-        }
-
-        if (
-            debt > 0 &&
-            liquidity > debt
-        ) {
-
-            recommendations.push(
-                "Dispones de más liquidez que deuda. Revisa si te interesa amortizar parte de la deuda sin comprometer tu fondo de seguridad."
-            );
-
-        }
-
-        if (
-            liquidity > 0 &&
-            debt === 0 &&
-            savings > 0
-        ) {
-
-            recommendations.push(
-                "No tienes deuda pendiente y el mes presenta ahorro positivo. Puedes priorizar objetivos o inversión según tus necesidades."
-            );
-
-        }
-
-        if (
-            recommendations.length === 0
-        ) {
-
-            recommendations.push(
-                "Mantén el registro actualizado para que las recomendaciones sean más precisas."
-            );
-
-        }
-
-        return recommendations.slice(
-            0,
-            3
-        );
+            )
+            .recommendations;
 
     },
 
@@ -3276,79 +3428,12 @@ const AtlasAIAnalysis = {
         context
     ) {
 
-        const now =
-            new Date();
-
-        const currentMonthKey =
-            context.currentMonthKey();
-
-        const isCurrentMonth =
-            summary.monthKey ===
-            currentMonthKey;
-
-        if (!isCurrentMonth) {
-
-            return null;
-
-        }
-
-        const daysInMonth =
-            new Date(
-                now.getFullYear(),
-                now.getMonth() + 1,
-                0
+        return this
+            .reason(
+                summary,
+                context
             )
-                .getDate();
-
-        const elapsedDays =
-            Math.max(
-                1,
-                now.getDate()
-            );
-
-        const currentExpenses =
-            context.number(
-                summary.current
-                    .monthlyExpenses
-            );
-
-        const currentSavings =
-            context.number(
-                summary.current
-                    .monthlySavings
-            );
-
-        const projectedExpenses =
-            currentExpenses /
-            elapsedDays *
-            daysInMonth;
-
-        const additionalExpenses =
-            Math.max(
-                0,
-                projectedExpenses -
-                currentExpenses
-            );
-
-        const projectedSavings =
-            currentSavings -
-            additionalExpenses;
-
-        return {
-
-            elapsedDays,
-
-            daysInMonth,
-
-            currentExpenses,
-
-            projectedExpenses,
-
-            additionalExpenses,
-
-            projectedSavings
-
-        };
+            .prediction;
 
     },
 
@@ -3388,7 +3473,7 @@ const AtlasAIAnalysis = {
         const currentSavings =
             context.number(
                 summary.current
-                    .monthlySavings
+                    ?.monthlySavings
             );
 
         return {
@@ -3443,13 +3528,13 @@ const AtlasAIAnalysis = {
         const income =
             context.number(
                 summary.current
-                    .monthlyIncome
+                    ?.monthlyIncome
             );
 
         const savings =
             context.number(
                 summary.current
-                    .monthlySavings
+                    ?.monthlySavings
             );
 
         const reduction =
@@ -3499,19 +3584,19 @@ const AtlasAIAnalysis = {
         const liquidity =
             context.number(
                 summary.current
-                    .liquidity
+                    ?.liquidity
             );
 
         const investments =
             context.number(
                 summary.current
-                    .investments
+                    ?.investments
             );
 
         const savings =
             context.number(
                 summary.current
-                    .monthlySavings
+                    ?.monthlySavings
             );
 
         return {
@@ -3561,13 +3646,13 @@ const AtlasAIAnalysis = {
         const savings =
             context.number(
                 summary.current
-                    .monthlySavings
+                    ?.monthlySavings
             );
 
         const liquidity =
             context.number(
                 summary.current
-                    .liquidity
+                    ?.liquidity
             );
 
         return {
@@ -3602,13 +3687,13 @@ const AtlasAIAnalysis = {
         const debt =
             context.number(
                 summary.current
-                    .debt
+                    ?.debt
             );
 
         const liquidity =
             context.number(
                 summary.current
-                    .liquidity
+                    ?.liquidity
             );
 
         const requestedPayment =
@@ -3650,7 +3735,7 @@ const AtlasAIAnalysis = {
     },
 
     /* ======================================================
-       OPORTUNIDADES
+       OPORTUNIDADES COMPATIBLES CON LA INTERFAZ ANTERIOR
     ====================================================== */
 
     opportunities(
@@ -3658,261 +3743,225 @@ const AtlasAIAnalysis = {
         context
     ) {
 
-        const opportunities = [];
-
-        const current =
-            summary.current;
-
-        const topCategory =
-            this.topCategory(
+        const diagnosis =
+            this.reason(
                 summary,
                 context
             );
 
-        const savingsDifference =
-            this.savingsDifference(
-                summary,
-                context
-            );
+        const results = [];
 
-        const expenseDifference =
-            this.expenseDifference(
-                summary,
-                context
-            );
+        diagnosis.priorities
+            .forEach(
+                priority => {
 
-        const income =
-            context.number(
-                current.monthlyIncome
-            );
+                    if (
+                        results.length >=
+                        5
+                    ) {
 
-        const savingRate =
-            context.number(
-                current.monthlySavingRate
-            );
+                        return;
 
-        const liquidity =
-            context.number(
-                current.liquidity
-            );
+                    }
 
-        const debt =
-            context.number(
-                current.debt
+                    if (
+                        priority.key ===
+                        "negative-liquidity"
+                    ) {
+
+                        results.push({
+
+                            priority:
+                                priority.score,
+
+                            type:
+                                "danger",
+
+                            topic:
+                                "liquidity",
+
+                            intent:
+                                "liquidity-status",
+
+                            title:
+                                "Tu liquidez es negativa",
+
+                            text:
+                                `La liquidez total se sitúa en ${
+                                    context.formatCurrency(
+                                        diagnosis.metrics
+                                            .liquidity
+                                    )
+                                }.`
+
+                        });
+
+                        return;
+
+                    }
+
+                    if (
+                        priority.key ===
+                        "budget-exceeded"
+                    ) {
+
+                        results.push({
+
+                            priority:
+                                priority.score,
+
+                            type:
+                                "danger",
+
+                            topic:
+                                "budgets",
+
+                            intent:
+                                "budget-status",
+
+                            title:
+                                "Has superado el presupuesto",
+
+                            text:
+                                `El presupuesto mensual está excedido en ${
+                                    context.formatCurrency(
+                                        priority.value
+                                    )
+                                }.`
+
+                        });
+
+                        return;
+
+                    }
+
+                    if (
+                        priority.key ===
+                        "savings-down"
+                    ) {
+
+                        results.push({
+
+                            priority:
+                                priority.score,
+
+                            type:
+                                "warning",
+
+                            topic:
+                                "savings",
+
+                            intent:
+                                "compare-savings",
+
+                            title:
+                                "Tu ahorro ha bajado",
+
+                            text:
+                                `Este mes llevas ${
+                                    context.formatCurrency(
+                                        Math.abs(
+                                            priority.value
+                                        )
+                                    )
+                                } menos de ahorro que el mes anterior.`
+
+                        });
+
+                        return;
+
+                    }
+
+                    if (
+                        priority.key ===
+                        "expenses-up"
+                    ) {
+
+                        results.push({
+
+                            priority:
+                                priority.score,
+
+                            type:
+                                "warning",
+
+                            topic:
+                                "expenses",
+
+                            intent:
+                                "compare-expenses",
+
+                            title:
+                                "Tus gastos han aumentado",
+
+                            text:
+                                `Los gastos netos han aumentado ${
+                                    context.formatCurrency(
+                                        priority.value
+                                    )
+                                } respecto al mes anterior.`
+
+                        });
+
+                        return;
+
+                    }
+
+                    if (
+                        priority.key ===
+                            "review-top-category" &&
+                        diagnosis.categories
+                            .top
+                    ) {
+
+                        results.push({
+
+                            priority:
+                                priority.score,
+
+                            type:
+                                "information",
+
+                            topic:
+                                "expenses",
+
+                            intent:
+                                "top-category",
+
+                            category:
+                                diagnosis.categories
+                                    .top.name,
+
+                            title:
+                                "Tu principal gasto del mes",
+
+                            text:
+                                `${
+                                    diagnosis.categories
+                                        .top.name
+                                } es la categoría con más gasto, con ${
+                                    context.formatCurrency(
+                                        diagnosis.categories
+                                            .top.amount
+                                    )
+                                }.`
+
+                        });
+
+                    }
+
+                }
             );
 
         if (
-            savingsDifference < 0
+            diagnosis.strengths.some(
+                strength =>
+                    strength.key ===
+                    "strong-saving-rate"
+            )
         ) {
 
-            opportunities.push({
-
-                priority:
-                    100,
-
-                type:
-                    "warning",
-
-                topic:
-                    "savings",
-
-                intent:
-                    "compare-savings",
-
-                title:
-                    "Tu ahorro ha bajado",
-
-                text:
-                    `Este mes llevas ${
-                        context.formatCurrency(
-                            Math.abs(
-                                savingsDifference
-                            )
-                        )
-                    } menos de ahorro que el mes anterior.`
-
-            });
-
-        }
-
-        if (
-            expenseDifference > 0
-        ) {
-
-            opportunities.push({
-
-                priority:
-                    90,
-
-                type:
-                    "warning",
-
-                topic:
-                    "expenses",
-
-                intent:
-                    "compare-expenses",
-
-                title:
-                    "Tus gastos han aumentado",
-
-                text:
-                    `Los gastos netos han aumentado ${
-                        context.formatCurrency(
-                            expenseDifference
-                        )
-                    } respecto al mes anterior.`
-
-            });
-
-        }
-
-        if (
-            summary.budget
-                ?.status ===
-                "exceeded"
-        ) {
-
-            opportunities.push({
-
-                priority:
-                    110,
-
-                type:
-                    "danger",
-
-                topic:
-                    "budgets",
-
-                intent:
-                    "budget-status",
-
-                title:
-                    "Has superado el presupuesto",
-
-                text:
-                    `El presupuesto mensual está excedido en ${
-                        context.formatCurrency(
-                            Math.abs(
-                                context.number(
-                                    summary.budget
-                                        .remaining
-                                )
-                            )
-                        )
-                    }.`
-
-            });
-
-        } else if (
-            summary.budget &&
-            context.number(
-                summary.budget.total
-            ) > 0
-        ) {
-
-            const remaining =
-                context.number(
-                    summary.budget
-                        .remaining
-                );
-
-            const total =
-                context.number(
-                    summary.budget
-                        .total
-                );
-
-            const remainingPercentage =
-                total > 0
-                    ? remaining /
-                        total *
-                        100
-                    : 0;
-
-            if (
-                remaining >= 0 &&
-                remainingPercentage <= 15
-            ) {
-
-                opportunities.push({
-
-                    priority:
-                        80,
-
-                    type:
-                        "warning",
-
-                    topic:
-                        "budgets",
-
-                    intent:
-                        "budget-status",
-
-                    title:
-                        "Tu presupuesto está casi agotado",
-
-                    text:
-                        `Solo quedan ${
-                            context.formatCurrency(
-                                remaining
-                            )
-                        } disponibles este mes.`
-
-                });
-
-            }
-
-        }
-
-        if (topCategory) {
-
-            opportunities.push({
-
-                priority:
-                    60,
-
-                type:
-                    "information",
-
-                topic:
-                    "expenses",
-
-                intent:
-                    "top-category",
-
-                category:
-                    this.categoryName(
-                        topCategory
-                    ),
-
-                title:
-                    "Tu principal gasto del mes",
-
-                text:
-                    `${
-                        this.categoryName(
-                            topCategory
-                        )
-                    } es la categoría con más gasto, con ${
-                        context.formatCurrency(
-                            this.categoryAmount(
-                                topCategory,
-                                context
-                            )
-                        )
-                    }.`
-
-            });
-
-        }
-
-        if (
-            income > 0 &&
-            savingRate >= 20
-        ) {
-
-            opportunities.push({
+            results.push({
 
                 priority:
                     50,
@@ -3932,7 +3981,8 @@ const AtlasAIAnalysis = {
                 text:
                     `Este mes estás ahorrando el ${
                         context.formatPercent(
-                            savingRate
+                            diagnosis.metrics
+                                .savingRate
                         )
                     } de tus ingresos.`
 
@@ -3940,73 +3990,7 @@ const AtlasAIAnalysis = {
 
         }
 
-        if (
-            liquidity < 0
-        ) {
-
-            opportunities.push({
-
-                priority:
-                    120,
-
-                type:
-                    "danger",
-
-                topic:
-                    "liquidity",
-
-                intent:
-                    "liquidity-status",
-
-                title:
-                    "Tu liquidez es negativa",
-
-                text:
-                    `La liquidez total se sitúa en ${
-                        context.formatCurrency(
-                            liquidity
-                        )
-                    }.`
-
-            });
-
-        }
-
-        if (
-            debt > liquidity &&
-            debt > 0
-        ) {
-
-            opportunities.push({
-
-                priority:
-                    70,
-
-                type:
-                    "warning",
-
-                topic:
-                    "debt",
-
-                intent:
-                    "debt-status",
-
-                title:
-                    "La deuda supera tu liquidez",
-
-                text:
-                    `La diferencia es de ${
-                        context.formatCurrency(
-                            debt -
-                            liquidity
-                        )
-                    }.`
-
-            });
-
-        }
-
-        return opportunities
+        return results
             .sort(
                 (
                     first,
@@ -4033,15 +4017,6 @@ const AtlasAIAnalysis = {
         metadata = {}
     ) {
 
-        const normalizedFollowUps =
-            this.unique(
-                followUps
-            )
-                .slice(
-                    0,
-                    5
-                );
-
         return {
 
             type,
@@ -4049,7 +4024,13 @@ const AtlasAIAnalysis = {
             text,
 
             followUps:
-                normalizedFollowUps,
+                this.unique(
+                    followUps
+                )
+                    .slice(
+                        0,
+                        5
+                    ),
 
             metadata: {
 
@@ -4074,19 +4055,12 @@ const AtlasAIAnalysis = {
         metadata = {}
     ) {
 
-        const conversationContext =
-            this.createConversationContext(
-                questionKey,
+        const diagnosis =
+            this.reason(
                 summary,
                 context,
+                questionKey,
                 metadata
-            );
-
-        const dynamicFollowUps =
-            this.dynamicFollowUps(
-                conversationContext,
-                summary,
-                context
             );
 
         return this.response(
@@ -4094,13 +4068,15 @@ const AtlasAIAnalysis = {
             text,
             this.unique([
                 ...followUps,
-                ...dynamicFollowUps
+                ...diagnosis.followUps
             ]),
             {
 
                 ...metadata,
 
-                conversationContext
+                conversationContext:
+                    diagnosis
+                        .conversationContext
 
             }
         );
@@ -4131,32 +4107,27 @@ const AtlasAIAnalysis = {
         metadata = {}
     ) {
 
-        const conversationContext =
-            this.createConversationContext(
-                questionKey,
+        const diagnosis =
+            this.reason(
                 summary,
                 context,
+                questionKey,
                 metadata
-            );
-
-        const dynamicFollowUps =
-            this.dynamicFollowUps(
-                conversationContext,
-                summary,
-                context
             );
 
         return this.insufficient(
             text,
             this.unique([
                 ...followUps,
-                ...dynamicFollowUps
+                ...diagnosis.followUps
             ]),
             {
 
                 ...metadata,
 
-                conversationContext
+                conversationContext:
+                    diagnosis
+                        .conversationContext
 
             }
         );
